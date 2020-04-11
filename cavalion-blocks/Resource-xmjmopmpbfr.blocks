@@ -1,0 +1,9 @@
+"use js";
+
+["devtools/Iframe", {
+
+	vars: {
+		'frame-src': "https://veldoffice.nl/office-rest/action/rapportage?id=20010231&layout=profielen/NoPhotos&options.selection=20010232%2C20010240%2C20010248%2C20010256%2C20010264%2C20010272&options.scale=50&options.title=schaal%201%3A50&options.description=&options.footer=true&options.logo=true&options.legend=true&options.meetpunt.multiple-per-column=true&options.meetpunt.avoid-break-over-column=true&options.meetpunt.photos=true&options.meetpunt.coordinates=true&options.filter.combine=false&options.hide-14688=false&options.bodemlaag.oow=true&options.bodemlaag.gi=true&options.bodemlaag.bvb=true&options.pattern-colors=true&locale=nl_NL&1585515068586&pdf=1"
+	}	
+
+}];
