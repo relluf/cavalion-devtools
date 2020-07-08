@@ -94,7 +94,7 @@ define(function(require) {
 				
 				return getDb(dbName).put(obj).then(done).catch(function(err) {
 					if(err.name === "conflict") {
-						console.log("conflict - recreated database");
+						console.log("conflict - recreated PouchDB object");
 						return getDb(dbName, true).put(obj).then(done);
 					}
 					throw err;
