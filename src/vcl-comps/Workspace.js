@@ -192,8 +192,12 @@ $(["ui/Form"], {
     $(("vcl/Action"), "editors-next", {
     	onExecute: function() {
 			var tabs = this.up().qsa("#editors-tabs:visible");
+			// if(tabs.length === 1) {
+			// 	tabs = this._owner.qsa("Tabs<>:visible");
+			// }
 			var focused = this.up().vars("editors-tabs:focused");
 			if(focused && !focused.isFocused()) {
+				focused.app().print(focused, "fosuced");
 				return focused.setFocus();
 			}
 			if(tabs.length) {
@@ -201,6 +205,8 @@ $(["ui/Form"], {
 				if(index >= tabs.length) index = 0;
 				focused = this.up().vars("editors-tabs:focused", tabs[index]);
 				focused.setFocus();
+				
+				focused.app().print(focused, "fosuced");
 			}
     	}
     }),
@@ -220,15 +226,19 @@ $(["ui/Form"], {
     	}
     }),
     $(("vcl/Action"), "editors-close-all", {
-    	onExecute: function() {
-    		var scope = this.scope();
-            var selected = scope['editors-tabs'].getSelectedControl(1);
-    		scope['editors-tabs']._controls.filter(_ => _ !== selected).forEach(function(tab) {
-    			tab._control.destroy();	
-    			tab._control = null;
-    			tab.destroy();
-    			// tab.update(function() { tab.destroy(); });
-    		});
+    	onExecute: function(evt) {
+			var tabs = this.vars(["editors-tabs:focused"]) || this.udown("#editors-tabs");
+            var selected = tabs.getSelectedControl(1);
+
+    		tabs._controls.filter(_ => _ !== selected)
+    			.filter(_ => evt.altKey === true || _.vars(["resource.type"]) === "File")
+    			.forEach(function(tab) {
+					tabs.print("closing", tab);
+	    			tab._control.destroy();	
+	    			tab._control = null;
+	    			tab.destroy();
+	    			// tab.update(function() { tab.destroy(); });
+	    		});
     	}
     }),
     $(("vcl/Action"), "editor-new", {
@@ -273,7 +283,7 @@ $(["ui/Form"], {
     			    	evt.formUri = "devtools/Editor<folder>";
     			    } else if(path.indexOf("vcl-comps") !== -1 && ext === "js") {
                         evt.formUri = "devtools/Editor<vcl>";
-    			    } else if(path.indexOf("cavalion-blocks") !== -1 && ext === "js") {
+    			    } else if(evt.resource.uri.startsWith("pouchdb://cavalion-blocks/") || (path.indexOf("cavalion-blocks") !== -1 && ext === "js")) {
                         evt.formUri = "devtools/Editor<blocks>";
                     // } else if(path.indexOf("pages") !== -1)  {
                     // 	evt.formUri = "devtools/Editor<page>";
