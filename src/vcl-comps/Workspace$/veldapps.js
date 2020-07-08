@@ -3,8 +3,6 @@
 var Application = require("vcl/Application");
 var Session = require("veldoffice/Session");
 var EM = require("veldoffice/EM");
-
-
 var app = Application.get();
 var PouchDB = require("pouchdb");
 
@@ -22,13 +20,16 @@ $([], {
 		]
 	},
 	onLoad: function() {
-		window.veldapps = { EM: EM, Session: Session };
+		window.veldapps = { 
+			veldoffice: { EM: EM, Session: Session, models: EM.models },
+			v7: { styles: require("stylesheet!home/Projects/V7/src/styles.less") }
+		};
 		window.EM = EM;
 		window.Session = Session;
 		
 		window.v7o_db = new PouchDB("v7-objects");
 
-		this.print("veldapps loaded", veldapps);
+		this.print("com.veldapps", veldapps);
 		return this.inherited(arguments);
 	}
 }, []);

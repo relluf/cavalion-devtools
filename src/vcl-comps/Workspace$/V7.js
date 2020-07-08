@@ -3,6 +3,7 @@ var Component = require("vcl/Component");
 $([], { 
 	vars: {
 		"#navigator favorites": [
+			"Workspaces/veldapps.com/V7/make;;File",
 			"Workspaces/veldapps.com/V7/ROADMAP.md;;File",
 			"Workspaces/veldapps.com/V7/CHANGELOG.md;;File",
 			// "Workspaces/veldapps.com/V7/docs;V7/docs",
