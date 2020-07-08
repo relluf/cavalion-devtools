@@ -139,7 +139,7 @@ $(["devtools/Editor<xml>"], {
 }, [
 
 	$i(("render"), {
-		onExecute: function() {
+		onExecute() {
 
 	// Setup vars
 			var r = this.inherited(arguments);
@@ -343,7 +343,7 @@ me.print("parseElement.@_base", xselem);
 								this.log(xselem, sf("@_type %s not found (291)", xselem['@_type']));
 							}
 						} else if(xselem[sf("%scomplexType", ns_prefix)]) {
-							this.inheritType(xselem, xselem.complexType, "inline?");	
+							this.inheritType(xselem, xselem[sf("%scomplexType", ns_prefix)], "inline?");	
 						} else {
 me.print("parseElement.notHandled", xselem);
 						}

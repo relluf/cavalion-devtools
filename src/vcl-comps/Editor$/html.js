@@ -105,6 +105,18 @@ $([], {
             	"border-radius": "12px"
             }
         },
-        visible: true
+        visible: true,
+        vars: {
+        	"wrapper-start": "<div><h1>PREVIEW</h1><div>",
+        	"wrapper-end": "</div><h3>FOOTER</h3></div>"
+        },
+        
+        onLoad() {
+        	this.override("setContent", function(value) {
+        		var args = [js.sf("%s%s%s", this.vars("wrapper-start"), value, this.vars("wrapper-end"))];
+        		args.callee = arguments.callee;
+        		return this.inherited(args);
+        	});
+        }
     })
 ]);

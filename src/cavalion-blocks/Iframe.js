@@ -13,21 +13,21 @@
 		var owner = this;
 		var parent = this.up("devtools/Editor<>:root");
 		
-		if(parent && (parent = parent.down("#bottom-tabs"))) {
-			B.instantiate(["Input", { 
-				parent: parent, 
-				css: "border:none;display:inline-block;vertical-align:top;width:100%;",
-				onLoad() { 
-					this.setOwner(owner); 
-					this.setValue(owner.vars("frame-src"));
-				},
-				onKeyUp(evt) {
-					if(evt.keyCode === 13) {
-						this._owner.vars("frame-src", this.getValue());
-						this._owner.render();
-					}
-				}
-			}]);
-		}
+		// if(parent && (parent = parent.down("#bottom-tabs"))) {
+		// 	B.instantiate(["Input", { 
+		// 		parent: parent, 
+		// 		css: "border:none;display:inline-block;vertical-align:top;width:100%;",
+		// 		onLoad() { 
+		// 			this.setOwner(owner); 
+		// 			this.setValue(owner.vars("frame-src"));
+		// 		},
+		// 		onKeyUp(evt) {
+		// 			if(evt.keyCode === 13) {
+		// 				this._owner.vars("frame-src", this.getValue());
+		// 				this._owner.render();
+		// 			}
+		// 		}
+		// 	}]);
+		// }
 	}
 }];
