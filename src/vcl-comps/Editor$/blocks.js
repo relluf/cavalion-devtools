@@ -5,7 +5,7 @@ var Factory = require("blocks/Factory");
 
 var styles = {
 	"#host": {
-		"min-width": "100%",
+		"&.full-width": "min-width: 100%;",
         "background-color": "#f0f0f0", 
         "border-right": "1px solid silver"
 	},
@@ -171,12 +171,20 @@ $(["./Editor<js>"], {
 			}
 		}    	
     }),
+    $(("vcl/Action"), "toggle-full-width", {
+        // hotkey: "Shift+MetaCtrl+X",
+		onExecute() { this.toggle(); this.scope().host.toggleClass("full-width");this.scope().host.toggleClass("full-width");this.scope().host.toggleClass("full-width"); },
+		state: false,
+		selected: "state"
+    }),
+    
 
     $i("ace", { align: "left", width: 750 }),
     
 	$("vcl/ui/Tabs#bottom-tabs", { align: "bottom", classes: "bottom inset", autoSize: "height" }, [
     	$("vcl/ui/Tab", { action: "toggle-source", text: locale("Source"), control: "ace", groupIndex: -2, visible: "always" }),
-    	$("vcl/ui/Tab", { action: "toggle-component", text: locale("Component"), control: "host", groupIndex: -3, visible: "always" })
+    	$("vcl/ui/Tab", { action: "toggle-component", text: locale("Component"), control: "host", groupIndex: -3, visible: "always" }),
+    	$("vcl/ui/Tab", { action: "toggle-full-width", classes: "without-menu", text: locale(".full-width"), groupIndex: -4, visible: "always" })
 	]),
 	
     $("vcl/ui/Panel", "host", { 
