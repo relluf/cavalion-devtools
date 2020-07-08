@@ -145,14 +145,17 @@ function getPosts(arr, posts) {
 				posts.setTimeout(function() { 
 					// TODO this if(all.length) { ... } should not be necessay
 					if(all.length) {
-						posts.setArray(all.sort(function(i1, i2) {
+						all.sort(function(i1, i2) {
+							if(i1.date === undefined) return 1;
+							if(i2.date === undefined) return -1;
 							return i1.date > i2.date ? -1 : 1;
-						})); 
+						});
+						console.log("setting posts...", all.map(_ => _.date));
+						posts.setArray(all); 
 						// TODO this is a bug, should not be needed
 						posts.notifyEvent("changed");
 					}
-					status.setContent(String.format("%d post%s found", 
-						all.length, all.length === 1 ? "": "s"));
+					status.setContent(String.format("%d post%s found", all.length, all.length === 1 ? "": "s"));
 				}, 200);
 			}
 			function next() {
@@ -161,6 +164,7 @@ function getPosts(arr, posts) {
 					getPosts(markdown.toHTMLTree(resource.text)).forEach(function(post) {
 						post.file = uri.split("/").pop();
 						post.uri = uri;
+						post.date_ = typeof post.date;
 						all.push(post);
 					});
 					tick();
@@ -239,7 +243,7 @@ function getPosts(arr, posts) {
 		}
 	}],
 	
-	["Container", { align: "left", width: 500 }, [
+	["Container", { align: "left", width: 275 }, [
 		["Bar", [
 			["vcl-ui:Input", "search-input", { placeholder: locale("Search.placeholder") }],
 			["vcl-ui:Element", "status"]
