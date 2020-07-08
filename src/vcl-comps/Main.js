@@ -54,6 +54,7 @@ $(["ui/Form"], {
 	    },
 	    "#workspaces-tabs": "background-color:white;",
 	    "#editors-tabs:focus": {
+	    // ".{./Tabs}:focus": {
 	    	"": "transition: background-color ease-in 0.2s; background-color: rgba(244, 253, 255, 0.94);",
 	    	".selected": "border:1px solid rgb(57,121,204); background-color: rgb(57,121,204); color: white;",
 	    	".menu": "color: white;"
@@ -151,6 +152,7 @@ $(["ui/Form"], {
 
 			"Ctrl+W": "editor-close",
 			"Shift+Ctrl+W": "editors-close-all", //less-one ;-)
+			"Alt+Shift+Ctrl+W": "editors-close-all", //less-one ;-)
 			
 			// "MetaCtrl+48": "editor-focus-in-navigator",
 			"Escape": "editor-setfocus"
@@ -217,7 +219,7 @@ $(["ui/Form"], {
 		function toggleSidebar(evt) {
 			var ws = me.qs("devtools/Workspace<>:root:selected");
 			var sidebar = ws.qs("#left-sidebar");
-debugger
+// debugger
 			if(sidebar.isVisible()) {
 				sidebar.hide();
 			} else {
