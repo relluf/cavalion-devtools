@@ -6,6 +6,19 @@ var Resources = require("devtools/Resources");
 function allowResource(resource) {
 	return [".git", ".svn", ".DS_Store"].indexOf(resource.uri.split("/").pop()) === -1;
 }
+function sortResource(resource1, resource2) {
+	if(resource1.name.startsWith(".") && !resource2.name.startsWith(".")) {
+		return -1;
+	}
+	if(resource2.name.startsWith(".") && !resource1.name.startsWith(".")) {
+		return 1;
+	}
+	if(resource1.type === resource2.type) {
+		return resource1.name < resource2.name ? -1 : 1;
+	}
+	if(resource1.type === "Folder") return -1;
+	return 1;
+}
 function common(tab) {
 	var resource = tab.vars("resource");
 	tab.setCloseable(false);
@@ -58,7 +71,7 @@ $([], {
     	// if this a not a local folder, request its contents from Resources/cavalion-server
     	if(typeof uri === "string" && !uri.startsWith("local:")) {
 	    	Resources.list(uri).then(function(res) {
-				res.filter(allowResource).forEach(function(resource, i) {
+				res.filter(allowResource).sort(sortResource).forEach(function(resource, i) {
 	    			var tab = editor_needed.execute({
 	    				parents: {container: owner, tab: scope['editors-tabs']},
 	    				resource: resource,
