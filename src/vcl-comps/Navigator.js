@@ -327,7 +327,7 @@ this.print("keyUp13", evt);
                     color: "silver",
                     "pointer-events": "none"
                 },
-	            "&.opaque": {
+	            "&.opaque-50": {
 	            	">.checkbox":{
 	            		opacity: "0.5"
 	            	}
@@ -521,7 +521,7 @@ this.print("keyUp13", evt);
 	                    }
 
 	                    if(checked && uris.indexOf(item.uri) === -1) {
-	                    	node.addClass("opaque");
+	                    	node.addClass("opaque-50");
 	                    }
 	                    node.setChecked(checked);
 	                    if (control) {
@@ -654,7 +654,7 @@ console.log(node, js.sf("expandable: %s", item.expandable));
 		                    }
 
 		                    if(checked && uris.indexOf(item.uri) === -1) {
-		                    	node.addClass("opaque");
+		                    	node.addClass("opaque-50");
 		                    }
 	                    }
 	                    
