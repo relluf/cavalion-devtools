@@ -112,7 +112,12 @@ $([], {
 			}
 		}
 	}),
+	
+    $i(("evaluate"), { enabled: false }),
+    $i(("format"), { enabled: false }),
+	
 	$i(("ace"), { visible: false }),
+	
 	$("vcl/ui/Tabs", ("editors-tabs"), {
 		action: "prompt-add-resource",
 		executesAction: "onDblClick",
