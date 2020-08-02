@@ -49,7 +49,7 @@ $([], {
     }),
     
     $("vcl/Action", "toggle-source", {
-        hotkey: "F6",
+        hotkey: "Cmd+Shift+S",
         onExecute: function() {
             var scope = this.getScope();
             if(scope['source-tab'].isSelected()) {

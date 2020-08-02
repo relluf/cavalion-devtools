@@ -105,18 +105,19 @@ $([], {
     },
 }, [
 	$i(("menu-open"), {
-		onExecute: function() {
-			if(confirm(js.sf("I am folder %s, delegate to inherited?", 
-				this.vars(["resource.uri"]).split("/").pop())) === true) {
-					return this.inherited(arguments);
-			}
-		}
+		// onExecute: function() {
+		// 	if(confirm(js.sf("I am folder %s, delegate to inherited?", 
+		// 		this.vars(["resource.uri"]).split("/").pop())) === true) {
+		// 			return this.inherited(arguments);
+		// 	}
+		// }
 	}),
 	
-    $i(("reload"), { enabled: false }),
+    $i(("refresh"), { enabled: false }),
     $i(("evaluate"), { enabled: false }),
     $i(("format"), { enabled: false }),
 	
+	// TODO have a .blocks-file for overridden stuff (#CVLN-20200802-1)
 	$i(("ace"), { visible: false }),
 	
 	$("vcl/ui/Tabs", ("editors-tabs"), {
