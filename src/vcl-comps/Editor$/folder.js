@@ -113,6 +113,7 @@ $([], {
 		}
 	}),
 	
+    $i(("reload"), { enabled: false }),
     $i(("evaluate"), { enabled: false }),
     $i(("format"), { enabled: false }),
 	
