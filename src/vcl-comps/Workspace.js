@@ -381,7 +381,7 @@ $(["ui/Form"], {
             $("vcl/ui/Tab", { text: locale("Navigator"), control: "navigator", selected: true }),
             $("vcl/ui/Tab", { text: locale("Open Tabs"), control: "openTabs" }),
             $("vcl/ui/Tab", { text: locale("Console"), control: "console" }),
-            $("vcl/ui/Tab", { text: locale("Scratch"), control: "scratch" }),
+            // $("vcl/ui/Tab", { text: locale("Scratch"), control: "scratch" }),
             $("vcl/ui/Tab", { text: locale("Outline"), control: "outline" }),
             $("vcl/ui/Tab", { text: locale("Bookmarks"), control: "bookmarks", visible: false }),
             $("vcl/ui/Tab", { text: locale("Search"), control: "search-panel", visible: false }),
@@ -394,7 +394,7 @@ $(["ui/Form"], {
         $(["./OpenTabs"], "openTabs", { visible: false }),
         $(["./Console"], "console", { visible: false }),
         
-        $("vcl/ui/Ace", "scratch", { align: "client", visible: false }),
+        // $("vcl/ui/Ace", "scratch", { align: "client", visible: false }),
 
         $("vcl/ui/Panel", "search-panel", { align: "client", visible: false }),
         $("vcl/ui/Panel", "inspector-panel", { align: "client", visible: false })
