@@ -64,4 +64,10 @@ $([], { css: styles }, [
             scope.render.setTimeout("execute", 500);
         }
     }),
+    $i(("evaluate"), {
+    	onLoad() {
+    		this.vars("eval", () => this.vars(["root"]));
+    		return this.inherited(arguments);
+    	}
+    })
 ]);

@@ -108,7 +108,7 @@ $(["./Editor<js>"], {
                     try {
                         root && root.destroy();
                         root = factory.newInstance(scope['@owner'], uri);
-                        print(scope['@owner'], uri.substring(uri.indexOf("cavalion-blocks/") + "cavalion-blocks/".length), root);
+                        // print(scope['@owner'], uri.substring(uri.indexOf("cavalion-blocks/") + "cavalion-blocks/".length), root);
                         if(root instanceof require("vcl/Control")) {
                             root.setParent(scope.host);
                         } else {

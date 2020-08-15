@@ -174,7 +174,6 @@ $(["ui/Form"], {
 		    	});
 		    session.setScrollTop(state.scrollTop);
 		    session.setScrollLeft(state.scrollLeft);
-		
 		}
     }
 }, [
@@ -378,22 +377,25 @@ $(["ui/Form"], {
             }
 
 			var app = this.app(), ws = this.up("devtools/Workspace<>:root");
+            var name = this.vars(["resource.uri"]).split("/").pop();
             var scope = this.scope();
             var text = scope.ace.getEditor().getSession().getValue();
-            var printer = evt.altKey ? app : ws;
+            var printer = evt.altKey ? ws : this;
 
             if(text.charAt(0) === "{") {
                 text = "(" + text + ")";
             }
+            
             try {
+            	
             	(function(require) {
+            		// (this.vars("eval") || window.eval).apply(this, [text]);
+            		
 	                var value = eval(text);
-	                if(value !== undefined) {
-	                    this.print(value);
-	                }
+                    printer.print(name, value);
             	}.apply(this, [thisRequire]));
             } catch(e) {
-            	this.print(e);
+            	printer.print(name, e);
             }
         }
     }),
@@ -425,10 +427,11 @@ $(["ui/Form"], {
 			            };
 			        }),
 			        scrollTop: ed.session.getScrollTop(),
-			        scrollLeft: ed.session.getScrollLeft()
+			        scrollLeft: ed.session.getScrollLeft(),
+			        fontSize: ed.getFontSize()
 				});
     		};
-    		
+
     		this.up("vcl/ui/Tab").once("resource-loaded", function() {
     			var root = ace.up();
     			root && root.readStorage("ace", function(state) {
@@ -449,6 +452,7 @@ $(["ui/Form"], {
 		
 					    ed.session.setScrollTop(state.scrollTop);
 					    ed.session.setScrollLeft(state.scrollLeft);
+						ed.setFontSize(state.fontSize || "12px");
 	    			}
 			        ed.selection.on("changeCursor", writeStorage);
 			        ed.session.on("changeFold", writeStorage);
