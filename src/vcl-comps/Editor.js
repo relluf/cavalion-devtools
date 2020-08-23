@@ -1,5 +1,11 @@
 "devtools/Resources, util/Xml, vcl/ui/Tab, ace/range";
 
+/*- 
+	#evaluate.vars
+		.label
+		.eval(expr)
+*/
+
 var Resources = require("devtools/Resources");
 var nameOf = (uri) => (uri||"").split("/").pop().replace(/\//g, ".");
 var getKey = (tab) => {
@@ -377,7 +383,7 @@ $(["ui/Form"], {
             }
 
 			var app = this.app(), ws = this.up("devtools/Workspace<>:root");
-            var name = this.vars(["resource.uri"]).split("/").pop();
+            var name = this.vars("label") || this.vars(["resource.uri"]).split("/").pop();
             var scope = this.scope();
             var text = scope.ace.getEditor().getSession().getValue();
             var printer = evt.altKey ? ws : this;
@@ -390,8 +396,8 @@ $(["ui/Form"], {
             	
             	(function(require) {
             		// (this.vars("eval") || window.eval).apply(this, [text]);
-            		
-	                var value = eval(text);
+            		var eval_ = this.vars("eval");
+	                var value = eval_ ? eval_(text) : eval(text);
                     printer.print(name, value);
             	}.apply(this, [thisRequire]));
             } catch(e) {
