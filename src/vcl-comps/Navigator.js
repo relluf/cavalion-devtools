@@ -701,6 +701,7 @@ console.log(node, js.sf("expandable: %s", item.expandable));
     }, [
         $(("vcl/ui/ListColumn"), {
             content: "#",
+            rendering: "innerHTML",
             attribute: ".",
             onGetValue: function (value, row, source) {
                 return [String.format("%H <span> - %H</span>", value.name, 

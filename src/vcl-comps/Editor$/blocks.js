@@ -73,9 +73,12 @@ $(["./Editor<js>"], {
     	
     	// see main.js
     	uri = String.format("$HOME/%s", uri);
+    	// var PAT = "/src/cavalion-blocks/";
+    	// if(uri.indexOf(PAT) !== -1) {
+    	// 	uri = uri.substring(uri.indexOf(PAT) + PAT.length);
+    	// }
     	sourceUri = String.format("$HOME/%s", sourceUri);
-    	
-        
+
         function f() { scope.instantiate.execute({ uri: uri, sourceUri: sourceUri }); }
         tab.on({"resource-loaded": f, "resource-saved": f});
 

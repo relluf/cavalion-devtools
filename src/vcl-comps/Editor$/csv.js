@@ -74,6 +74,20 @@ $([], {
 		}
     }
 }, [
+    $i(("evaluate"), {
+    	onLoad() {
+    		this.vars("eval", () => { 
+    			var label = [this.vars(["resource.uri"]).split("/").pop()], value;
+    			if((value = this.ud("#search-input").getValue())) {
+    				label.push(value);
+    			}
+    			this.vars("label", label.join("-"));
+    			return this.ud("#array")._arr;
+    		});
+    		return this.inherited(arguments);
+    	}
+    }),
+    
 	$i("ace", { align: "left", width: 750 }),
 	$(("vcl/data/Array"), "array"),
 	
