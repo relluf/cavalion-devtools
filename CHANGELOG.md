@@ -1,3 +1,7 @@
+### 2020-08-21 - @1.0.6
+- Fixed the rendering of Navigator search-results
+- Fixing behaviour of Cmd+Enter in several devtools/Editor<>-classes - the idea being that the content of the current appears "evaluated" in the console(s)
+
 ### 2020-08-15 - @1.0.5
 - Advancing devtools/Editor making more use of the workspaces' console
 - Cmd+[Alt+]Enter is "thabomb"
