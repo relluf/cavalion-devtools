@@ -160,6 +160,7 @@ $("vcl/ui/Form", {
         $("vcl/ui/ListColumn", {
             content: "#",
             attribute: ".",
+            rendering: "innerHTML",
             onGetValue: function (value, row, source) {
                 return [String.format("%H <span> - %H</span>", value.name, value.uri)];
             },
