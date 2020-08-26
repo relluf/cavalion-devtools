@@ -33,9 +33,12 @@ function focusSidebar(ws, sidebar) {
     			// console.log("focus sidebar");
     			input.setFocus();
     		} else {
-    			console.log("focus editor");
+    			// console.log("focus editor");
     			ws.down('*:selected #editor-setfocus').execute({}, ws);
     		}
+		} else {
+			var console = tab._control.qs("< vcl/ui/Console");
+			if(console) console.setFocus();
 		}
 	}
 }
@@ -310,19 +313,37 @@ $(["ui/Form"], {
     	hotkey: "Ctrl+F12", // euh ,responds to F11 instead?
     	onExecute: function() {
     		var visible = this._tag;
-
-    		// var tabs = this.app().down("devtools/Main<> #workspaces-tabs");
-    		if(visible === true) {//!tabs.getVisible()) {
-    		// TODO make up one liner
-	    		this.app().qsa("devtools/Workspace<>:root vcl/ui/Tabs#editors-tabs").show();
-	    		this.app().qsa("devtools/Workspace<>:root vcl/ui/Tabs#bottom-tabs").show();
-	    		this.app().qsa("devtools/Workspace<>:root vcl/ui/Tabs#left-sidebar-tabs").show();
-    		} else {
-    			this.app().qsa("devtools/Workspace<>:root vcl/ui/Tabs#editors-tabs").hide();
-	    		this.app().qsa("devtools/Workspace<>:root vcl/ui/Tabs#bottom-tabs").hide();
-	    		this.app().qsa("devtools/Workspace<>:root vcl/ui/Tabs#left-sidebar-tabs").hide();
+			var focused = require("vcl/Control").focused;
+    		var current = this.vars(["editors-tabs:focused"]);
+    		var before = this.vars("before") || 0;
+    		var now = Date.now();
+    		
+    		var tabs = {
+    			editors: this.app().qsa("devtools/Workspace<>:root vcl/ui/Tabs#editors-tabs"),
+    			bottom: this.app().qsa("devtools/Workspace<>:root vcl/ui/Tabs#bottom-tabs"),
+    			left_sidebar: this.app().qsa("devtools/Workspace<>:root vcl/ui/Tabs#left-sidebar-tabs")
+    		};
+    		
+    		if(now - before < 250) {
+	    		current = focused && focused.udr("vcl/ui/Tabs#editors-tabs");
+    			tabs.editors = tabs.editors.filter(tabs => tabs !== current);
     		}
-    		// tabs.setVisible(!tabs.getVisible());
+
+			this.print("current", current);
+    		this.print("tabs.editors", tabs.editors);
+
+    		if(visible === true) {//!tabs.getVisible()) {
+	    		tabs.editors.map(_ => _.show());
+	    		tabs.bottom.show();
+	    		tabs.left_sidebar.show();
+    		} else {
+	    		tabs.editors.map(_ => _.hide());
+	    		tabs.bottom.hide();
+	    		tabs.left_sidebar.hide();
+    		}
+    		
+    		this.vars("before", now);
+
     		this._tag = !this._tag;
     	}	
     }),
