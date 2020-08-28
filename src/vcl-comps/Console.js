@@ -1,7 +1,5 @@
-// "use blocks/Factory!Console";
+"use js";
 
-// var Console = require("blocks/Factory!Console");
-
-$("vcl/ui/Form", { activeControl: "console" }, [
-	["vcl/ui/Console", "console", { classes: "no-time" }]
-]);
+["vcl/ui/Form", (""), { activeControl: "console" }, [
+	["vcl/ui/Console", ("console"), { classes: "no-time" }]
+]];
