@@ -71,6 +71,7 @@ $(["./Editor<js>"], {
         	
             var factory = new Factory(require, uri, evt.sourceUri);
             var root = scope.host.getControls()[0];
+            var ws = root.up("devtools/Workspace<>");
             
             while(root) {
             	root && root.setParent(null);
@@ -91,7 +92,7 @@ $(["./Editor<js>"], {
                         		}
                         	});
                         }
-                        scope.host.up("devtools/Workspace<>").print(root);
+                        ws.print(scope['@this'], root);
                     } catch(e) {
                         alert(e.message); 
                     }
