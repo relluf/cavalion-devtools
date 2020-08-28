@@ -1,3 +1,9 @@
+### 2020-08-21 - @1.0.7
+- Improved toggling the visibility of editor tabs and other  workspace tabs. When its hot key (Ctrl+F11 by default) is being pressed rapidly twice (ie. within 250 ms), the current editors-tabs will remain visible, while the others are hidden
+- Using block-syntax in vcl-comps
+
+>> ![](https://user-images.githubusercontent.com/686773/91371009-8a25ba00-e7d5-11ea-9a54-78eecce43f8e.png?2x)
+
 ### 2020-08-21 - @1.0.6
 - Fixed the rendering of Navigator search-results
 - Fixing behaviour of Cmd+Enter in several devtools/Editor<>-classes - the idea being that the content of the current appears "evaluated" in the console(s)
