@@ -56,6 +56,7 @@ $(["ui/Form"], {
 	        "background-color": "silver"
 	    },
 	    "#workspaces-tabs": "background-color:white;",
+	    ".tabs-hidden": "height:0;padding:0;border:0;",
 	    "#editors-tabs:focus": {
 	    // ".{./Tabs}:focus": {
 	    	"": "transition: background-color ease-in 0.2s; background-color: rgba(244, 253, 255, 0.94);",
@@ -326,20 +327,28 @@ $(["ui/Form"], {
     		
     		if(now - before < 250) {
 	    		current = focused && focused.udr("vcl/ui/Tabs#editors-tabs");
-    			tabs.editors = tabs.editors.filter(tabs => tabs !== current);
+	    		if(!visible) {
+    				tabs.editors = tabs.editors.filter(tabs => tabs !== current);
+	    			
+	    		} else {
+    				tabs.editors = tabs.editors.filter(tabs => tabs === current);
+	    		}
     		}
 
 			this.print("current", current);
     		this.print("tabs.editors", tabs.editors);
+    		
+    		var hide = (tab) => !tab.hasClass("tabs-hidden") && tab.addClass("tabs-hidden");
+    		var show = (tab) => tab.removeClass("tabs-hidden");
 
-    		if(visible === true) {//!tabs.getVisible()) {
-	    		tabs.editors.map(_ => _.show());
-	    		tabs.bottom.show();
-	    		tabs.left_sidebar.show();
+    		if(visible === true) {
+	    		tabs.editors.map(show);
+	    		tabs.bottom.map(show);
+	    		tabs.left_sidebar.map(show);
     		} else {
-	    		tabs.editors.map(_ => _.hide());
-	    		tabs.bottom.hide();
-	    		tabs.left_sidebar.hide();
+	    		tabs.editors.map(hide);
+	    		tabs.bottom.map(hide);
+	    		tabs.left_sidebar.map(hide);
     		}
     		
     		this.vars("before", now);
