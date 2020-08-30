@@ -1,3 +1,6 @@
+### 2020-08-29
+* More improvements to editors-tabs features: show newly focused editors-tabs on hotkey navigation (up/down) 
+
 ### 2020-08-21 - @1.0.7
 - Improved toggling the visibility of editor tabs and other  workspace tabs. When its hot key (Ctrl+F11 by default) is being pressed rapidly twice (ie. within 250 ms), the current editors-tabs will remain visible, while the others are hidden
 - Using block-syntax in vcl-comps
