@@ -329,15 +329,11 @@ $(["ui/Form"], {
 	    		current = focused && focused.udr("vcl/ui/Tabs#editors-tabs");
 	    		if(!visible) {
     				tabs.editors = tabs.editors.filter(tabs => tabs !== current);
-	    			
 	    		} else {
     				tabs.editors = tabs.editors.filter(tabs => tabs === current);
 	    		}
     		}
 
-			this.print("current", current);
-    		this.print("tabs.editors", tabs.editors);
-    		
     		var hide = (tab) => !tab.hasClass("tabs-hidden") && tab.addClass("tabs-hidden");
     		var show = (tab) => tab.removeClass("tabs-hidden");
 
