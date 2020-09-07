@@ -1,4 +1,4 @@
-"devtools/Resources, util/Xml, vcl/ui/Tab, ace/range";
+"devtools/Resources, util/Xml, vcl/ui/Tab, ace/range, util/Event";
 
 /*- 
 	#evaluate.vars
@@ -6,6 +6,7 @@
 		.eval(expr)
 */
 
+var Event_ = require("util/Event");
 var Resources = require("devtools/Resources");
 var nameOf = (uri) => (uri||"").split("/").pop().replace(/\//g, ".");
 var getKey = (tab) => {
@@ -184,15 +185,14 @@ $(["ui/Form"], {
     }
 }, [
 
-    $(("vcl/Action"), "menu-open", {
+    $("vcl/Action", ("menu-open"), {
         hotkey: "Shift+F10",
         onExecute: function (evt) {
         	// TODO: evt.args?
         	this.udown("#ace").getEditor().execCommand("showSettingsMenu",  evt.args || []);
         }
     }),
-
-    $(("vcl/Action"), "refresh", {
+    $("vcl/Action", ("refresh"), {
         hotkey: "MetaCtrl+R",
         onExecute: function (evt) {
             var scope = this.getScope();
@@ -243,7 +243,7 @@ $(["ui/Form"], {
             }
         }
     }),
-    $(("vcl/Action"), "save-resource", {
+    $("vcl/Action", ("save-resource"), {
         onExecute: function () {
             var scope = this.getScope();
             var resource = this.getVar("resource", true);
@@ -302,12 +302,12 @@ $(["ui/Form"], {
                 });
         }
     }),
-    $(("vcl/Action"), "save", {
+    $("vcl/Action", ("save"), {
         hotkey: "MetaCtrl+S",
         parent: "save-resource",
         parentExecute: true
     }),
-    $(("vcl/Action"), "format", {
+    $("vcl/Action", ("format"), {
         hotkey: "MetaCtrl+Shift+F",
         onExecute: function () {
             var Xml = require("util/Xml");
@@ -330,7 +330,7 @@ $(["ui/Form"], {
             }
         }
     }),
-    $(("vcl/Action"), "toggle-wrap", {
+    $("vcl/Action", ("toggle-wrap"), {
         hotkey: "MetaCtrl+Shift+W",
         onExecute: function (evt) {
             var editor = this.scope().ace.getEditor();
@@ -338,8 +338,8 @@ $(["ui/Form"], {
             evt.preventDefault();
         }
     }),
-    $(("vcl/Action"), "evaluate", {
-        hotkey: "MetaCtrl+Enter|Alt+MetaCtrl+Enter",
+    $("vcl/Action", ("evaluate"), {
+        hotkey: "MetaCtrl+Enter|Alt+MetaCtrl+Enter|Shift+MetaCtrl+Enter",
         onExecute: function(evt) {
             var all = require("js/JsObject").all;
             var Deferred = require("js/Deferred");
@@ -386,18 +386,39 @@ $(["ui/Form"], {
             var name = this.vars("label") || this.vars(["resource.uri"]).split("/").pop();
             var scope = this.scope();
             var text = scope.ace.getEditor().getSession().getValue();
-            var printer = evt.altKey ? ws : this;
+            var printer = ws || this;
 
             if(text.charAt(0) === "{") {
                 text = "(" + text + ")";
             }
             
             try {
-            	
             	(function(require) {
             		// (this.vars("eval") || window.eval).apply(this, [text]);
-            		var eval_ = this.vars("eval");
-	                var value = eval_ ? eval_(text) : eval(text);
+            		var eval_ = this.vars("eval"), value;
+            		if(Event_.modifiersMatch(evt, ["metactrl", "shift"])) {
+            			value = "'Meta+Shift+Pressed'";
+            		} else if(Event_.modifiersMatch(evt, ["metactrl", "alt"])) {
+            			value = {scope: this.scope()};
+            			
+            			var root = value.scope['@owner'];
+            			var map = (value.factories = {});
+            			(value.components = root._components).map(component => {
+        					var uri = component._uri, pre = "vcl/Factory!"
+        // 					if(component['@factory'] instanceof require("blocks/Factory")) {
+								// pre = "blocks/Factory!";
+        // 					} else {
+        // 					}
+    						if(uri.indexOf("$HOME/") === 0) uri = uri.substring("$HOME/".length);
+        					map[uri] = map[uri] || {instances: [], factory: component['@factory']};//require(pre + uri)};
+        					map[uri].instances.push(component);
+        				});
+        				
+        				value.controls = root._controls;
+        				
+            		} else {
+	                	value = eval_ ? eval_(text) : eval(text);
+            		}
                     printer.print(name, value);
             	}.apply(this, [thisRequire]));
             } catch(e) {
@@ -405,7 +426,7 @@ $(["ui/Form"], {
             }
         }
     }),
-    $(("vcl/Action"), "focus-in-navigator", {
+    $("vcl/Action", ("focus-in-navigator"), {
     	hotkey: "MetaCtrl+48",
         onExecute: function(evt) {
             var app = this.getApp();
@@ -414,7 +435,7 @@ $(["ui/Form"], {
             	.execute({resource: resource}, this);
         }
     }),
-    $(("vcl/ui/Ace"), "ace", {
+    $("vcl/ui/Ace", ("ace"), {
     	onLoad() {
     		var ace = this;
     		var writeStorage = () => {
@@ -467,7 +488,7 @@ $(["ui/Form"], {
     		});
     	}
     }),
-    $(("vcl/ui/Panel"), "loading", {
+    $("vcl/ui/Panel", ("loading"), {
         align: "none",
         autoSize: "both",
         css: {
