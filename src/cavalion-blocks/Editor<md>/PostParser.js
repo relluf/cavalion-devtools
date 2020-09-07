@@ -177,7 +177,7 @@ function getPosts(arr, posts) {
 	}
 }, [
 	["vcl-data:Array", "posts"],
-	["vcl-ui:Node", {
+	["vcl-ui:Node", (""), {
 		textReflects: "textContent",
 		text: js.sf("%H", "devtools/Editor<md> #posts"),
 		classes: "folder seperator",
@@ -209,8 +209,7 @@ function getPosts(arr, posts) {
 			if(workspace) {
 				this.app()
 					.qsa(String.format(
-						"devtools/Workspace<%s>:root #editors-tabs < vcl/ui/Tab", 
-						workspace.name))
+						"devtools/Workspace<%s>:root #editors-tabs < vcl/ui/Tab", workspace.name))
 					.filter(_ => _.vars(["resource.uri"]).endsWith(".md"))
 					.forEach(function(tab) {
 						var node = new Node_(owner);
