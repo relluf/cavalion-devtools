@@ -1,3 +1,7 @@
+### 2020-09-07 - @1.0.8
+- Editor<md>: `#evaluate` now outs information about the parsed Markdown-document
+- Editor<>: Working on `#evaluate`
+
 ### 2020-08-29
 * More improvements to editors-tabs features: show newly focused editors-tabs on hotkey navigation (up/down) 
 
