@@ -4,8 +4,19 @@ var on = require("on");
 var markdown = require("markdown");
 
 function render() {
-	var root = markdown.toHTMLTree(this.getValue());
-	this.up().vars("root", markdown.toHTMLTree(this.getValue()));//[].concat(root));
+	var value = this.getValue();
+	
+// #CVLN-20200906-3
+	var impl;
+	if((impl = this.vars("onGetRenderValue"))) {
+		value = impl(value);
+	}
+	if((impl = this.vars("onRender"))) {
+		return impl(value);
+	}
+	
+	var root = markdown.toHTMLTree(value);
+	this.up().vars("root", markdown.toHTMLTree(value));//[].concat(root));
     this.up().qsa("#output").forEach(_ => {
     	_.setContent(markdown.renderJsonML(root));
     	_.update(function() {
@@ -41,14 +52,21 @@ var Handlers = {
 };
 
 $([], { handlers: Handlers }, [
-    $i("ace", { 
+    $i(("evaluate"), {
+    	onLoad() {
+    		this.vars("eval", () => this.vars(["root"]));
+    		return this.inherited(arguments);
+    	}
+    }),
+    $i(("ace"), { 
     	align: "left", width: 475, action: "toggle-source",
     	executesAction: "none",
         onChange: function() { 
         	this.setTimeout("render", render.bind(this), 750);
         }
     }),
-    $("vcl/Action#toggle-source", {
+    
+    $("vcl/Action", ("toggle-source"), {
         hotkey: "Shift+MetaCtrl+S",
         selected: "state", visible: "state", 
         state: true,
@@ -66,7 +84,7 @@ $([], { handlers: Handlers }, [
         	this.up().writeStorage("source-visible", this.getState());
         }
     }),
-    $("vcl/ui/Panel", "output", { align: "client", css: {
+    $("vcl/ui/Panel", ("output"), { align: "client", css: {
 	    "background-color": "#f0f0f0", 
 	    "border-left": "1px solid silver",
 	    "border-right": "1px solid silver",
