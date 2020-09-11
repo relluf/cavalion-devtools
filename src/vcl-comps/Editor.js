@@ -399,7 +399,16 @@ $(["ui/Form"], {
             		if(Event_.modifiersMatch(evt, ["metactrl", "shift"])) {
             			value = "'Meta+Shift+Pressed'";
             		} else if(Event_.modifiersMatch(evt, ["metactrl", "alt"])) {
-            			value = {scope: this.scope()};
+            			value = {
+            				me: this,
+            				evaluate: eval_ ? eval_(text) : eval(text),
+            				text: text,
+            				root: this.up(),
+            				scope: this.scope(), 
+            				hash: req("util/Hash").md5(scope.ace.getValue()),
+            				resource: this.vars(["resource"]),
+            				lines: scope.ace.getValue().split("\n")
+            			};
             			
             			var root = value.scope['@owner'];
             			var map = (value.factories = {});
