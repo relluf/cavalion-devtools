@@ -1,3 +1,6 @@
+### 2020-09-11 - @1.0.9
+- Editor<>: Adding more general information to alternate `#evaluate` output
+
 ### 2020-09-07 - @1.0.8
 - Editor<md>: `#evaluate` now outs information about the parsed Markdown-document
 - Editor<>: Working on `#evaluate`
