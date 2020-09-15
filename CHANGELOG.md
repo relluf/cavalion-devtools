@@ -1,3 +1,6 @@
+### 2020-09-14 - @1.0.10
+- Enhanced Console, still feel the need to "centralize" often-used-code, in IPFS for example? Make snippets better and easily accessible.
+
 ### 2020-09-11 - @1.0.9
 - Editor<>: Adding more general information to alternate `#evaluate` output
 

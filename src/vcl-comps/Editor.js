@@ -401,7 +401,7 @@ $(["ui/Form"], {
             		} else if(Event_.modifiersMatch(evt, ["metactrl", "alt"])) {
             			value = {
             				me: this,
-            				evaluate: eval_ ? eval_(text) : eval(text),
+            				evaluate: () => try { return eval_ ? eval_(text) : eval(text); } catch(e) { return e },
             				text: text,
             				root: this.up(),
             				scope: this.scope(), 
