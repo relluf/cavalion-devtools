@@ -1,1 +1,1 @@
-$(["./Main<Cavalion-code>"]); // just an alias
+[["./Main<Cavalion-code>"]]; // just an alias
