@@ -10,6 +10,17 @@ var jQuery = require("jquery");
 var FormContainer = require("vcl/ui/FormContainer");
 
 // FIXME move to a better place
+function title() {
+	var url = app.vars("url");
+	return js.sf("ralph @ %s", url.getParamValue("title") || url.getParamValue("") || "cavalion-code");
+}
+function title_css() {
+	var url = app.vars("url");
+	var colors = url.getParamValue("title-colors");
+	colors = (colors && colors.split("|")) || ["rgb(56, 121, 217)", "white"];
+	return { "": js.sf("text-align:center;float:right;min-width:200px;line-height:26px;" + 
+		"background-color:%s;color:%s;", colors[0], colors[1]) };
+}
 function replaceChars(uri) {
 	return uri.replace(/\//g, ".");
 	// return uri.replace(/\-/g, ".").replace(/\//g, ".");
@@ -50,13 +61,15 @@ function focusSidebar(ws, sidebar) {
 	parent.appendChild(node);
 }(jQuery("style")));
 
-$(["ui/Form"], { 
+[["ui/Form"], { 
 	css: {
-	    ".{./Panel}#editors": {
-	        "background-color": "silver"
-	    },
-	    "#workspaces-tabs": "background-color:white;",
+	    ".{./Panel}#editors": "background-color: silver;",
 	    ".tabs-hidden": "height:0;padding:0;border:0;",
+	    "#workspaces-tabs": {
+	    	"": "background-color:white;",
+	    	".{Tab}": "border-bottom-left-radius:5px; border-bottom-right-radius:5px;",
+	    	// ".{Tab}.selected": "background-color:#f0f0f0;"
+	    },
 	    "#editors-tabs:focus": {
 	    // ".{./Tabs}:focus": {
 	    	"": "transition: background-color ease-in 0.2s; background-color: rgba(244, 253, 255, 0.94);",
@@ -284,9 +297,9 @@ $(["ui/Form"], {
     }
     
 }, [
-    $(["devtools/DragDropHandler<dropbox>"]),
-    $(["devtools/CtrlCtrl<>"], "ctrlctrl", { visible: false}),
-    $(["devtools/TabFactory"], "workspaces-new", {
+    [["devtools/DragDropHandler<dropbox>"]],
+    [["devtools/CtrlCtrl<>"], "ctrlctrl", { visible: false}],
+    [["devtools/TabFactory"], "workspaces-new", {
         vars: {
             parents: {
             tab: "workspaces-tabs",
@@ -308,9 +321,9 @@ $(["ui/Form"], {
             
             return tab;
         }
-    }),
+    }],
     
-    $(("vcl/Action"), "toggle-workspace-tabs", {
+    [("vcl/Action"), "toggle-workspace-tabs", {
     	hotkey: "Ctrl+F12", // euh ,responds to F11 instead?
     	onExecute: function() {
     		var visible = this._tag;
@@ -351,16 +364,16 @@ $(["ui/Form"], {
 
     		this._tag = !this._tag;
     	}	
-    }),
-    $(("vcl/Action"), "toggle-workspaces-tabs", {
+    }],
+    [("vcl/Action"), "toggle-workspaces-tabs", {
     	hotkey: "Ctrl+Alt+F12", // euh ,responds to F11 instead?
     	onExecute: function() {
     		var tabs = this.app().down("devtools/Main<> #workspaces-tabs");
     		tabs.setVisible(!tabs.getVisible());
     	}	
-    }),
+    }],
     
-    $(("vcl/Action"), "workspace-issues-new", {
+    [("vcl/Action"), "workspace-issues-new", {
     	hotkey: "Shift+Ctrl+73", // Shift+Ctrl+I
     	onExecute() {
     		// Open a Github "issues/new"-page based upon workspace meta data
@@ -371,9 +384,9 @@ $(["ui/Form"], {
     		
     		window.open(js.sf("https://github.com/%s/issues/new", repo), "","menubar=no");
     	}
-    }),
+    }],
 
-    $(("vcl/Action"), "workspace-prompt-new", {
+    [("vcl/Action"), "workspace-prompt-new", {
     	hotkey: "Shift+122",
     	onExecute: function(evt) {
         	var n = this.udown("#workspaces-tabs")._controls.length, me = this;
@@ -383,8 +396,8 @@ $(["ui/Form"], {
         		}
         	})
     	}
-    }),
-    $(("vcl/Action"), "workspace-prompt-new-resource", {
+    }],
+    [("vcl/Action"), "workspace-prompt-new-resource", {
     	hotkey: "Shift+121",
     	onExecute: function(evt) {
         	var me = this, parent = this.up().qsa("devtools/Editor<>:root:visible").pop();
@@ -402,8 +415,8 @@ $(["ui/Form"], {
         	// 	}
         	// })
     	}
-    }),
-    $(("vcl/Action"), "workspace-find", {
+    }],
+    [("vcl/Action"), "workspace-find", {
     	hotkey: "Alt+F",
     	onExecute: function() {
     		var ws = this.up().down("devtools/Workspace<>:root:selected");
@@ -415,8 +428,8 @@ $(["ui/Form"], {
 				});
     		// }
     	}
-    }),
-    $(("vcl/Action"), "workspace-needed", {
+    }],
+    [("vcl/Action"), "workspace-needed", {
         onExecute: function(evt) {
         	if(evt instanceof Array) {
         		var me = this;
@@ -442,8 +455,8 @@ $(["ui/Form"], {
     		
     		return tab;
         }
-    }),
-    $(("vcl/Action"), "workspace-activate", {
+    }],
+    [("vcl/Action"), "workspace-activate", {
     	// hotkey: [1, 2, 3, 4, 5, 6, 7, 8, 9].map(function(keyCode) { 
     	// 	return "Ctrl+" + (48 + keyCode); }).join("|"),
     	onExecute: function(evt) {
@@ -461,9 +474,9 @@ $(["ui/Form"], {
 				}
             }
     	}
-    }),
+    }],
     
-    $(("vcl/Action"), "workspace-left-sidebar-tabs::next-previous", {
+    [("vcl/Action"), "workspace-left-sidebar-tabs::next-previous", {
     	hotkey: "Ctrl+32|Ctrl+Shift+32",
     	onExecute: function(evt) {
 			var ws = this.up().down("devtools/Workspace<>:root:selected");
@@ -481,8 +494,8 @@ $(["ui/Form"], {
 
     		evt.preventDefault();
     	}
-    }),
-    $(("vcl/Action"), "workspace-move-left", {
+    }],
+    [("vcl/Action"), "workspace-move-left", {
 		hotkey: "Ctrl+Alt+Meta+219",
     	onExecute: function() {
     		var tab = this._owner.qs("vcl/ui/Tab:selected:childOf(workspaces-tabs)");
@@ -491,30 +504,30 @@ $(["ui/Form"], {
     			tab.setIndex(index - 1);
     		}
     	}
-    }),
-    $(("vcl/Action"), "workspace-move-right", {
+    }],
+    [("vcl/Action"), "workspace-move-right", {
 		hotkey: "Ctrl+Alt+Meta+221",
     	onExecute: function() {
     		var tab = this._owner.qs("vcl/ui/Tab:selected:childOf(workspaces-tabs)");
     		var index = tab.getIndex();
     		tab.setIndex(index + 1);
     	}
-    }),
+    }],
 
-    $(("vcl/Action"), "workspaces-tabs::next-previous", {
+    [("vcl/Action"), "workspaces-tabs::next-previous", {
     	hotkey: "Ctrl+Alt+219|Ctrl+Alt+221|Shift+Meta+219|Shift+Meta+221",
     	onExecute: function(evt) {
     		var method = evt.keyCode === 219 ? "Previous" : "Next";
     		this.scope("workspaces-tabs")["select" + method]();
     		evt.preventDefault();
     	}
-    }),
-    $(("vcl/Action"), "workspaces-tabs-dblclick", {
+    }],
+    [("vcl/Action"), "workspaces-tabs-dblclick", {
 		hotkey: "Ctrl+Alt+187",
 		onExecute: function() { this.scope("workspaces-tabs").ondblclick({}); }
-    }),
+    }],
 
-    $(("vcl/Action"), "open_form", {
+    [("vcl/Action"), "open_form", {
         left: 96,
         onExecute: function onExecute(uri, options) {
         	/** options: 
@@ -609,15 +622,15 @@ $(["ui/Form"], {
             return tab;
         },
         top: 232
-    }),
-    $(("vcl/Action"), "F5-blocker", {
+    }],
+    [("vcl/Action"), "F5-blocker", {
         hotkey: "F5|MetaCtrl+R",
         onExecute: function(evt) {
             evt.preventDefault();
         }
-    }),
+    }],
     
-    $(("vcl/ui/Tabs"), "workspaces-tabs", {
+    [("vcl/ui/Tabs"), "workspaces-tabs", {
         align: "bottom",
         classes: "bottom",
         onDblClick: function(evt) { 
@@ -626,5 +639,12 @@ $(["ui/Form"], {
         onChange: function() {
     		this._owner.emit("state-dirty");
         }
-    })
-]);
+    }, [
+		[("vcl/ui/Element"), "title", { 
+			index: 0, 
+			element: "span", 
+			css: title_css(),
+			content: js.sf("&nbsp; <b>%s<b> <i class='fa fa-caret-down'></i>  &nbsp;", title())
+		}]
+    ]]
+]];
