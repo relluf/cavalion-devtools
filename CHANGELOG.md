@@ -1,12 +1,15 @@
+### 2020-09-18 - @1.0.11
+- **Main**<>: Generalizing the title area
+
 ### 2020-09-14 - @1.0.10
 - Enhanced Console, still feel the need to "centralize" often-used-code, in IPFS for example? Make snippets better and easily accessible
 
 ### 2020-09-11 - @1.0.9
-- Editor<>: Adding more general information to alternate `#evaluate` output
+- **Editor**<>: Adding more general information to alternate `#evaluate` output
 
 ### 2020-09-07 - @1.0.8
-- Editor<md>: `#evaluate` now outs information about the parsed Markdown-document
-- Editor<>: Working on `#evaluate`
+- **Editor<md>**: `#evaluate` now outs information about the parsed Markdown-document
+- **Editor**<>: Working on `#evaluate`
 
 ### 2020-08-29
 * More improvements to editors-tabs features: show newly focused editors-tabs on hotkey navigation (up/down) 
@@ -26,7 +29,7 @@
 - Cmd+[Alt+]Enter is "thabomb"
 
 ### 2020-08-03
-* **devtools/Editor** - persisting font-size
+* **Editor**: Now persisting font-size over sessions
 
 ### 2020-08-02 - @1.0.4
 * Fixing reload^H^H^H^Hfresh bug
