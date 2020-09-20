@@ -1,5 +1,5 @@
-define(['devtools/Resources-node', 'devtools/Resources-pouchdb'], 
-function(ResourcesHttp, ResourcesDB) {
+define(['devtools/Resources-node', 'devtools/Resources-pouchdb', 'devtools/Resources-dropbox'], 
+function(ResourcesHttp, ResourcesDB, ResourcesDbx) {
 	return {
 		index: function(uris) {
 			return ResourcesHttp.index(uris);
@@ -9,6 +9,13 @@ function(ResourcesHttp, ResourcesDB) {
 				return ResourcesDB.list(uri.substring("pouchdb://".length))
 					.then(resources => resources.map(function(resource) {
 						resource.uri = "pouchdb://" + resource.uri;
+						return resource;	
+					}));
+			}
+			if(uri.startsWith("dropbox://")) {
+				return ResourcesDbx.list(uri.substring("dropbox://".length))
+					.then(resources => resources.map(function(resource) {
+						resource.uri = "dropbox://" + resource.uri;
 						return resource;	
 					}));
 			}
@@ -22,6 +29,10 @@ function(ResourcesHttp, ResourcesDB) {
 		get: function(uri) {
 			if(uri.startsWith("pouchdb://")) {
 				return ResourcesDB.get(uri.substring("pouchdb://".length));
+					// TODO extend/clean up uri?
+			} else if(uri.startsWith("dropbox://")) {
+				return ResourcesDbx.get(uri.substring("dropbox://".length));
+					// TODO extend/clean up uri?
 			}
 			return ResourcesHttp.get(uri);
 		},
@@ -29,7 +40,12 @@ function(ResourcesHttp, ResourcesDB) {
 			if(uri.startsWith("pouchdb://")) {
 				return ResourcesDB.create(uri.substring("pouchdb://".length), resource)
 					.then(function(res) {
-console.log("create-result", res);
+						return res;	
+					});
+			}
+			if(uri.startsWith("dropbox://")) {
+				return ResourcesDbx.create(uri.substring("dropbox://".length), resource)
+					.then(function(res) {
 						return res;	
 					});
 			}
@@ -39,7 +55,12 @@ console.log("create-result", res);
 			if(uri.startsWith("pouchdb://")) {
 				return ResourcesDB.delete(uri.substring("pouchdb://".length))
 					.then(function(res) {
-console.log("delete-result", res);
+						return res;	
+					});
+			}
+			if(uri.startsWith("dropbox://")) {
+				return ResourcesDbx.delete(uri.substring("dropbox://".length))
+					.then(function(res) {
 						return res;	
 					});
 			}
@@ -49,7 +70,11 @@ console.log("delete-result", res);
 			if(uri.startsWith("pouchdb://")) {
 				return ResourcesDB.update(uri.substring("pouchdb://".length), resource)
 					.then(function(res) {
-console.log("update-result", res);
+						return res;	
+					});
+			} else if(uri.startsWith("dropbox://")) {
+				return ResourcesDbx.update(uri.substring("dropbox://".length), resource)
+					.then(function(res) {
 						return res;	
 					});
 			}

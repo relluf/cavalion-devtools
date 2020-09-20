@@ -1,3 +1,7 @@
+### 2020-09-19 - @1.0.12
+- Adding Resources-dropbox implementation (works pretty neat nowadays :-))
+- Round-tweaking styles of tabs
+
 ### 2020-09-18 - @1.0.11
 - **Main**<>: Generalizing the title area
 
