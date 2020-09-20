@@ -281,7 +281,12 @@ this.print("keyUp13", evt);
             "padding-left": undefined,
             "overflow-x": undefined,
             ".{./Node}": {
-            	"&.seperator": {
+            	"&.seperator.bottom": {
+            		"border-bottom": "1px solid #f0f0f0", 
+            		"margin-bottom":" 2px", 
+            		"padding-bottom": "2px"
+            	},
+            	"&.seperator.top": {
             		"border-top": "1px solid #f0f0f0", 
             		"margin-top":" 2px", 
             		"padding-top": "2px"

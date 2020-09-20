@@ -12,7 +12,7 @@ var FormContainer = require("vcl/ui/FormContainer");
 // FIXME move to a better place
 function title() {
 	var url = app.vars("url");
-	return js.sf("ralph @ %s", url.getParamValue("title") || url.getParamValue("") || "cavalion-code");
+	return js.sf("%s", url.getParamValue("title") || url.getParamValue("") || "cavalion-code");
 }
 function title_css() {
 	var url = app.vars("url");
@@ -65,10 +65,20 @@ function focusSidebar(ws, sidebar) {
 	css: {
 	    ".{./Panel}#editors": "background-color: silver;",
 	    ".tabs-hidden": "height:0;padding:0;border:0;",
+	    "#left-sidebar-tabs": {
+	    	// "": "background-color:white;",
+	    	".{Tab}": "border-top-left-radius:5px; border-top-right-radius:5px;",
+	    	".{Tab}.selected": "padding-left:8px;"
+	    },
+	    "#editors-tabs": {
+	    	// "": "background-color:white;",
+	    	".{Tab}": "border-top-left-radius:5px; border-top-right-radius:5px;",
+	    	".{Tab}.selected": "padding-left:8px;"
+	    },
 	    "#workspaces-tabs": {
 	    	"": "background-color:white;",
 	    	".{Tab}": "border-bottom-left-radius:5px; border-bottom-right-radius:5px;",
-	    	// ".{Tab}.selected": "background-color:#f0f0f0;"
+	    	".{Tab}.selected": "padding-left:8px;"
 	    },
 	    "#editors-tabs:focus": {
 	    // ".{./Tabs}:focus": {
