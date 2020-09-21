@@ -1,4 +1,7 @@
-### 2020-09-19 - @1.0.12
+### 2020-09-20 - @1.0.12
+- Developing more Resources-dropbox features/implementation
+
+### 2020-09-19
 - Adding Resources-dropbox implementation (works pretty neat nowadays :-))
 - Round-tweaking styles of tabs
 
