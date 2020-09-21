@@ -1,61 +1,29 @@
-function getDb() { return OM.db; }
+var Dropbox = require("dropbox").Dropbox;
+var dbx = new Dropbox({accessToken: "IbL2ZyoCPS0AAAAAAAAAAdxZpGDW23JdjYrycszNKrXK85AtdlIH_o7-SdtgL4Tb"});
+
 
 ["Container", {
-	onLoad: function() {
-		var ws = this.up("devtools/Workspace<>:root");
-		var fs = ws.down("#tree < #fs");
-		var NavigatorNode = fs.constructor;
-
-		new NavigatorNode({
-			vars: { 
-				resource: { 
-					uri: "pouchdb://va_objects/",
-					name: "VA/objects", 
-					type: "Folder"
-				}
-			},
-			owner: this,
-			parent: this.scope().node,
-			expandable: true,
-			onNodesNeeded: function() {
-				var fs = this.up("devtools/Workspace<>").down("#navigator #fs");
-				return fs._onChildNodesNeeded.apply(fs, arguments);
+	onLoad() {
+		var scope = this.scope(), n = 0, me = this;
+		
+		function handle(result) {
+			scope.files.push.apply(scope.files, result.entries);
+			if(result.has_more && ++n < 100) {
+				me.print(n, dbx.filesListFolderContinue({ cursor: result.cursor }).then(handle));
 			}
-		});
-
-		// must have a Resources implementation, take it from fs		
-		this.setVar("Resources", fs.getVar("Resources"));
-		// require("devtools/Resources-pouchdb").list = function(parent) {
-		// 	var db = parent.split("/").shift(); 
-			
-		// 	if(!parent.endsWith("/")) parent += "/";
-
- 	// 		return getDb(parent).allDocs().then(function(res) {
- 	// 			var all = res.rows.map(_ => db + "/" + _.id);
- 	// 			return all.filter(uri => uri.startsWith(parent))
-		// 			.map(uri => uri.substring(parent.length).split("/").shift())
-		// 			.filter(function(name, index, arr) { return arr.indexOf(name) === index; })
-		// 			.map(name => ({
-		// 				name: name, uri: parent + (name || "/"), 
-		// 				type: all.indexOf(parent + name) !== -1 ? "File" : "Folder",
-		// 				expandable: true,
-		// 				contentType: "application/json"
-		// 			}));
- 	// 		});
-		// };
+			return result;
+		}
+		
+		
+		dbx.filesListFolder({path:"", recursive: true}).then(handle);
 	}
 }, [
-	["Node", "node", {
-		text: "Databases",
-		visible: false,
-		classes: "root-invisible folder seperator",
-		expanded: true,
-		onLoad: function() {
-			var fs = this.up("devtools/Workspace<>").down("#navigator #fs");
-			this.setParent(fs);
-			this.show();
-		},
-		onNodesNeeded: function() {}
-	}]
 
+	["Array", "files", { array: [] }],
+	
+	["List", "list", {
+		autoColumns: true,
+		source: "files"
+	}]
+	
 ]];
