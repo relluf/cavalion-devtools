@@ -4,8 +4,10 @@ var Handlers = {
     },
 	iframe_onRender: function() {
 		var cs = this.getComputedStyle();
-	    this._node.childNodes[0].style.width = cs.width;
-	    this._node.childNodes[0].style.height = cs.height;
+		if(this._node.childNodes.length) {
+		    this._node.childNodes[0].style.width = cs.width;
+		    this._node.childNodes[0].style.height = cs.height;
+		}
     }
 };
 
@@ -14,20 +16,25 @@ $([], {}, [
     $i("refresh", {
         onExecute: function() {
         	var scope = this.scope();
-			var url = String.format("%s/%s?%d", 
-				"/home", scope['@owner'].vars(["resource.uri"]), 
-				Date.now());
+			// var url = String.format("%s/%s?%d", 
+			// 	"/home", scope['@owner'].vars(["resource.uri"]), 
+			// 	Date.now());
 				
-			// TODO setContent without immediate update
-			scope.iframe._content = String.format("<iframe src=\"%s\"></iframe>", url);
-			scope.iframe.recreateNode();
-		    scope.loading.show();
-			
-			var node = scope.iframe.getChildNode(0);
-			node.onload = function() {
-				scope.iframe.render();
-		        scope.loading.hide();
-			};
+			var url = require("devtools/Resources")
+				.link(this.vars(["resource.uri"]))
+				.then(url => {
+					// TODO setContent without immediate update
+					scope.iframe._content = js.sf("<iframe src=\"%s?raw=1\"></iframe>", url, Date.now());
+					scope.iframe.recreateNode();
+				    scope.loading.show();
+					
+					var node = scope.iframe.getChildNode(0);
+					node.onload = function() {
+						scope.iframe.render();
+				        scope.loading.hide();
+					};
+				});
+				
         }
     }),
     $i("ace", {visible: false}),

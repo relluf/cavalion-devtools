@@ -98,6 +98,9 @@ define(function(require) {
 					"position": 0
 				})
 			}));
+		},
+		link: function(uri) {
+			return Promise.resolve(String.format("/home/%s", uri));
 		}
 	};
 

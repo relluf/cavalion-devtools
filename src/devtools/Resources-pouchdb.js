@@ -110,6 +110,10 @@ define(function(require) {
 				return res;
 			});
 		},
+		link: function(uri) {
+			throw new Error("Not sure what do here yet ...");
+			// return Promise.resolve(String.format("/home/%s", uri));
+		},
 		
 		sync: function(db, dbs) {
 			if(typeof db === "string") db = this.dbs[db];
@@ -133,6 +137,5 @@ define(function(require) {
 				  console.log("active", info);
 				});
 		}
-			
 	};
 });
