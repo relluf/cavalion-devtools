@@ -1,16 +1,13 @@
 define(function(require) {
 
-	var DBX_XS_TOKEN = "nIxJhImnr5YAAAAAAAAAAZt82-DqagqCqtOqk4g6FEGC5wQTaP2tG_phBtPKnQY6";
-	// var DBX_XS_TOKEN = "IbL2ZyoCPS0AAAAAAAAAAdxZpGDW23JdjYrycszNKrXK85AtdlIH_o7-SdtgL4Tb";
-	
 	var Dropbox = require("dropbox").Dropbox;
 	var Hash = require("util/Hash");
 
-	var dbxs = {};
+	var dbxs = {}, tokens = {};
 	function getDropbox(uri, force) {
 		var name = uri.split("/").shift();
 		if(force || dbxs[name] === undefined) {
-			dbxs[name] = new Dropbox({ accessToken: DBX_XS_TOKEN });
+			dbxs[name] = new Dropbox({ accessToken: localStorage.getItem(js.sf("devtools/Resources-dropbox/tokens/%s", name) || tokens[name])});
 		}
 		return dbxs[name];
 	}
@@ -22,6 +19,14 @@ define(function(require) {
 
 	return {
 		dbxs: dbxs,
+		
+		/*- dropbox://{alias}/path/to/resource */
+		registerAccessToken: function(alias, token) {
+			if(arguments.length === 1 && typeof alias === "object") {
+				Object.keys(alias).forEach(name => 
+					this.registerAccessToken(name, alias[name]));
+			} else tokens[alias] = token;	
+		},
 		
 		index: function(uris) {
 			return Promise.resolve([]);
@@ -110,6 +115,14 @@ define(function(require) {
 						{ type: resource.contentType || "application/json" }
 					),
 				});
+		},
+		link: function(path) {
+			var name = path.split("/").shift(); 
+			path = path.substring(name.length);
+
+			return getDropbox(name).filesGetTemporaryLink({ path: path })
+				.then(res => res.link);
 		}
+
 	};
 });

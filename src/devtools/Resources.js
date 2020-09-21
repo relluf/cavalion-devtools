@@ -30,7 +30,8 @@ function(ResourcesHttp, ResourcesDB, ResourcesDbx) {
 			if(uri.startsWith("pouchdb://")) {
 				return ResourcesDB.get(uri.substring("pouchdb://".length));
 					// TODO extend/clean up uri?
-			} else if(uri.startsWith("dropbox://")) {
+			} 
+			if(uri.startsWith("dropbox://")) {
 				return ResourcesDbx.get(uri.substring("dropbox://".length));
 					// TODO extend/clean up uri?
 			}
@@ -72,13 +73,29 @@ function(ResourcesHttp, ResourcesDB, ResourcesDbx) {
 					.then(function(res) {
 						return res;	
 					});
-			} else if(uri.startsWith("dropbox://")) {
+			}
+			if(uri.startsWith("dropbox://")) {
 				return ResourcesDbx.update(uri.substring("dropbox://".length), resource)
 					.then(function(res) {
 						return res;	
 					});
 			}
 			return ResourcesHttp.update(uri, resource);
+		},
+		link: function(uri) {
+			if(uri.startsWith("pouchdb://")) {
+				return ResourcesDB.link(uri.substring("pouchdb://".length))
+					.then(function(res) {
+						return res;	
+					});
+			}
+			if(uri.startsWith("dropbox://")) {
+				return ResourcesDbx.link(uri.substring("dropbox://".length))
+					.then(function(res) {
+						return res;	
+					});
+			}
+			return ResourcesHttp.link(uri);
 		}
 	};
 });
