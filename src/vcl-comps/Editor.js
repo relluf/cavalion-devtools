@@ -184,7 +184,6 @@ $(["ui/Form"], {
 		}
     }
 }, [
-
     $("vcl/Action", ("menu-open"), {
         hotkey: "Shift+F10",
         onExecute: function (evt) {
@@ -401,9 +400,9 @@ $(["ui/Form"], {
             		} else if(Event_.modifiersMatch(evt, ["metactrl", "alt"])) {
             			value = {
             				me: this,
-            				evaluate: () => { try { return eval_ ? eval_(text) : eval(text); } catch(e) { return e; } },
+            				root: (() => { try { return eval_ ? eval_(text) : eval(text); } catch(e) { return e; } })(),
             				text: text,
-            				root: this.up(),
+            				editor: this.up(),
             				scope: this.scope(), 
             				hash: req("util/Hash").md5(scope.ace.getValue()),
             				resource: this.vars(["resource"]),

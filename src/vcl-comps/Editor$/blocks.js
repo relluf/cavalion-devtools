@@ -88,13 +88,20 @@ $(["./Editor<js>"], {
         this.setTimeout("alignControls", 32);
     }
 }, [
+    $i(("evaluate"), {
+    	onLoad() {
+    		this.vars("eval", () => this.ud("#instantiate").vars("root"));
+    		return this.inherited(arguments);
+    	}
+    }),
+
 	$(("vcl/Action"), "instantiate", {
 		onExecute: function(evt) {
 			var scope = this.scope(), uri = evt.uri;
         	if(!scope.host.isVisible()) { return; } //TODO shouldn't be here
         	
             var factory = new Factory(require, uri, evt.sourceUri);
-            var root = scope.host.getControls()[0];
+            var root = scope.host.vars("root") /*scope.host.getControls()[0] ||*/;
             
             while(root) {
             	try {
@@ -103,7 +110,7 @@ $(["./Editor<js>"], {
             	} catch(e) {
             		alert(e.message);
             		console.error(e);
-            		root = null;
+            		scope.host.vars("root", (root = null));
             	}
             }
             factory.load(scope.ace.getValue(), 
@@ -112,6 +119,7 @@ $(["./Editor<js>"], {
                         root && root.destroy();
                         root = factory.newInstance(scope['@owner'], uri);
                         // print(scope['@owner'], uri.substring(uri.indexOf("cavalion-blocks/") + "cavalion-blocks/".length), root);
+                        scope.host.vars("root", root);
                         if(root instanceof require("vcl/Control")) {
                             root.setParent(scope.host);
                         } else {
@@ -181,7 +189,6 @@ $(["./Editor<js>"], {
 		selected: "state"
     }),
     
-
     $i("ace", { align: "left", width: 750 }),
     
 	$("vcl/ui/Tabs#bottom-tabs", { align: "bottom", classes: "bottom inset", autoSize: "height" }, [

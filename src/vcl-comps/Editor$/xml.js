@@ -33,10 +33,8 @@ $([], { css: styles }, [
     	onExecute: function() {
     		var scope = this.scope();
 		 	var console = scope.console;
-			
 			var root = Parser.parse(scope.ace.getValue(), {ignoreAttributes : false});
 			this._owner.setVar("root", root);
-			
 			console.print("root", root);
     	}
     }),
