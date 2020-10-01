@@ -69,7 +69,11 @@ define(function(require) {
 		},
 		get: function(uri) {
 			return promise($.ajax(adjust(uri)).then(function(res) {
-					return res;	
+					return js.mixIn({
+						name: uri.split("/").pop(),
+						uri: uri,
+						type: "File",
+					}, res);
 				}));
 		},
 		create: function(uri, resource) {

@@ -42,31 +42,34 @@ define(function(require) {
 					.map(name => ({
 						name: name, uri: parent + (name || "/"), 
 						type: all.indexOf(parent + name) !== -1 ? "File" : "Folder",
-						expandable: true,
-						contentType: "application/json"
+						expandable: all.indexOf(parent + name) === -1,
+						contentType: name.indexOf("<") === -1 && name.indexOf(".") !== -1 ? undefined : "application/json"
 					}));
  			});
 		},
-		get: function(uri) {
-			// TODO make a devtools/Resource.get compatible object/return value
-			uri = uri.split("/");
+		get: function(uri_) {
+			uri = uri_.split("/");
 			return getDb(uri.shift()).get(uri.join("/")).then(function(res) {
-				var text = js.get("devtools:resource.text", res);
-				if(typeof text !== "string") {
-					text = js.b(JSON.stringify(res));
+				var resource = js.get("devtools:resource", res);
+				if(resource) {
+					resource.revision = res._rev;
+					return resource;	
 				}
-				return res && {
+				return {
+					uri: uri_,
+					name: uri_.split("/").pop(),
 					revision: res._rev,
 					contentType: "application/json",
-					text: text
+					text: js.b(JSON.stringify(res))
 				};
+				// throw new Error("404 " + uri.join("/"));
 			});
 		},
 		create: function(uri, resource) {
 			uri = uri.split("/");
 			return getDb(uri.shift()).put({ 
 				_id: uri.join("/"), 
-				'devtools:resource': { text: resource.text }
+				'devtools:resource': resource
 			});
 		},
 		'delete': function(uri) {
@@ -76,9 +79,21 @@ define(function(require) {
 				return db.remove(doc);
 			});
 		},
+		// update: function(uri, resource) {
+		// 	uri = uri.split("/");
+			
+		// 	var dbName = uri.shift();
+		// 	return getDb(dbName).put({ 
+		// 		_id: uri.join("/"), 
+		// 		_rev: resource.revision,
+		// 		'devtools:resource': resource
+		// 	}).then(function(res) {
+		// 		resource.revision = res.rev;
+		// 		return resource;
+		// 	});
+		// },
 		update: function(uri, resource) {
 			function done(res) {
-	console.log("updated", res);
 					resource.revision = res.rev;
 					resource.text = js.b(JSON.stringify(res));
 					return res;
@@ -103,7 +118,7 @@ define(function(require) {
 			return getDb(dbName).put({ 
 				_id: uri.join("/"), 
 				_rev: resource.revision,
-				'devtools:resource': { text:resource.text }
+				'devtools:resource': { text: resource.text }
 			}).then(function(res) {
 				// console.log("updated", res);
 				resource.revision = res.rev;
