@@ -1,13 +1,14 @@
-function handleFile(file) {
+function handleFile(file, r) {
 	let reader = new FileReader();
 	reader.onloadend = function() {
 		var result = reader.result;
-		console.log(this, reader, this===reader);
+		// console.log(this, reader, this===reader);
 		r.readerResult = result;
 		debugger;
 	};
 	// reader.readAsDataURL(file);
 	reader.readAsText(file);
+	return file;
 }
 function copy(obj, r) {
 	r = r || {};
@@ -28,6 +29,7 @@ function copy(obj, r) {
 			});
 		} else if(k === "getAsFile") {
 			r.fileValue = handleFile(obj.getAsFile(), r);
+			// r.fileValue.item = r;
 		} else {
 			r[k] = function() {};
 		}
@@ -54,7 +56,7 @@ $("vcl/ui/Panel", {
 				var dataTransfer = copy(evt.dataTransfer);
 				dropped.push(dataTransfer);
 				
-				console.log("dropped-so-far", dropped);
+				me.emit("dropped", [dataTransfer, dropped]);
 				
 				evt.preventDefault();
 				me.setVisible(false);
