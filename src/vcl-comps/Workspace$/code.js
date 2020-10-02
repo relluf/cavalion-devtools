@@ -1,4 +1,4 @@
-var db = require("vcl/Component").defaultDb.name;
+var db = require("vcl/Component").storageDB.name;
 
 $([], { 
 	vars: {
