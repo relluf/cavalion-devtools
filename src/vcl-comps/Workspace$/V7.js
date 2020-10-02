@@ -28,7 +28,7 @@ $([], {
 			js.mixIn(this.vars(["workspace"]), this.vars("workspace"));
 
 			if( /* BLEH! no solution for multiple apps at all, favs eg. should differ as well*/
-				Component.defaultDb.name.indexOf("code-") !== 0 || (keys = 
+				Component.storageDB.name.indexOf("code-") !== 0 || (keys = 
 				Component.getKeysByUri(this._uri)).specializer_classes.length > 0
 			) {
 				return;
