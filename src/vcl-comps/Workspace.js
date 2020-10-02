@@ -268,11 +268,12 @@ $(["ui/Form"], {
 	    		});
             }
     		if(!tab) {
-    		    if(!evt.formUri) {
+    		    if(!evt.formUri) { //?
     		    	this.vars("devtools/Editor")
     		    }
     		    
     		    if(evt.resource.contentType && evt.resource.type !== "Folder") {
+    		    	// TODO use contentType to determine which editor should be
     		    	var type = evt.resource.contentType.split("/").pop();
     		    	evt.editorUri = js.sf("devtools/Editor<%s>", type);
     		    }
@@ -282,20 +283,22 @@ $(["ui/Form"], {
     		    }
     		    
     		    if(!evt.formUri) {
-    			    var ext = (evt.resource.uri || "").split(".").pop();
-    			    var path = evt.resource.uri ? evt.resource.uri.split("/") : [];
-    			    if(evt.resource && evt.resource.type === "Folder") {
+    		    	var uri = (evt.resource.uri || "");
+    			    var path = uri ? uri.split("/") : [];
+    			    var ext = /*uri.indexOf("<") === -1 && */uri.indexOf(".") !== -1 ? uri.split(".").pop() : "";
+    			    if(evt.resource.type === "Folder") {
     			    	evt.formUri = "devtools/Editor<folder>";
     			    } else if(path.indexOf("vcl-comps") !== -1 && ext === "js") {
                         evt.formUri = "devtools/Editor<vcl>";
-    			    } else if(evt.resource.uri.startsWith("pouchdb://cavalion-blocks/") || (path.indexOf("cavalion-blocks") !== -1 && ext === "js")) {
+    			    } else if(path.indexOf("cavalion-blocks") !== -1 && ext === "js") {
                         evt.formUri = "devtools/Editor<blocks>";
-                    // } else if(path.indexOf("pages") !== -1)  {
-                    // 	evt.formUri = "devtools/Editor<page>";
-    			    } else if(path.length > 1 && evt.resource.uri.indexOf("/var/log/") !== -1) {
+    			    } else if(path.length > 1 && uri.indexOf("/var/log/") !== -1) {
+    			    	// TODO #CVLN-20200926-1 find some registration system for these Editor-descendants
     			    	evt.formUri = "devtools/Editor<var/log>";
                     } else {
-    			        evt.formUri = String.format("devtools/Editor<%s>", ext);
+                    	if(ext) {
+    			        	evt.formUri = String.format("devtools/Editor<%s>", ext);
+                    	}
                     }
     			}
 	            tab = scope['editor-factory'].execute(evt, this);
@@ -413,8 +416,7 @@ $(["ui/Form"], {
 	                var ws = me.app().qs(":root:selected");
 	                ws = ws !== null ? ws.getSpecializer() : "";
                     if(tab) {
-                        document.title = String.format("%s - [%s > %s]",
-                            tab.getVar("resource.uri"), title, ws);
+                        document.title = String.format("%s - [%s > %s]", tab.getVar("resource.uri"), title, ws);
                     } else {
                         // document.title = title;
                     }
