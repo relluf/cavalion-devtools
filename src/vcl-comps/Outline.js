@@ -1,7 +1,6 @@
-"vcl/ui/Node";
+"vcl/ui/Node, vcl/Factory";
 
 $("vcl/ui/Tree", {
-
     css: {
         ".{./Node}": {
             "&:not(.selected) > .text > .class": {
@@ -22,12 +21,10 @@ $("vcl/ui/Tree", {
             }
         }
     },
-
     onLoad: function() {
         this.dispatch("nodesneeded", null);
         return this.inherited(arguments);
     },
-
     onNodeCreated: function() {
         var app = this.getApp();
         var me = this;
@@ -35,12 +32,19 @@ $("vcl/ui/Tree", {
             if(e.target.nodeName === "A") {
                 var uri = e.target.textContent;
                 if(uri.charAt(0) !== "#") {
-                    uri += ".js";
-                    if(uri.indexOf("vcl/") === 0) {
-                        uri = "cavalion-vcl/lib/cavalion.org/" + uri;
-                    } else {
-                        uri = "code/src/vcl-comps/" + uri;
+                    if(uri.indexOf("<")) {
+                    	uri = uri.split("<").join("$/").split(">").join("");
                     }
+                    uri += ".js";
+                    
+                    if(e.target.classList.contains("module")) {
+                        uri = "cavalion-vcl/lib/cavalion.org/" + uri;
+                    } else if(e.target.classList.contains("vcl")) {
+                        uri = js.sf("Library/vcl-comps/" + uri);
+                    } else if(e.target.classList.contains("blocks")) {
+                        uri = js.sf("Library/cavalion-blocks/" + uri);
+                    }
+                    
                     app.qsa("devtools/Workspace<>:owner-of(.) #editor-needed", me)
                     	.execute({resource: {uri: uri}, selected: true});
                 } else {
@@ -51,9 +55,9 @@ $("vcl/ui/Tree", {
             }
         });
     },
-
 	onNodesNeeded: function(parent) {
-	    var Node = require("vcl/ui/Node");
+	    var Node = require("vcl/ui/Node"), VclFactory = require("vcl/Factory");
+	    
 	    var owner = this;
 	    var arr;
 
@@ -73,6 +77,7 @@ $("vcl/ui/Tree", {
 	        var node = new Node(owner);
 	        var className = comp.constructor['@class obj'].name;
 	        var name = comp._name;
+	        var vcl = comp['@factory'] instanceof VclFactory;
 
 	        if(comp._isRoot) {
 	            if(!(name = comp._name)) {
@@ -85,12 +90,14 @@ $("vcl/ui/Tree", {
 
 	        if(name) {
     	        node.setText(String.format("<span class='name%s'>%H</span>\
-    	            <span class='class'>- <a>%H</a> - <a>%H</a> - <a>#%d</a></span>",
+    	            <span class='class'>- <a class='module'>%H</a> - \
+    	            <a class='vcl'>%H</a> - <a>#%d</a></span>",
     	            comp._isRoot ? " root" : "",
     	            name, className, comp._uri, comp.hashCode()));
 	        } else {
     	        node.setText(String.format(
-    	            "<span class='class'>- <a>%H</a> - <a>%H</a> - <a>#%d</a></span>",
+    	            "<span class='class'>- <a class='module'>%H</a> - \
+    	            <a class='vcl'>%H</a> - <a>#%d</a></span>",
     	            className, comp._uri, comp.hashCode()));
 	        }
 	        node.setVar("component", comp);
@@ -98,5 +105,4 @@ $("vcl/ui/Tree", {
 	        node.setExpandable(comp._components);
         });
 	}
-
 }, []);
