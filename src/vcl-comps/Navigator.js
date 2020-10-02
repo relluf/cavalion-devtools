@@ -16,6 +16,124 @@ function getNodeText(uri, usedNames) {
 	return r.join("/");
 }
 
+function onNodesNeeded(parent) {
+    var owner = this._owner;
+    var root = parent === this;
+
+    var uri = parent.vars("resource.uri") || "";
+    var control = parent.vars("control");
+    var uris = this._owner.vars("uris");
+    
+	if(uris) {
+		if(!uris.hasOwnProperty("splice")) {
+			/* OMG, ugly hack, what was wrong with me?! */
+		    Method.override(uris, {
+		        splice: function(index, count) {
+		        	for(var i = 0; i < count; ++i) {
+		        		var node = uriNodes[this[index + i]];
+		        		node && node.destroy();
+		        	}
+		        	return Method.callInherited(this, arguments);
+		        },
+		        push: function() {
+		        	for(var i= 0; i < arguments.length; ++i) {
+		        		createUriNode(arguments[i]).setIndex(0);
+		        	}
+		        	return Method.callInherited(this, arguments);
+		        }
+		    });
+		}
+    
+        var favorites = this.vars(["#navigator favorites", true]) || [];
+        favorites.forEach(function(uri) {
+        	if(uris.indexOf(uri) === -1) {
+        		Array.prototype.push.apply(uris, [uri]);
+        	}
+        });
+        
+        uris = uris.sort(function(i1, i2) {
+        	var e1 = i1.endsWith(";File"), e2 = i2.endsWith(";File");
+        	return e1 === e2 ? i1 < i2 ? -1 : 1 : e1 ? 1 : -1;
+        });
+        
+        if(root) {
+            var uriNodes = {};
+			function createUriNode(uri) {
+                var node = new NavigatorNode(owner);
+                var favorite = favorites.indexOf(uri) !== -1;
+                
+                uri = uri.split(";");
+                
+                var item = {
+                	uri:	uri[0], 
+                	name:	uri[1] || getNodeText(uri[0]),
+                	type:	uri[2] || "Folder"
+                };
+
+                root && node.addClass("root");
+                favorite && node.addClass("favorite");
+                node.setVar("resource", item);
+                
+                node.setChecked(true);
+            	node.setExpandable(item.expandable || item.type.indexOf("Folder") !== -1);
+                // node.setExpandable(item.type === "Folder");//true);
+                node.setParent(parent);
+                return (uriNodes[uri[1]] = node);
+            }            
+            
+            uris.forEach(createUriNode);
+        }
+    	// console.log("timeout set to refresh index based on uris")
+    	// owner.setTimeout("refresh-index", function() {
+			this.apply("Resources.index");
+    	// }, 250);
+	}
+    
+    var r = this.apply("Resources.list", [uri]).then(function (res) {
+    	res.sort(function(i1, i2) {
+    		if(i1.type === i2.type) {
+    			return i1.name < i2.name ? -1 : 1;
+    		}
+    		return i1.type !== "Folder" ? 1 : -1;
+    	});
+    	parent.beginLoading();
+        res.forEach(function (item, index) {
+            var node = new NavigatorNode(owner);
+            item.uri = item.uri || (uri !== "" ? (uri + "/" + item.name) : item.name);
+
+            node.setVar("resource", item);
+            root && node.addClass("root");
+            
+            root === true 
+            	&& index === 0 
+            	&& parent._name === "fs" 
+            	&& node.addClass("seperator top");
+
+            if(uris) {
+                var checked = false;
+                for(var i = 0; i < uris.length && !checked; ++i) {
+                	checked = uris[i].indexOf(item.uri) === 0;
+                }
+
+                if(checked && uris.indexOf(item.uri) === -1) {
+                	node.addClass("opaque-50");
+                }
+            }
+            
+            node.setChecked(checked);
+            if (control) {
+                node.setVar("control", control);
+            }
+            node.setExpandable(item.expandable || item.type.indexOf("Folder") !== -1);
+            // node.setExpandable(item.type.indexOf("Folder") !== -1);
+            node.setParent(parent);
+        });
+    	parent.endLoading();
+        return res;
+    });
+    return r;
+}
+
 $("vcl/ui/Form", {
 	activeControl: "search-input",
     onDispatchChildEvent: function (component, name, evt, f, args) {
@@ -42,6 +160,9 @@ $("vcl/ui/Form", {
             }
         }
         return this.inherited(arguments);
+    },
+    onDestroy: function() {
+    	this.app().qsa("devtools/DragDropHandler<>").un(this.vars("listeners"));
     },
     onLoad: function () {
         var scope = this.scope();
@@ -99,14 +220,18 @@ $("vcl/ui/Form", {
         		});
         	}
         });
-            
+
+		this.vars("listeners", this.app()
+			.qsa("devtools/DragDropHandler<>")
+			.on("dropped", () => {
+				this.qs("#DragDropHandler_files").reloadChildNodes();
+			})
+		);
+
         return this.inherited(arguments);
     }
-
 }, [
     $("vcl/data/Array", "search-results", {}),
-    
-    
     // TODO search-open-pdokviewer-metadata (per resource group/package)
     // TODO pdok/viewer/Layer
     // TODO search-open-devtools/Resource
@@ -555,127 +680,59 @@ console.log(node, js.sf("expandable: %s", item.expandable));
 			}
 		}
     }, [
+    	// $(("devtools/NavigatorNode"), "fs", {
+	   	// 	vars: { resource: { type: "Folder", uri: "", name: js.sf("%s/fs", window.location.host) } },
+    	// },
+    	$(("devtools/NavigatorNode"), "Component_storage", {
+	   		vars: { 
+	   			resource: { 
+	   				type: "Folder", 
+	   				uri: js.sf("pouchdb://%s/", require("vcl/Component").storageDB.name), 
+	   				name: js.sf("Local Resources", require("vcl/Component").storageDB.name), 
+	   			}
+	   		},
+	   		// classes: "root-invisible seperator top",
+    		// expanded: true,
+	        onNodesNeeded: onNodesNeeded,
+	        // onNodeCreated() {
+	        // 	// var fs = this.ud("#fs"), rname = this.vars("resource.name");
+	        // 	// this.setParent(fs);
+	        // 	// this.setIndex(this.ud("#fs").);
+	        // 	// this.setTimeout("foo", () => {
+		       // // 	this.setIndex(fs._controls.filter(c => c.vars("resource.type") === "Folder")
+		       // // 		.map(c => c.vars("resource.name"))
+		       // // 		.reduce((a, n, i) => { return n < rname ? i : a }, 0)
+		       // // 	);
+	        // 	// 	// this.setExpanded(false);
+	        // 	// 	this.removeClass("root-invisible");
+	        // 	// }, 2000);
+        	// 	this.removeClass("root-invisible");
+	        // }
+    	}),
     	$(("devtools/NavigatorNode"), "fs", {
-	   		vars: { resource: { type: "Folder", uri: "", name: "Resources" } },
-    		classes: "root-invisible", // classes: "root",
-    		expanded: true,
+	   		vars: { 
+	   			resource: { 
+	   				type: "Folder", uri: "/", 
+	   				name: js.sf("Server Resources") 
+	   			} 
+	   		},
+    		// classes: "root-invisible", // classes: "root",
+    		// expanded: true,
     		onLoad: function() {
     			this.vars("static-nodes", [].concat(this._controls));
     		},
-	        onNodesNeeded: function (parent) {
-	            var owner = this._owner;
-	            var root = parent === this;
-	
-	            var uri = parent.vars("resource.uri") || "";
-	            var control = parent.vars("control");
-	            var uris = this._owner.vars("uris");
-	            
-				if(uris) {
-					if(!uris.hasOwnProperty("splice")) {
-						/* OMG, ugly hack, what was wrong with me?! */
-					    Method.override(uris, {
-					        splice: function(index, count) {
-					        	for(var i = 0; i < count; ++i) {
-					        		var node = uriNodes[this[index + i]];
-					        		node && node.destroy();
-					        	}
-					        	return Method.callInherited(this, arguments);
-					        },
-					        push: function() {
-					        	for(var i= 0; i < arguments.length; ++i) {
-					        		createUriNode(arguments[i]).setIndex(0);
-					        	}
-					        	return Method.callInherited(this, arguments);
-					        }
-					    });
-					}
-	            
-		            var favorites = this.vars(["#navigator favorites", true]) || [];
-		            favorites.forEach(function(uri) {
-		            	if(uris.indexOf(uri) === -1) {
-		            		Array.prototype.push.apply(uris, [uri]);
-		            	}
-		            });
-		            
-		            uris = uris.sort(function(i1, i2) {
-		            	var e1 = i1.endsWith(";File"), e2 = i2.endsWith(";File");
-		            	return e1 === e2 ? i1 < i2 ? -1 : 1 : e1 ? 1 : -1;
-		            });
-		            
-		            if(root) {
-			            var uriNodes = {};
-						function createUriNode(uri) {
-			                var node = new NavigatorNode(owner);
-			                var favorite = favorites.indexOf(uri) !== -1;
-			                
-			                uri = uri.split(";");
-			                
-			                var item = {
-			                	uri:	uri[0], 
-			                	name:	uri[1] || getNodeText(uri[0]),
-			                	type:	uri[2] || "Folder"
-			                };
-			
-			                root && node.addClass("root");
-			                favorite && node.addClass("favorite");
-			                node.setVar("resource", item);
-			                
-			                node.setChecked(true);
-	                    	node.setExpandable(item.expandable || item.type.indexOf("Folder") !== -1);
-			                // node.setExpandable(item.type === "Folder");//true);
-			                node.setParent(parent);
-			                return (uriNodes[uri[1]] = node);
-			            }            
-			            
-			            uris.forEach(createUriNode);
-		            }
-		        	// console.log("timeout set to refresh index based on uris")
-		        	// owner.setTimeout("refresh-index", function() {
-						this.apply("Resources.index");
-		        	// }, 250);
-				}
-	            
-	            var r = this.apply("Resources.list", [uri]).then(function (res) {
-	            	res.sort(function(i1, i2) {
-	            		if(i1.type === i2.type) {
-	            			return i1.name < i2.name ? -1 : 1;
-	            		}
-	            		return i1.type !== "Folder" ? 1 : -1;
-	            	});
-	            	parent.beginLoading();
-	                res.forEach(function (item, index) {
-	                    var node = new NavigatorNode(owner);
-	                    item.uri = item.uri || (uri !== "" ? (uri + "/" + item.name) : item.name);
-
-	                    node.setVar("resource", item);
-	                    root && node.addClass("root");
-	                    
-	                    root === true && index === 0 && node.addClass("seperator top");
-
-	                    if(uris) {
-		                    var checked = false;
-		                    for(var i = 0; i < uris.length && !checked; ++i) {
-		                    	checked = uris[i].indexOf(item.uri) === 0;
-		                    }
-
-		                    if(checked && uris.indexOf(item.uri) === -1) {
-		                    	node.addClass("opaque-50");
-		                    }
-	                    }
-	                    
-	                    node.setChecked(checked);
-	                    if (control) {
-	                        node.setVar("control", control);
-	                    }
-	                    node.setExpandable(item.expandable || item.type.indexOf("Folder") !== -1);
-	                    // node.setExpandable(item.type.indexOf("Folder") !== -1);
-	                    node.setParent(parent);
-	                });
-	            	parent.endLoading();
-	                return res;
-	            });
-	            return r;
-	        }
+	        onNodesNeeded: onNodesNeeded
+    	}),
+    	$(("devtools/NavigatorNode"), "DragDropHandler_files", {
+	   		vars: { 
+	   			resource: { 
+	   				type: "Folder", 
+	   				uri: "dropped://",
+	   				name: "Dropped Resources"
+	   			}
+	   		},
+	   		expandable: true,
+	        onNodesNeeded: onNodesNeeded
     	})
     ]),
     $(("vcl/ui/List"), "search-list", { action: "search-open", source: "search-results", visible: false,
