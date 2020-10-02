@@ -1,1 +1,0 @@
-this.readStorage("test")
