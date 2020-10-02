@@ -1,10 +1,13 @@
-### 2020-10-02 - @1.0.13
+### 2020-10-02 - @1.0.14
+* Updating NPM
+
+### 2020-10-01 - @1.0.13
+* Reducing jquery-dependencies
+* Preparing the Outline for features where one can jump to the source
 * Developing `devtools/Resources-dropped`
 * Listing "Dropped Resources" in the Navigator
 * Integrating pouchdb://-resources into Arcadis-workspace
 * devtools/Editor<blocks>: Exposing root (exporting?)
-* Reducing jquery-dependencies
-* Preparing the Outline for features where one can jump to the source
 
 ### 2020-09-20 - @1.0.12
 - Developing more Resources-dropbox features/implementation
