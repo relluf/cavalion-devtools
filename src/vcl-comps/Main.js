@@ -1,4 +1,4 @@
-"js/Method, vcl/ui/Ace, vcl/ui/Tab, vcl/ui/Panel, vcl/ui/Bar, vcl/ui/FormContainer, util/HotkeyManager, util/net/Url, jquery";
+"js/Method, vcl/ui/Ace, vcl/ui/Tab, vcl/ui/Panel, vcl/ui/Bar, vcl/ui/FormContainer, util/HotkeyManager, util/net/Url";
 
 var Ace = require("vcl/ui/Ace");
 var Tab = require("vcl/ui/Tab");
@@ -6,8 +6,11 @@ var Control = require("vcl/Control");
 var Method = require("js/Method");
 var HotkeyManager = require("util/HotkeyManager");
 var Url = require("util/net/Url");
-var jQuery = require("jquery");
 var FormContainer = require("vcl/ui/FormContainer");
+
+/*-
+	#workspace-needed
+*/
 
 // FIXME move to a better place
 function title() {
@@ -59,7 +62,7 @@ function focusSidebar(ws, sidebar) {
 	var parent = node.parentNode;
 	parent.removeChild(node);
 	parent.appendChild(node);
-}(jQuery("style")));
+}(Array.from(document.querySelectorAll("style"))));
 
 [["ui/Form"], { 
 	css: {
@@ -87,19 +90,6 @@ function focusSidebar(ws, sidebar) {
 	    	".menu": "color: white;"
 	    }
 	},
-	vars: {
-		"default-workspaces": [{
-		    name: "⌘1",
-		    selected: true
-		}, { 
-			name: "⌘2"
-		}, { 
-			name: "⌘3"
-		}, { 
-			name: "⌘4"
-		}]
-	},
-	
     onLoad() {
         var scope = this.scope();
         var me = this;
@@ -128,7 +118,7 @@ function focusSidebar(ws, sidebar) {
         if(this.up("devtools/Main<>") === null && workspaces) {
         	createWorkspaces(workspaces.split(",").map(_ => ({name: _})));
         } else {
-            createWorkspaces(this.vars("default-workspaces"));
+            createWorkspaces(this.vars("default-workspaces") || []);
         }
         this.readStorage("state", function(state) {
             if(state !== undefined) {
@@ -308,7 +298,7 @@ function focusSidebar(ws, sidebar) {
     
 }, [
     [["devtools/DragDropHandler<dropbox>"]],
-    [["devtools/CtrlCtrl<>"], "ctrlctrl", { visible: false}],
+    // [["devtools/CtrlCtrl<>"], "ctrlctrl", { visible: false}],
     [["devtools/TabFactory"], "workspaces-new", {
         vars: {
             parents: {
@@ -333,6 +323,20 @@ function focusSidebar(ws, sidebar) {
         }
     }],
     
+    [("vcl/Action"), "hide-workspace-tabs", {
+    	onExecute() { 
+    		var twt = this.ud("#toggle-workspace-tabs"); 
+    		twt._tag = !true; 
+    		twt.execute(); 
+    	}
+    }],
+    [("vcl/Action"), "show-workspace-tabs", {
+    	onExecute() { 
+    		var twt = this.ud("#toggle-workspace-tabs"); 
+    		twt._tag = !false; 
+    		twt.execute(); 
+    	}
+    }],
     [("vcl/Action"), "toggle-workspace-tabs", {
     	hotkey: "Ctrl+F12", // euh ,responds to F11 instead?
     	onExecute: function() {
