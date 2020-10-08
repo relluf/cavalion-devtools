@@ -8,7 +8,7 @@ var styles = {
 };
 
 $([], { css: styles }, [
-    $(("vcl/Action#toggle-source"), {
+    $("vcl/Action", ("toggle-source"), {
         hotkey: "Shift+MetaCtrl+S",
         selected: "state", visible: "state",
         state: true,
@@ -18,7 +18,7 @@ $([], { css: styles }, [
         	// this.scope().ace.setVisible(this.getState());
         }
     }),
-    $(("vcl/Action#toggle-output"), {
+    $("vcl/Action", ("toggle-output"), {
         hotkey: "Shift+MetaCtrl+O",
         selected: "state",
         visible: "state",
@@ -29,7 +29,7 @@ $([], { css: styles }, [
         	output.setVisible(!output.isVisible());
         }
     }),
-    $(("vcl/Action#render"), {
+    $("vcl/Action", ("render"), {
     	onExecute: function() {
     		var scope = this.scope();
 		 	var console = scope.console;
@@ -38,19 +38,31 @@ $([], { css: styles }, [
 			console.print("root", root);
     	}
     }),
+    $("vcl/Action", ("detailview-available"), {
+    	on(evt) {
+	    	var Tab = require("vcl/ui/Tab");
+	    	
+	    	var scope = this.scope();
+    		var tab = new Tab({ owner: this._owner, text: evt.name,
+    			parent: scope['details-tabs'], control: evt.view,
+    			selected: evt.selected || false
+    		});
+    		
+    		evt.view.setParent(scope.output);
+
+    		return tab;
+    	}	
+    }),
     
-    $(("vcl/ui/Panel"), "output", { align: "client" }, [
-	    $(("vcl/ui/Tabs"), "tabs", { align: "bottom", classes: "bottom" }, [
-	    	$(("vcl/ui/Tab"), { text: locale("Console"), control: "console", selected: true })
+    $("vcl/ui/Panel", ("output"), { align: "client" }, [
+	    $("vcl/ui/Tabs", ("details-tabs"), { align: "bottom", classes: "bottom" }, [
+	    	$("vcl/ui/Tab", { text: locale("Console"), control: "console", selected: true })
 	    ]),
-	    $(("vcl/ui/Console"), "console", { align: "client", 
+	    $("vcl/ui/Console", ("console"), { 
+	    	align: "client", 
 	    	onEvaluate: function(expr) {
 	    		var root = this._owner.getVar("root"), scope = this.scope();
-	    		var ctx = this.vars(["devtools/Editor<xml>/console-eval-ctx"]) || {};
-
-	    		with(ctx) {
-	    			return eval(expr);
-	    		}
+    			return eval(expr);
 	    	}
 	    })
     ]),

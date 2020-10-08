@@ -64,32 +64,15 @@ $([], {
     },
     onLoad: function() {
     	var scope = this.scope();
-    	var owner = this;
     	var uri = this.vars(["resource.uri", true]);
-    	var editor_needed = this.up("devtools/Workspace<>:root").down("#editor-needed");
+    	var editor_needed = scope['editor-needed'];
     	
     	// if this a not a local folder, request its contents from Resources/cavalion-server
     	if(typeof uri === "string" && !uri.startsWith("local:")) {
-	    	Resources.list(uri).then(function(res) {
-				res.filter(allowResource).sort(sortResource).forEach(function(resource, i) {
-	    			var tab = editor_needed.execute({
-	    				parents: {container: owner, tab: scope['editors-tabs']},
-	    				resource: resource,
-	    				selected: i === 0,
-	    				owner: owner
-	    			});
-	    			if(resource.type === "Folder") {
-	    				tab.addClass("bold");
-	    			}
-	    			tab.setCloseable(false);
-	    			tab.on("dblclick", function() { 
-	    				if(confirm("Do you want to close this resource?") === true) {
-	    					this.getControl().getForm().close();
-	    				}
-	    				//this._control && this._control._form && this._control._form.close(); 
-	    			});
-				});
-			});
+	    	Resources.list(uri).then(res =>
+				res.filter(allowResource).sort(sortResource).forEach(
+					(resource, i) => editor_needed.execute({resource: resource, selected: i === 0})
+				));
     	}
 		
 		scope.save._onExecute = null;
@@ -131,6 +114,39 @@ $([], {
 		onChange(newTab, oldTab) {
 			if(!newTab) return;
 			this.up().writeStorage("editors-tabs", { selected: newTab && newTab.getIndex() });
+		}
+	}),
+	$("vcl/Action", ("editor-needed"), {
+		on(evt) {
+			var scope = this.scope();
+			evt.resource.uri = js.normalize(this.vars(["resource.uri"]) + "/", evt.resource.uri);
+
+			var tabs = scope['editors-tabs']; 
+			var tab = (tabs._controls||[]).find(_ => _.vars("resource.uri") === evt.resource.uri);
+			if(tab) {
+				if(evt.selected) tab.setSelected(true);
+				return tab;
+			}
+
+    		var owner = this._owner;
+	    	var editor_needed = this.up("devtools/Workspace<>:root").down("#editor-needed");
+			
+			tab = editor_needed.execute({
+				parents: {container: owner, tab: tabs},
+				resource: evt.resource,
+				selected: evt.selected,
+				owner: owner
+			});
+			if(evt.resource.type === "Folder") {
+				tab.addClass("bold");
+			}
+			tab.setCloseable(false);
+			tab.on("dblclick", function() { 
+				if(confirm("Do you want to close this resource?") === true) {
+					this.getControl().getForm().close();
+				}
+			});
+			return tab;
 		}
 	}),
 	$("vcl/Action", ("prompt-add-resource"), {

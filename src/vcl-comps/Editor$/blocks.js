@@ -98,6 +98,7 @@ $(["./Editor<js>"], {
 	$(("vcl/Action"), "instantiate", {
 		onExecute: function(evt) {
 			var scope = this.scope(), uri = evt.uri;
+			var owner = scope['@owner'];
         	if(!scope.host.isVisible()) { return; } //TODO shouldn't be here
         	
             var factory = new Factory(require, uri, evt.sourceUri);
@@ -105,7 +106,7 @@ $(["./Editor<js>"], {
             
             while(root) {
             	try {
-	            	root && root.destroy();
+	            	root && root._owner === owner && root.destroy();
 	            	root = scope.host.getControls()[0];
             	} catch(e) {
             		alert(e.message);
@@ -116,9 +117,9 @@ $(["./Editor<js>"], {
             factory.load(scope.ace.getValue(), 
                 function() {
                     try {
-                        root && root.destroy();
-                        root = factory.newInstance(scope['@owner'], uri);
-                        // print(scope['@owner'], uri.substring(uri.indexOf("cavalion-blocks/") + "cavalion-blocks/".length), root);
+                        root && root._owner === owner && root.destroy();
+                        root = factory.newInstance(owner, uri);
+                        // print(owner, uri.substring(uri.indexOf("cavalion-blocks/") + "cavalion-blocks/".length), root);
                         scope.host.vars("root", root);
                         if(root instanceof require("vcl/Control")) {
                             root.setParent(scope.host);

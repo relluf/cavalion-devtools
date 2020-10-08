@@ -285,8 +285,8 @@ $(["ui/Form"], {
                     	tab.app().confirm(String.format("404 - %s\n\nThis resource does not exist. Would you like to create it?", resource.uri), function(res) {
                     			if(res === true) {
                     				Resources.create(resource.uri, resource)
-                    					.then(_ => editor.print(_))
-                    					.catch(_ => editor.print(_));
+                    					.then(_ => ace.print(_))
+                    					.catch(_ => ace.print(_));
                     			}
                         	});
 
@@ -398,15 +398,17 @@ $(["ui/Form"], {
             		if(Event_.modifiersMatch(evt, ["metactrl", "shift"])) {
             			value = "'Meta+Shift+Pressed'";
             		} else if(Event_.modifiersMatch(evt, ["metactrl", "alt"])) {
+            			var hash = req("util/Hash").md5(scope.ace.getValue())
             			value = {
             				me: this,
             				root: (() => { try { return eval_ ? eval_(text) : eval(text); } catch(e) { return e; } })(),
             				text: text,
+            				text_len: text.length,
+            				text_hash: hash,
+            				text_lines: scope.ace.getValue().split("\n"),
             				editor: this.up(),
             				scope: this.scope(), 
-            				hash: req("util/Hash").md5(scope.ace.getValue()),
             				resource: this.vars(["resource"]),
-            				lines: scope.ace.getValue().split("\n")
             			};
             			
             			var root = value.scope['@owner'];
@@ -423,7 +425,7 @@ $(["ui/Form"], {
         				});
         				
         				value.controls = root._controls;
-        				
+        				value = Object.create(value, { name: { value: hash } });
             		} else {
 	                	value = eval_ ? eval_(text) : eval(text);
             		}
