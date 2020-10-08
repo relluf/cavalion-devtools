@@ -21,8 +21,14 @@ function title_css() {
 	var url = app.vars("url");
 	var colors = url.getParamValue("title-colors");
 	colors = (colors && colors.split("|")) || ["rgb(56, 121, 217)", "white"];
-	return { "": js.sf("text-align:center;float:right;min-width:200px;line-height:26px;" + 
-		"background-color:%s;color:%s;", colors[0], colors[1]) };
+	return { 
+		"": "text-align:center;float:right;min-width:200px;line-height:26px;", 
+		"&:not(.custom-colors)": js.sf("background-color:%s;color:%s;", colors[0], colors[1]),
+		"&.arcadis": "background-color:orange;color:black;",
+		"&.cavalion": "background-color:rgb(28,38,58);color:white;",
+		"&.veldapps": "background-color:limegreen;color:white;",
+		"&.eae": "background-color:rgb(14,32,77);color:white;",
+	};
 }
 function replaceChars(uri) {
 	return uri.replace(/\//g, ".");

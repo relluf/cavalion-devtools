@@ -1,12 +1,23 @@
-function title() {
-	var url = app.vars("url");
-	return url.getParamValue("title") || url.getParamValue("") || "Cavalion-code";
-}
+"use blocks";
 
-$([], {
-	// onLoad() { return this.inherited(arguments); }
+["", {
+	
+	vars: {
+		"default-workspaces": [{
+		    name: "⌘1",
+		    selected: true
+		}, { 
+			name: "⌘2"
+		}, { 
+			name: "⌘3"
+		}, { 
+			name: "⌘4"
+		}]
+	}
+	
 }, [
 
-	$i("workspaces-tabs", { _align: "top", _index: 0, _classes: "", zoom: 1 })	
+	// ["#workspaces-tabs", { _align: "top", _index: 0, _classes: "", zoom: 1 }]
 	
-]);
+]];
+

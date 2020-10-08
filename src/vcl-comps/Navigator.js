@@ -221,11 +221,15 @@ $("vcl/ui/Form", {
         	}
         });
 
-		this.vars("listeners", this.app()
+		this.vars("listeners", this
+			.app()
 			.qsa("devtools/DragDropHandler<>")
-			.on("dropped", () => {
-				this.qs("#DragDropHandler_files").reloadChildNodes();
-			})
+			.on("dropped", () => this.qsa("#DragDropHandler_files").map(node => {
+					node.reloadChildNodes();
+					// node.setTimeout("expand", () => 
+					node.setExpanded(true);
+					// 0);
+				}))
 		);
 
         return this.inherited(arguments);

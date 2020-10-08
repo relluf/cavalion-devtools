@@ -4,7 +4,7 @@ function handleFile(file, r) {
 		var result = reader.result;
 		// console.log(this, reader, this===reader);
 		r.readerResult = result;
-		debugger;
+		// debugger;
 	};
 	// reader.readAsDataURL(file);
 	reader.readAsText(file);

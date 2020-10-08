@@ -12,7 +12,7 @@ $([], {
 			
 				// TODO actually it should be the last visible fold (root fold?)
 				var fold = editor.session.getAllFolds()[0];
-				editor.session.expandFold(fold);
+				fold && editor.session.expandFold(fold);
 			}
 		});
 		return this.inherited(arguments);
