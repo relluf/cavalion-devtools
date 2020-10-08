@@ -1,3 +1,7 @@
+- ImageParser: Now no more snag-gy-specific
+- Introducing DragDropHandler-features (nodes) in Navigator
+- advancing and fixing features for devtools/Editor<folder> <xml> and <blocks>
+
 ### 2020-10-02 - @1.0.14
 * Updating NPM
 
