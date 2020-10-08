@@ -225,10 +225,9 @@ $("vcl/ui/Form", {
 			.app()
 			.qsa("devtools/DragDropHandler<>")
 			.on("dropped", () => this.qsa("#DragDropHandler_files").map(node => {
+					node.show();
 					node.reloadChildNodes();
-					// node.setTimeout("expand", () => 
 					node.setExpanded(true);
-					// 0);
 				}))
 		);
 
@@ -720,8 +719,8 @@ console.log(node, js.sf("expandable: %s", item.expandable));
 	   				name: js.sf("Server Resources") 
 	   			} 
 	   		},
-    		// classes: "root-invisible", // classes: "root",
-    		// expanded: true,
+    		classes: "root-invisible", // classes: "root",
+    		expanded: true,
     		onLoad: function() {
     			this.vars("static-nodes", [].concat(this._controls));
     		},
@@ -735,7 +734,9 @@ console.log(node, js.sf("expandable: %s", item.expandable));
 	   				name: "Dropped Resources"
 	   			}
 	   		},
+	   		classes: "seperator top",
 	   		expandable: true,
+	   		visible: false,
 	        onNodesNeeded: onNodesNeeded
     	})
     ]),
