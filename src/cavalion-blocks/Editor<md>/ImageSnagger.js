@@ -57,7 +57,7 @@ var styles = {
 						// TODO this is a bug, should not be needed
 						images.notifyEvent("changed");
 					}
-					status.setContent(String.format("%d snag.gy image%s found", 
+					status.setContent(String.format("%d image%s found", 
 						all.length, all.length === 1 ? "": "s"));
 				}, 20);
 			}
@@ -65,7 +65,7 @@ var styles = {
 				var uri = mds.pop();
 				Resources.get(uri).then(function(resource) {
 					findImages(markdown.toHTMLTree(resource.text)).forEach(function(img) {
-						if(img.src.indexOf("snag.gy") !== -1 && uris.indexOf(img.src) === -1) {
+						if(/*img.src.indexOf("snag.gy") !== -1 && */uris.indexOf(img.src) === -1) {
 							uris.push(img.src);
 							
 							var id = img.src.split("/").pop();
