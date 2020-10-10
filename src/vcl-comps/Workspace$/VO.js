@@ -13,6 +13,7 @@ window.require.config({
 	
 	onLoad() {
 		this.print("VO", req("VO").then(VO => (window.VO = VO)));
+		return this.inherited(arguments);
 	}
 	
 }];
