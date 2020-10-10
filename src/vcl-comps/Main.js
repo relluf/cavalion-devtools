@@ -25,7 +25,7 @@ function title_css() {
 		"": "text-align:center;float:right;min-width:200px;line-height:26px;", 
 		"&:not(.custom-colors)": js.sf("background-color:%s;color:%s;", colors[0], colors[1]),
 		"&.arcadis": "background-color:orange;color:black;",
-		"&.cavalion": "background-color:rgb(28,38,58);color:white;",
+		"&.cavalion": "background-color:rgb(48,61,80);color:white;",
 		"&.veldapps": "background-color:limegreen;color:white;",
 		"&.eae": "background-color:rgb(14,32,77);color:white;",
 	};
