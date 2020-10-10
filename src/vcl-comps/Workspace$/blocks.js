@@ -23,44 +23,44 @@
 	onLoad: function() {
 /*- Let's obtain the correct constructor and 'clone' a Node ;-) */
 		var fs = this.down("#tree < #fs");
-		new (fs.constructor)({
-			vars: { 
-				resource: { 
-					uri: "dropbox://dropbox1",
-					name: "dropbox-1", 
-					type: "Folder"
-				}
-			},
-			classes: "seperator bottom",
-			// index: 0,
-			owner: this,
-			parent: fs,//this.down("#tree"),
-			expandable: true,
-			onNodesNeeded: function() {
-				// TODO set this method 'statically'?
-				var fs = this.up("devtools/Workspace<>").down("#navigator #fs");
-				return fs._onChildNodesNeeded.apply(fs, arguments);
-			}
-		});
-		new (fs.constructor)({
-			vars: { 
-				resource: { 
-					uri: "dropbox://dropbox2",
-					name: "dropbox-2", 
-					type: "Folder"
-				}
-			},
-			classes: "seperator bottom",
-			// index: 0,
-			owner: this,
-			parent: fs,//this.down("#tree"),
-			expandable: true,
-			onNodesNeeded: function() {
-				// TODO set this method 'statically'?
-				var fs = this.up("devtools/Workspace<>").down("#navigator #fs");
-				return fs._onChildNodesNeeded.apply(fs, arguments);
-			}
-		});
+		// new (fs.constructor)({
+		// 	vars: { 
+		// 		resource: { 
+		// 			uri: "dropbox://dropbox1",
+		// 			name: "dropbox-1", 
+		// 			type: "Folder"
+		// 		}
+		// 	},
+		// 	classes: "seperator bottom",
+		// 	// index: 0,
+		// 	owner: this,
+		// 	parent: fs,//this.down("#tree"),
+		// 	expandable: true,
+		// 	onNodesNeeded: function() {
+		// 		// TODO set this method 'statically'?
+		// 		var fs = this.up("devtools/Workspace<>").down("#navigator #fs");
+		// 		return fs._onChildNodesNeeded.apply(fs, arguments);
+		// 	}
+		// });
+		// new (fs.constructor)({
+		// 	vars: { 
+		// 		resource: { 
+		// 			uri: "dropbox://dropbox2",
+		// 			name: "dropbox-2", 
+		// 			type: "Folder"
+		// 		}
+		// 	},
+		// 	classes: "seperator bottom",
+		// 	// index: 0,
+		// 	owner: this,
+		// 	parent: fs,//this.down("#tree"),
+		// 	expandable: true,
+		// 	onNodesNeeded: function() {
+		// 		// TODO set this method 'statically'?
+		// 		var fs = this.up("devtools/Workspace<>").down("#navigator #fs");
+		// 		return fs._onChildNodesNeeded.apply(fs, arguments);
+		// 	}
+		// });
 
 /*- TODO (not sure what this is for) must have a Resources implementation, take it from fs */
 		this.setVar("Resources", fs.getVar("Resources"));
