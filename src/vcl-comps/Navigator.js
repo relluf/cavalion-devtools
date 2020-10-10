@@ -58,7 +58,7 @@ function onNodesNeeded(parent) {
         
         if(root) {
             var uriNodes = {};
-			function createUriNode(uri) {
+			function createUriNode(uri, index) {
                 var node = new NavigatorNode(owner);
                 var favorite = favorites.indexOf(uri) !== -1;
                 
@@ -72,6 +72,7 @@ function onNodesNeeded(parent) {
 
                 root && node.addClass("root");
                 favorite && node.addClass("favorite");
+                favorite && (index === 0) && node.addClass("seperator top");
                 node.setVar("resource", item);
                 
                 node.setChecked(true);
