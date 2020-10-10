@@ -100,7 +100,7 @@ var options = {
 		["Element", { content: "source" }],
 		["Input", ("source"), {
 			css: "flex: 1.4;",
-			value: require("vcl/Component").defaultDb.name
+			value: require("vcl/Component").storageDB.name
 		}],
 		["Button", { action: "sync" }],
 		["Element", { content: "target" }],
