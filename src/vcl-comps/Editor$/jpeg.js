@@ -1,1 +1,1 @@
-$(["devtools/Editor<jpg>"]);
+$(["devtools/Editor<image>"]);
