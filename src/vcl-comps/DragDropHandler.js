@@ -6,8 +6,11 @@ function handleFile(file, r) {
 		r.readerResult = result;
 		// debugger;
 	};
-	// reader.readAsDataURL(file);
-	reader.readAsText(file);
+	if(r.type.startsWith("image/")) {
+		reader.readAsDataURL(file);
+	} else {
+		reader.readAsText(file);
+	}
 	return file;
 }
 function copy(obj, r) {
@@ -37,7 +40,7 @@ function copy(obj, r) {
 	return r;
 }
 
-$("vcl/ui/Panel", {
+["vcl/ui/Panel", {
 	onLoad: function() {
 		this.setParentNode(document.body);
 
@@ -77,4 +80,4 @@ $("vcl/ui/Panel", {
 	css: "background-color:rgba(45,45,45,0.8);z-index:9999999999; color:white;padding:64px; font-family:\"Lucida Grande\", Arial, sans-serif;",
 	content: locale("DragDropHandler.dropHereMessage") + " [" + Date.now() + "]",
 	visible: false
-});
+}];
