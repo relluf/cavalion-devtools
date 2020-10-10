@@ -1,3 +1,11 @@
+### 2020-10-09 - @1.0.16
+- **Workspace<VO>**: Developing VO object/workspace/namespace, seems the place to be hanging out lately
+- **DragDropHandler**: Anticipating image/ content to be parsed as DataURL always
+- **Editor<image>**:
+	- Introducing new base for image/-contentTypes 
+	- Changed implementation from css-background-image to `<img>`-element, for scrolling features and the likes _while we're at it_
+- **Main**: Adding (opioniated) classes/colors for the title-element (eae, gx, veldapps, cavalion, etc)
+
 ### 2020-10-08 - @1.0.15
 
 - ImageParser: Now no more snag-gy-specific
