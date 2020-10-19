@@ -295,12 +295,20 @@ $(["ui/Form"], {
     			    } else if(path.length > 1 && uri.indexOf("/var/log/") !== -1) {
     			    	// TODO #CVLN-20200926-1 find some registration system for these Editor-descendants
     			    	evt.formUri = "devtools/Editor<var/log>";
+    			    } else if(uri.indexOf("ElliTrack-") !== -1 && uri.endsWith(".txt")) {
+    			    	evt.formUri = "devtools/Editor<tsv/ElliTrack>";
                     } else {
                     	if(ext) {
     			        	evt.formUri = String.format("devtools/Editor<%s>", ext);
                     	}
                     }
     			}
+    			var on = this.vars("onGetEditorUri");
+    			if(on) {
+    				
+    			}
+    			
+    			
 	            tab = scope['editor-factory'].execute(evt, this);
 	            tab.setVar("resource", evt.resource);
 	            tab.nodeNeeded();
