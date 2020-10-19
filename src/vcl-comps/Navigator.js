@@ -135,7 +135,7 @@ function onNodesNeeded(parent) {
     return r;
 }
 
-$("vcl/ui/Form", {
+["vcl/ui/Form", {
 	activeControl: "search-input",
     onDispatchChildEvent: function (component, name, evt, f, args) {
         if (name.indexOf("key") === 0) {
@@ -235,11 +235,11 @@ $("vcl/ui/Form", {
         return this.inherited(arguments);
     }
 }, [
-    $("vcl/data/Array", "search-results", {}),
+    ["vcl/data/Array", "search-results", {}],
     // TODO search-open-pdokviewer-metadata (per resource group/package)
     // TODO pdok/viewer/Layer
     // TODO search-open-devtools/Resource
-    $(("vcl/Action"), "search-open", {
+    [("vcl/Action"), "search-open", {
         onExecute: function (evt) {
             var list = this.scope('search-list'), me = this;
             var ws = this.up("devtools/Workspace<>:root");
@@ -261,8 +261,8 @@ $("vcl/ui/Form", {
             	}
             }, this);
         }
-    }),
-    $(("vcl/Action"), "search", {
+    }],
+    [("vcl/Action"), "search", {
         onExecute: function () {
             var scope = this.getScope();
             var text = scope['search-input'].getInputValue();
@@ -302,8 +302,8 @@ $("vcl/ui/Form", {
                         return prev.concat(curr.sort(sort));
                     }));
         }
-    }),
-    $(("vcl/Action"), "resource-focus", {
+    }],
+    [("vcl/Action"), "resource-focus", {
         onExecute: function(evt) {
             var scope = this.getScope();
             var names = evt.resource.uri.split("/");
@@ -348,10 +348,10 @@ $("vcl/ui/Form", {
             });
             
         }
-    }),
-    $(("vcl/Action"), "resource-new", {}),
-    $(("vcl/Action"), "resource-delete", {}),
-    $("vcl/ui/Bar", "search-bar", { classes: "no-border" }, [
+    }],
+    [("vcl/Action"), "resource-new", {}],
+    [("vcl/Action"), "resource-delete", {}],
+    ["vcl/ui/Bar", "search-bar", { classes: "no-border" }, [
         $("vcl/ui/Input", "search-input", {
             placeholder: "Filter (⌥+F)",
             classes: "search-top",
@@ -391,17 +391,17 @@ $("vcl/ui/Form", {
                     scope.search.execute(evt);
                 }
             },
-            onKeyUp(evt) {
-            	if(evt.keyCode === 13) {
-this.print("keyUp13", evt);
-					if(evt.metaKey === true && evt.shiftKey === true) {
-            			this.udown("fs").toggle("visible");
-					}
-            	}
-            }
+//             onKeyUp(evt) {
+//             	if(evt.keyCode === 13) {
+// this.print("keyUp13", evt);
+// 					if(evt.metaKey === true && evt.shiftKey === true) {
+//             			this.udown("fs").toggle("visible");
+// 					}
+//             	}
+//             }
         })
-    ]),
-    $(("vcl/ui/Tree"), "tree", {
+    ]],
+    [("vcl/ui/Tree"), "tree", {
         css: {
 			".{Node}.root-invisible": {
 				"> *:not(ol)": "display:none;",
@@ -687,7 +687,7 @@ console.log(node, js.sf("expandable: %s", item.expandable));
     	// $(("devtools/NavigatorNode"), "fs", {
 	   	// 	vars: { resource: { type: "Folder", uri: "", name: js.sf("%s/fs", window.location.host) } },
     	// },
-    	$(("devtools/NavigatorNode"), "Component_storage", {
+    	[("devtools/NavigatorNode"), "Component_storage", {
 	   		vars: { 
 	   			resource: { 
 	   				type: "Folder", 
@@ -712,8 +712,8 @@ console.log(node, js.sf("expandable: %s", item.expandable));
 	        // 	// }, 2000);
         	// 	this.removeClass("root-invisible");
 	        // }
-    	}),
-    	$(("devtools/NavigatorNode"), "fs", {
+    	}],
+    	[("devtools/NavigatorNode"), "fs", {
 	   		vars: { 
 	   			resource: { 
 	   				type: "Folder", uri: "/", 
@@ -726,8 +726,8 @@ console.log(node, js.sf("expandable: %s", item.expandable));
     			this.vars("static-nodes", [].concat(this._controls));
     		},
 	        onNodesNeeded: onNodesNeeded
-    	}),
-    	$(("devtools/NavigatorNode"), "DragDropHandler_files", {
+    	}],
+    	[("devtools/NavigatorNode"), "DragDropHandler_files", {
 	   		vars: { 
 	   			resource: { 
 	   				type: "Folder", 
@@ -739,9 +739,12 @@ console.log(node, js.sf("expandable: %s", item.expandable));
 	   		expandable: true,
 	   		visible: false,
 	        onNodesNeeded: onNodesNeeded
-    	})
-    ]),
-    $(("vcl/ui/List"), "search-list", { action: "search-open", source: "search-results", visible: false,
+    	}]
+    ]],
+    [("vcl/ui/List"), "search-list", { 
+    	action: "search-open", 
+    	source: "search-results", 
+    	visible: false,
         css: {
             "background-color": "white",
             ".{./ListHeader}": {
@@ -767,7 +770,7 @@ console.log(node, js.sf("expandable: %s", item.expandable));
             }
         }
     }, [
-        $(("vcl/ui/ListColumn"), {
+        [("vcl/ui/ListColumn"), {
             content: "#",
             rendering: "innerHTML",
             attribute: ".",
@@ -783,6 +786,6 @@ console.log(node, js.sf("expandable: %s", item.expandable));
                 classes.push(orgValue.type === "Folder" ? "folder" : "file");
                 cell.className = classes.join(" ");
             }
-        })
-    ])
-]);
+        }]
+    ]]
+]];
