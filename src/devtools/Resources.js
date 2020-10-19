@@ -2,7 +2,7 @@ define(["devtools/Resources-node", "devtools/Resources-pouchdb", "devtools/Resou
 function(FS, Pouch, Dropbox, Dropped) {
 	return {
 		index: function(uris) {
-			return FS.index(uris);
+			return FS.index(typeof uris === "string" ? [uris] : uris);
 		},
 		list: function(uri) {
 			if(uri.startsWith("pouchdb://")) {
