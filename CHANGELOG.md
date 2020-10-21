@@ -6,6 +6,14 @@
 	- Changed implementation from css-background-image to `<img>`-element, for scrolling features and the likes _while we're at it_
 - **Main**: Adding (opioniated) classes/colors for the title-element (eae, gx, veldapps, cavalion, etc)
 
+### 2020-10-19 - @1.0.17
+- Cosmetic changes
+- Preparing for ElliTrack-specifics
+- Improved Resources.prototype.index()
+
+### 2020-10-?? - @1.0.16
+- ?
+
 ### 2020-10-08 - @1.0.15
 
 - ImageParser: Now no more snag-gy-specific
