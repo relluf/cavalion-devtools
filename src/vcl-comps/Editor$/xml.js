@@ -7,8 +7,20 @@ var styles = {
 	"#output": "background-color: #f0f0f0; border-right: 1px solid silver;"
 };
 
-$([], { css: styles }, [
-    $("vcl/Action", ("toggle-source"), {
+[[], { 
+	css: styles,
+	onLoad() {
+        var render = (evt) => this.qsa("#render").execute(evt);
+        
+        this.up("vcl/ui/Tab").on({
+        	"resource-loaded": render, 
+        	"resource-saved": render 
+        });
+        
+        return this.inherited(arguments);
+	}
+}, [
+    ["vcl/Action", ("toggle-source"), {
         hotkey: "Shift+MetaCtrl+S",
         selected: "state", visible: "state",
         state: true,
@@ -17,8 +29,8 @@ $([], { css: styles }, [
         	this.setState(!this.getState());
         	// this.scope().ace.setVisible(this.getState());
         }
-    }),
-    $("vcl/Action", ("toggle-output"), {
+    }],
+    ["vcl/Action", ("toggle-output"), {
         hotkey: "Shift+MetaCtrl+O",
         selected: "state",
         visible: "state",
@@ -28,8 +40,8 @@ $([], { css: styles }, [
         	var output = this.scope().output;
         	output.setVisible(!output.isVisible());
         }
-    }),
-    $("vcl/Action", ("render"), {
+    }],
+    ["vcl/Action", ("render"), {
     	onExecute: function() {
     		var scope = this.scope();
 		 	var console = scope.console;
@@ -37,8 +49,8 @@ $([], { css: styles }, [
 			this._owner.setVar("root", root);
 			console.print("root", root);
     	}
-    }),
-    $("vcl/Action", ("detailview-available"), {
+    }],
+    ["vcl/Action", ("detailview-available"), {
     	on(evt) {
 	    	var Tab = require("vcl/ui/Tab");
 	    	
@@ -52,9 +64,9 @@ $([], { css: styles }, [
 
     		return tab;
     	}	
-    }),
+    }],
     
-    $("vcl/ui/Panel", ("output"), { align: "client" }, [
+    ["vcl/ui/Panel", ("output"), { align: "client" }, [
 	    $("vcl/ui/Tabs", ("details-tabs"), { align: "bottom", classes: "bottom" }, [
 	    	$("vcl/ui/Tab", { text: locale("Console"), control: "console", selected: true })
 	    ]),
@@ -65,19 +77,17 @@ $([], { css: styles }, [
     			return eval(expr);
 	    	}
 	    })
-    ]),
-    $i(("ace"), { 
-    	align: "left", width: 600, action: "toggle-source",
-    	executesAction: "none",
-        onChange: function() {
-        	var scope = this.scope();
-            scope.render.setTimeout("execute", 500);
-        }
-    }),
-    $i(("evaluate"), {
+    ]],
+    
+    [("#ace"), { 
+    	align: "left", width: 600, 
+    	action: "toggle-source",
+    	executesAction: "none"
+    }],
+    [("#evaluate"), {
     	onLoad() {
     		this.vars("eval", () => this.vars(["root"]));
     		return this.inherited(arguments);
     	}
-    })
-]);
+    }]
+]];
