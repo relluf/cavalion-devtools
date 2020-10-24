@@ -58,7 +58,7 @@ var getKey = (tab) => {
 // 	}
 // }
 
-$(["ui/Form"], {
+[["ui/Form"], {
     activeControl: "ace",
     onLoad() {
         var tab = this.up("vcl/ui/Tab");
@@ -184,14 +184,14 @@ $(["ui/Form"], {
 		}
     }
 }, [
-    $("vcl/Action", ("menu-open"), {
+    ["vcl/Action", ("menu-open"), {
         hotkey: "Shift+F10",
         onExecute: function (evt) {
         	// TODO: evt.args?
         	this.udown("#ace").getEditor().execCommand("showSettingsMenu",  evt.args || []);
         }
-    }),
-    $("vcl/Action", ("refresh"), {
+    }],
+    ["vcl/Action", ("refresh"), {
         hotkey: "MetaCtrl+R",
         onExecute: function (evt) {
             var scope = this.getScope();
@@ -241,8 +241,8 @@ $(["ui/Form"], {
                     });
             }
         }
-    }),
-    $("vcl/Action", ("save-resource"), {
+    }],
+    ["vcl/Action", ("save-resource"), {
         onExecute: function () {
             var scope = this.getScope();
             var resource = this.getVar("resource", true);
@@ -300,13 +300,13 @@ $(["ui/Form"], {
                     scope.loading.hide();
                 });
         }
-    }),
-    $("vcl/Action", ("save"), {
+    }],
+    ["vcl/Action", ("save"), {
         hotkey: "MetaCtrl+S",
         parent: "save-resource",
         parentExecute: true
-    }),
-    $("vcl/Action", ("format"), {
+    }],
+    ["vcl/Action", ("format"), {
         hotkey: "MetaCtrl+Shift+F",
         onExecute: function () {
             var Xml = require("util/Xml");
@@ -328,16 +328,16 @@ $(["ui/Form"], {
 
             }
         }
-    }),
-    $("vcl/Action", ("toggle-wrap"), {
+    }],
+    ["vcl/Action", ("toggle-wrap"), {
         hotkey: "MetaCtrl+Shift+W",
         onExecute: function (evt) {
             var editor = this.scope().ace.getEditor();
             editor.getSession().setUseWrapMode(!editor.getSession().getUseWrapMode());
             evt.preventDefault();
         }
-    }),
-    $("vcl/Action", ("evaluate"), {
+    }],
+    ["vcl/Action", ("evaluate"), {
         hotkey: "MetaCtrl+Enter|Alt+MetaCtrl+Enter|Shift+MetaCtrl+Enter",
         onExecute: function(evt) {
             var all = require("js/JsObject").all;
@@ -435,8 +435,8 @@ $(["ui/Form"], {
             	printer.print(name, e);
             }
         }
-    }),
-    $("vcl/Action", ("focus-in-navigator"), {
+    }],
+    ["vcl/Action", ("focus-in-navigator"), {
     	hotkey: "MetaCtrl+48",
         onExecute: function(evt) {
             var app = this.getApp();
@@ -444,8 +444,8 @@ $(["ui/Form"], {
             app.qsa("devtools/Workspace<>:owner-of(.) #navigator #resource-focus", this)
             	.execute({resource: resource}, this);
         }
-    }),
-    $("vcl/ui/Ace", ("ace"), {
+    }],
+    ["vcl/ui/Ace", ("ace"), {
     	onLoad() {
     		var ace = this;
     		var writeStorage = () => {
@@ -497,8 +497,8 @@ $(["ui/Form"], {
 	    		});
     		});
     	}
-    }),
-    $("vcl/ui/Panel", ("loading"), {
+    }],
+    ["vcl/ui/Panel", ("loading"), {
         align: "none",
         autoSize: "both",
         css: {
@@ -510,7 +510,7 @@ $(["ui/Form"], {
         visible: false,
         
         /* TODO fade out */
-        onLoad: function() {
+        onLoad() {
             var canHide = Date.now();
             this.override({
                 showNode: function() {
@@ -527,5 +527,5 @@ $(["ui/Form"], {
                 }
             });
         }
-    })
-]);
+    }]
+]];

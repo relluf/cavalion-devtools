@@ -92,7 +92,7 @@ var Utils = {
 };
 
 
-$(["ui/Form"], {
+[["ui/Form"], {
     onLoad: function() {
         var scope = this.scope();
         var workspace = this.vars(["workspace"]);
@@ -154,7 +154,7 @@ $(["ui/Form"], {
     	this.setSelected(false);
     }
 }, [
-    $(["devtools/TabFactory"], ("editor-factory"), {
+    [["devtools/TabFactory"], ("editor-factory"), {
         vars: {
             closeable: true,
             formUri: "devtools/Editor<js>",
@@ -192,8 +192,8 @@ $(["ui/Form"], {
             });
             return tab;
         }
-    }),
-    $("vcl/Action", ("editors-next"), {
+    }],
+    ["vcl/Action", ("editors-next"), {
     	onExecute: function() {
 			var tabs = this.up().qsa("#editors-tabs:visible");
 			var focused = this.up().vars("editors-tabs:focused");
@@ -211,8 +211,8 @@ $(["ui/Form"], {
 			Tab.show(focused);
 			focused.setFocus();
     	}
-    }),
-    $("vcl/Action", ("editors-previous"), {
+    }],
+    ["vcl/Action", ("editors-previous"), {
     	onExecute: function() {
 			var tabs = this.up().qsa("#editors-tabs:visible");
 			var focused = this.up().vars("editors-tabs:focused");
@@ -229,8 +229,8 @@ $(["ui/Form"], {
 			Tab.show(focused);
 			focused.setFocus();
     	}
-    }),
-    $("vcl/Action", ("editors-close-all"), {
+    }],
+    ["vcl/Action", ("editors-close-all"), {
     	onExecute: function(evt) {
 			var tabs = this.vars(["editors-tabs:focused"]) || this.udown("#editors-tabs");
             var selected = tabs.getSelectedControl(1);
@@ -245,15 +245,15 @@ $(["ui/Form"], {
 	    			// tab.update(function() { tab.destroy(); });
 	    		});
     	}
-    }),
-    $("vcl/Action", ("editor-new"), {
+    }],
+    ["vcl/Action", ("editor-new"), {
         onExecute: function(evt) {
             this.scope("editor-factory")
             	.execute(evt)
             	.setSelected(true);
         }
-    }),
-    $("vcl/Action", ("editor-needed"), {
+    }],
+    ["vcl/Action", ("editor-needed"), {
         onExecute: function(evt) {
             var scope = this.scope(), tab;
             if(typeof evt === "string") {
@@ -322,8 +322,8 @@ $(["ui/Form"], {
     		}
     		return tab;
         }
-    }),
-    $("vcl/Action", ("editor-next"), {
+    }],
+    ["vcl/Action", ("editor-next"), {
         onExecute: function() {
         	var ws = this.up();
 			var tabs = ws.vars("editors-tabs:focused") || ws.qs("#editors-tabs");
@@ -333,8 +333,8 @@ $(["ui/Form"], {
 			
 			tabs.selectNext();
         }
-    }),
-    $("vcl/Action", ("editor-previous"), {
+    }],
+    ["vcl/Action", ("editor-previous"), {
         onExecute: function() {
         	var ws = this.up();
 			var tabs = ws.vars("editors-tabs:focused") || ws.qs("#editors-tabs");
@@ -344,8 +344,8 @@ $(["ui/Form"], {
 
 			tabs.selectPrevious();
         }
-    }),
-    $("vcl/Action", ("editor-close"), {
+    }],
+    ["vcl/Action", ("editor-close"), {
         onExecute: function(evt) {
             var scope = this.getScope();
             var selected = scope['editors-tabs'].getSelectedControl(1);
@@ -354,13 +354,13 @@ $(["ui/Form"], {
             }
             evt.preventDefault();
         }
-    }),
-    $("vcl/Action", ("editor-move-to-front"), {
+    }],
+    ["vcl/Action", ("editor-move-to-front"), {
     	onExecute: function() {
     		this._owner.qs("vcl/ui/Tab:selected:childOf(editors-tabs)").setIndex(0);
     	}
-    }),
-    $("vcl/Action", ("editor-move-left"), {
+    }],
+    ["vcl/Action", ("editor-move-left"), {
     	onExecute: function() {
     		var tab = this._owner.qs("vcl/ui/Tab:selected:childOf(editors-tabs)");
     		var index = tab.getIndex();
@@ -368,20 +368,20 @@ $(["ui/Form"], {
     			tab.setIndex(index - 1);
     		}
     	}
-    }),
-    $("vcl/Action", ("editor-move-right"), {
+    }],
+    ["vcl/Action", ("editor-move-right"), {
     	onExecute: function() {
     		var tab = this._owner.qs("vcl/ui/Tab:selected:childOf(editors-tabs)");
     		var index = tab.getIndex();
     		tab.setIndex(index + 1);
     	}
-    }),
-    $("vcl/Action", ("editor-setfocus"), {
+    }],
+    ["vcl/Action", ("editor-setfocus"), {
     	onExecute: function(evt) {
 			this._owner.qs("vcl/ui/Tab:selected:childOf(editors-tabs) #ace").setFocus();
     	}
-    }),
-    $("vcl/Action", ("editor-focus-in-navigator"), {
+    }],
+    ["vcl/Action", ("editor-focus-in-navigator"), {
         onExecute: function(evt) {
         	// TODO 
             // var app = this.getApp();
@@ -389,9 +389,9 @@ $(["ui/Form"], {
             // app.qsa("devtools/Workspace<>:owner-of(.) #navigator #resource-focus", this)
             // 	.execute({resource: resource}, this);
         }
-    }),
+    }],
     
-    $("vcl/ui/Panel", ("left-sidebar"), { align: "left", css: "border-right: 1px solid gray;", width: 375 }, [
+    ["vcl/ui/Panel", ("left-sidebar"), { align: "left", css: "border-right: 1px solid gray;", width: 375 }, [
     	
         $("vcl/ui/Tabs#left-sidebar-tabs", [
             $("vcl/ui/Tab", { text: locale("Navigator"), control: "navigator", selected: true }),
@@ -414,9 +414,9 @@ $(["ui/Form"], {
 
         $("vcl/ui/Panel", "search-panel", { align: "client", visible: false }),
         $("vcl/ui/Panel", "inspector-panel", { align: "client", visible: false })
-    ]),
-    $("vcl/ui/Panel", ("editors"), { align: "client", css: "background-color: silver;" }, [
-        $("vcl/ui/Tabs", "editors-tabs", {
+    ]],
+    ["vcl/ui/Panel", ("editors"), { align: "client", css: "background-color: silver;" }, [
+        ["vcl/ui/Tabs", "editors-tabs", {
             onChange: function(tab, previous) {
 // TODO tell application to render it's title
                 var title = this.app().getTitle(), me = this;
@@ -440,6 +440,6 @@ $(["ui/Form"], {
             			}
             	});
             }
-        })
-    ])
-]);
+        }]
+    ]] 
+]];
