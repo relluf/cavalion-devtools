@@ -1,3 +1,11 @@
+### 2020-10-24 - @1.0.18*
+- Integrating (Arcadis-driven) new Editor<xml>-features (DetailViews)
+
+### 2020-10-19 - @1.0.17
+- Preparing for ElliTrack-specifics
+- Updating devtools/Resources.prototype.index()
+	- allowing single string as argument
+
 ### 2020-10-09 - @1.0.16
 - **Workspace<VO>**: Developing VO object/workspace/namespace, seems the place to be hanging out lately
 - **DragDropHandler**: Anticipating image/ content to be parsed as DataURL always
