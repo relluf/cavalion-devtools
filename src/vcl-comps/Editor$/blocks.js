@@ -73,9 +73,9 @@ $(["./Editor<js>"], {
     	
     	// see main.js
     	uri = String.format("$HOME/%s", uri);
-    	var PAT = "/src/cavalion-blocks/";
-    	if(uri.indexOf(PAT) !== -1) {
-    		uri = "$HOME/" + uri.substring(uri.indexOf(PAT) + PAT.length);
+    	var PATH = "/src/cavalion-blocks/";
+    	if(uri.indexOf(PATH) !== -1) {
+    		uri = "$HOME/" + uri.substring(uri.indexOf(PATH) + PATH.length);
     	}
     	sourceUri = String.format("$HOME/%s", sourceUri);
 
