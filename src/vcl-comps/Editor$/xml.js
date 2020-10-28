@@ -1,4 +1,5 @@
-"use fast-xml-parser, xml-funcs, veldapps-imsikb/util";
+"use fast-xml-parser, xml-funcs, veldapps-imsikb/util, vcl/ui/ListColumn";
+
 
 function match(obj, q) {
 	q = q.toLowerCase();	
@@ -17,14 +18,19 @@ function match(obj, q) {
 var Blocks = require("blocks");
 var Parser = require("fast-xml-parser");
 var Xml = require("xml-funcs");
+var ListColumn = require("vcl/ui/ListColumn");
 
 /*- TODO `#CLVN-20201024-1` Infra for Editor<xml>-detailViews */
 var DetailViews = {
 	imsikb0101: 
 		["Container", { 
 			css: {
+				// "#bar > *": "margin-right:5px;",
+				// "#bar input": "border-radius: 5px; border-width: 1px; padding: 2px 4px; border-color: #f0f0f0;"
+				"#bar": "text-align: center;",
 				"#bar > *": "margin-right:5px;",
-				"#bar input": "border-radius: 5px; border-width: 1px; padding: 2px 4px; border-color: #f0f0f0;"
+				"#bar input": "font-size:12pt;width:300px;max-width:50%; border-radius: 5px; border-width: 1px; padding: 2px 4px; border-color: #f0f0f0;",
+				"#bar #left": "float:left;", "#bar #right": "float:right;"
 			}, 
 			onLoad() { 
 				// var root = this.up("devtools/Editor<xml>").vars("root");
@@ -39,6 +45,8 @@ var DetailViews = {
 						vars: { array: parsed.entities[ent] }
 					}]);
 				}
+
+				this.vars("history", []);
 
 				if(tabs.length) {						
 					B.i(["Container", tabs]).then(c => {
@@ -61,11 +69,43 @@ var DetailViews = {
 					var q = this.vars("q");
 					if(!q) return false;
 					return q.split(/\s/).filter(q => q.length > 0).some(q => !match(obj, q));
+				},
+				onUpdate() {
+					this.ud("#list-status").render();
 				}
 			}],
-			["Bar", ("bar"), { css: {"": "text-align: center;", "input": "width: 250px; font-size: 14pt;"} }, [
-				// ["Button", { action: "json" }],
-				
+			["Bar", ("bar") , [
+				["Group", ("left"), [
+					["Button", ("back"), { 
+						content: "&lt;",
+						visible: false,
+						onClick() {
+							var history = this.vars(["history"]);
+							var value = history.pop();
+							if(value) {
+								this.ud("#array").setArray([]);
+								this.nextTick(() => this.ud("#array").setArray(value));
+							}
+							if(history.length === 0) this.hide();
+						}
+					}],
+					["Button", (""), { 
+						content: "View on Map", 
+						onClick: function() {
+							this.print("selection", this.ud("#list").getSelection());
+						} 
+					}],
+					// ["Button", {
+					// 	content: "Drill Down... <i class='fa fa-caret-down'></i>"
+					// }],
+					// ["Button", {
+					// 	action: "collect-sample",
+					// 	css: "margin-left: 8px;",
+					// }],
+					// ["Button", {
+					// 	action: "collect-analysis",
+					// }]
+				]],
 				["Input", ("q"), { 
 					placeholder: "Filter", 
 					onChange() { 
@@ -76,6 +116,35 @@ var DetailViews = {
 						}, 250); 
 					} 
 				}],
+				["Group", ("right"), [
+					// ["Button", { action: "view-source" }]
+					["Element", ("list-status"), { 
+						content: "-", element: "span",
+						onRender() {
+							var status;
+							this.setTimeout(() => {
+								var arr = this.ud("#array");
+								if(!arr._array) return;
+								
+								var total = arr._array.length;
+								var filtered = this.ud("#q").getValue().length > 0 ? (arr._arr||[]).length : 0;
+								var selected = this.ud("#list").getSelection().length;
+								
+								if(filtered === 0 && selected === 0) {
+									status = js.sf("%d items", total);
+								} else {
+									status = js.sf("%d/%d", selected, filtered || total);
+								}
+								
+								if(filtered) {
+									status += js.sf(" (%d)", total);
+								}
+								
+								this.setContent(status);
+							}, 250);
+						}
+					}]
+				]],
 				
 				["Radiobutton", ("opt-and"), {
 					visible: false, // not=working=yet
@@ -92,10 +161,51 @@ var DetailViews = {
 					checked: false
 				}]
 			]],
+			// ["Bar", ("bar"), { css: {"": "text-align: center;", "input": "width: 250px; font-size: 14pt;"} }, [
+			// 	["Input", ("q"), { 
+			// 		placeholder: "Filter", 
+			// 		onChange() { 
+			// 			var array = this.ud("#array");
+			// 			this.setTimeout("updateFilter", () => {
+			// 				array.vars("q", this.getValue());
+			// 				array.updateFilter();
+			// 			}, 250); 
+			// 		} 
+			// 	}],
+				
+			// 	["Radiobutton", ("opt-and"), {
+			// 		visible: false, // not=working=yet
+			// 		label: "AND", groupIndex: 1
+			// 	}],
+			// 	["Radiobutton", ("opt-or"), {
+			// 		visible: false, // not=working=yet
+			// 		checked: true, groupIndex: 1,
+			// 		label: "OR"
+			// 	}],
+			// 	["Checkbox", ("check-exact-case"), {
+			// 		visible: false, // not=working=yet
+			// 		label: "Exact case",
+			// 		checked: false
+			// 	}]
+			// ]],
 			["List", ("list"), { 
 				css: { ".ListCell": "color:red;" },
 				autoColumns: true,
 				source: "array", css: "background-color:white;",
+				onSelectionChange() {
+					this.ud("#list-status").render();
+				},
+				onDispatchChildEvent(component, name, evt, f, ms) {
+					if(name === "dblclick" && component instanceof ListColumn) {
+						var arr = this._source._arr.map(_ => _[component._attribute]);
+						var old = this._source._arr;
+						var history = this.vars(["history"]);
+						history.push(this._source._array);
+						this.ud("#array").setArray(null);
+						this.ud("#array").setArray(arr.filter(_ => _ !== undefined));
+						this.ud("#back").show();
+					}
+				},
 				onDblClick() { 
 					var selection = this.getSelection(true);
 					this.print(selection.length === 1 ? selection[0] : selection);
