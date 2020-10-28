@@ -51,9 +51,11 @@ function copy(obj, r) {
 				evt.preventDefault();
 				me.setVisible(true);
 			},
-			dragleave: function(evt) {
-				evt.preventDefault();
-				me.setVisible(false);
+			dragend: function(evt) {
+				me.setTimeout("dragend", function() {
+					evt.preventDefault();
+					me.setVisible(false);
+				}, 500);
 			},
 			drop: function(evt) {
 				var dataTransfer = copy(evt.dataTransfer);
@@ -67,13 +69,13 @@ function copy(obj, r) {
 		});
 		
 		document.addEventListener("dragover", listeners.dragover);
-		document.addEventListener("dragleave", listeners.dragleave);
+		document.addEventListener("dragend", listeners.dragend);
 		document.addEventListener("drop", listeners.drop);
 	},
 	onDestroy: function() {
 		var listeners = this.vars("listeners");
 		document.removeEventListener("dragover", listeners.dragover);
-		document.removeEventListener("dragleave", listeners.dragleave);
+		document.removeEventListener("dragend", listeners.dragend);
 		document.removeEventListener("drop", listeners.drop);
 	},
 	align: "client",
@@ -81,3 +83,5 @@ function copy(obj, r) {
 	content: locale("DragDropHandler.dropHereMessage") + " [" + Date.now() + "]",
 	visible: false
 }];
+
+
