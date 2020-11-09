@@ -26,7 +26,9 @@ function title_css() {
 		"&:not(.custom-colors)": js.sf("background-color:%s;color:%s;", colors[0], colors[1]),
 		"&.arcadis": "background-color:orange;color:black;",
 		"&.cavalion": "background-color:rgb(48,61,80);color:white;",
-		"&.veldapps": "background-color:limegreen;color:white;",
+		"&.gx": "background-color:purple;color:white;",
+		"&.veldapps": "background-color:lightgreen;color:darkgreen;",
+		"&.veldapps-alt": "background-color:limegreen;color:white;",
 		"&.eae": "background-color:rgb(14,32,77);color:white;",
 	};
 }

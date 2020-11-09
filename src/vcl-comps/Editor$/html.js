@@ -2,7 +2,7 @@
 
 var q$ = require("jquery");
 
-$([], {
+["", {
 	onLoad: function() {
 		var resource = this.getVar("resource", true);
 		var scope = this.scope();
@@ -37,7 +37,7 @@ $([], {
 		return this.inherited(arguments);
 	}
 }, [
-    $i(("ace"), {
+    [("#ace"), {
         onLoad: function() {
         	var scope = this.scope();
 	        var uri = this.vars(["resource.uri"]);
@@ -56,8 +56,8 @@ $([], {
         	}.bind(this), 250);
         },
         align: "client"
-    }),
-    $(("vcl/Action"), "render", {
+    }],
+    [("vcl/Action"), "render", {
     	onExecute: function(evt) {
     		var scope = this.scope();
     		evt = evt || {value: scope.ace.getValue()};
@@ -65,6 +65,7 @@ $([], {
             /*- reference to root node of current HTML */
             var root = scope.preview._node; 
             /*- save all scrollTop values which are not equal to 0 */
+            // var pos = Array.from(root.querySelectorAll("*").filter(_ => _.scrollTop).map(_ => { 
             var pos = q$("*", root).toArray().filter(_ => _.scrollTop).map(_ => { 
             	var n = _, s = []; 
             	while(n !== root) { 
@@ -87,12 +88,13 @@ $([], {
         	/* restore scrollTop positions */
         	try { 
         		scope.preview.update(_ => pos.forEach(p => q$(p[0]).scrollTop(p[1])));
+        		// scope.preview.update(_ => pos.forEach(p => document.querySelector(p[0]).scrollTop = p[1]));
         	} catch(e) {
         		// Ni modo...
         	}
         },
-    }),
-    $(("vcl/ui/Panel"), "preview", {
+    }],
+    [("vcl/ui/Panel"), "preview", {
         align: "right",
         width: 375,
         css: { 
@@ -118,5 +120,5 @@ $([], {
         		return this.inherited(args);
         	});
         }
-    })
-]);
+    }]
+]];

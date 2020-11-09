@@ -144,6 +144,7 @@ function getPosts(arr, posts) {
 				}
 				posts.setTimeout(function() { 
 					// TODO this if(all.length) { ... } should not be necessay
+// posts.print("updating after timeout");
 					if(all.length) {
 						all.sort(function(i1, i2) {
 							if(i1.date === undefined) return 1;
@@ -242,13 +243,13 @@ function getPosts(arr, posts) {
 		}
 	}],
 	
-	["Container", { align: "left", width: 275 }, [
-		["Bar", [
+	["Container", (""), { align: "left", width: 275 }, [
+		["Bar", ("bar"), [
 			["vcl-ui:Input", "search-input", { placeholder: locale("Search.placeholder") }],
 			["vcl-ui:Element", "status"]
 		]],
 		
-		["vcl-ui:List", "list", {
+		["vcl-ui:List", ("list"), {
 			autoColumns: true,
 			source: "posts",
 			onDblClick() {
@@ -257,10 +258,12 @@ function getPosts(arr, posts) {
 				selection.forEach(_ => ws.open(_.uri));
 			},
 			onSelectionChange: function() {
-				this.scope().preview.setContent(this.getSelection(true).map(function(entry) {
-					return (entry.render = entry.render || 
-						(markdown.renderJsonML(["p"].concat(entry.nodes))));
-				}).join(""));
+				this.scope().preview.setContent(this.getSelection(true)
+					.map(function(entry) {
+						return (entry.render = entry.render || 
+							(markdown.renderJsonML(["p"].concat(
+								JSON.parse(JSON.stringify(entry.nodes))))));
+					}).join(""));
 			}
 		}]
 	]],
