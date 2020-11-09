@@ -23,14 +23,16 @@ define(function(require) {
 		},
 		list: function(path) {
 			return Promise.resolve(
-				allDroppedItems().map((item, index) => ({
-					path: js.sf("%s", index),
-					name: js.get("fileValue.name", item),
-					uri: js.sf("%s/%s", index, js.get("fileValue.name", item)),
-					lastModified: js.get("fileValue.lastModified", item),
-					size: js.get("fileValue.size", item),
-					type: "File"
-				})));
+				allDroppedItems().map((item, index) => {
+					return {
+						path: js.sf("%s", index),
+						name: js.get("fileValue.name", item),
+						uri: js.sf("%s/%s", index, js.get("fileValue.name", item)),
+						lastModified: js.get("fileValue.lastModified", item),
+						size: js.get("fileValue.size", item),
+						type: "File"
+					};
+				}));
 		},
 		get: function(uri) {
 			var index = parseInt(uri.split("/").shift(), 10);
