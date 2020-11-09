@@ -1,5 +1,4 @@
-"use fast-xml-parser, xml-funcs, veldapps-imsikb/util, vcl/ui/ListColumn";
-
+"use fast-xml-parser, xml-funcs, veldapps-imsikb/util, veldapps-imkl/util, vcl/ui/ListColumn";
 
 function match(obj, q) {
 	q = q.toLowerCase();	
@@ -22,7 +21,7 @@ var ListColumn = require("vcl/ui/ListColumn");
 
 /*- TODO `#CLVN-20201024-1` Infra for Editor<xml>-detailViews */
 var DetailViews = {
-	imsikb0101: 
+	imsikb0101: // Alpha, Geo, Profiles
 		["Container", { 
 			css: {
 				// "#bar > *": "margin-right:5px;",
@@ -33,8 +32,7 @@ var DetailViews = {
 				"#bar #left": "float:left;", "#bar #right": "float:right;"
 			}, 
 			onLoad() { 
-				// var root = this.up("devtools/Editor<xml>").vars("root");
-				var root = this.vars("root");
+				var root = this.vars(["root"]);
 				var parsed = require("veldapps-imsikb/util").parse(root);
 				var tabs = [];
 				for(var ent in parsed.entities) {
@@ -46,6 +44,7 @@ var DetailViews = {
 					}]);
 				}
 
+				this.vars("root:parsed", parsed);
 				this.vars("history", []);
 
 				if(tabs.length) {						
@@ -58,8 +57,6 @@ var DetailViews = {
 					});
 				}
 				
-				// this.scope().list.show();
-				// this.up("devtools/Editor<xml>").vars("root-imsikb0101", parsed);
 			},
 			visible: false,
 			vars: { selected: true }
@@ -239,7 +236,7 @@ var DetailViews = {
 };
 
 
-["", { 
+[(""), { 
 	css: {
 		"#output": "background-color: #f0f0f0; border-right: 1px solid silver;"
 	},
@@ -285,12 +282,15 @@ var DetailViews = {
 		 	var console = scope.console;
 			console.print("root", owner.vars("root", root));
 
+/*- TODO `#CLVN-20201024-1` Infra for Editor<xml>-detailViews, format-recognition, specific-parsing */
     		if(root.hasOwnProperty("imsikb0101:FeatureCollectionIMSIKB0101")) {
-    			// formats.push("gml");
     			formats.push("imsikb0101");
-    			format = formats[0];
+    			// formats.push("gml");
+    		} else if(js.get("bodeminformatie.metainformatie.@_versie", root)) {
+				formats.push("imsikb0101")
     		}
 
+			format = formats[0];
 			if(formats.length) {
 				console.print("formats detected", formats.join(", "));
 // TODO some sort of loading indicator...
@@ -302,11 +302,12 @@ var DetailViews = {
 								setIsRoot: true,
 								loaded(view) { 
 									// view.setIsRoot(true);
-									view.vars("root", root); 
-									view.loaded();
+									// view.vars("root", root); 
+									// view.loaded();
 								}
 							}).then(view => {
 									view.setOwner(owner);
+									view.loaded();
 									dva.execute({ name: format, view: view, selected: view.vars("selected") });
 									return view;
 								}))));
@@ -344,12 +345,12 @@ var DetailViews = {
 	    }]
     ]],
     
-    [("#render"), {
-    	on() {
-    		this.inherited(arguments);
+    // [("#render"), {
+    // 	on() {
+    // 		this.inherited(arguments);
     		
-    	}
-    }],
+    // 	}
+    // }],
     [("#ace"), { 
     	align: "left", width: 600, 
     	action: "toggle-source",
