@@ -35,16 +35,25 @@ function(FS, Pouch, Dropbox, Dropped) {
 		},
 		get: function(uri) {
 			if(uri.startsWith("pouchdb://")) {
-				return Pouch.get(uri.substring("pouchdb://".length));
-					// TODO extend/clean up uri?
+				return Pouch.get(uri.substring("pouchdb://".length))
+					.then(resource => {
+						resource.uri = "pouchdb://" + resource.uri;
+						return resource;
+					});
 			} 
 			if(uri.startsWith("dropbox://")) {
-				return Dropbox.get(uri.substring("dropbox://".length));
-					// TODO extend/clean up uri?
+				return Dropbox.get(uri.substring("dropbox://".length))
+					.then(resource => {
+						resource.uri = "dropbox://" + resource.uri;
+						return resource;
+					});
 			}
 			if(uri.startsWith("dropped://")) {
-				return Dropped.get(uri.substring("dropped://".length));
-					// TODO extend/clean up uri?
+				return Dropped.get(uri.substring("dropped://".length))
+					.then(resource => {
+						resource.uri = "dropped://" + resource.uri;
+						return resource;
+					});
 			}
 			return FS.get(uri);
 		},
