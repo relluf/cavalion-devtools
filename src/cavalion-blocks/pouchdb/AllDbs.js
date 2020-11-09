@@ -17,7 +17,7 @@ var instantiate = require("blocks/Blocks").instantiate;
 	
 	["Bar", { css: "display: flex;"}, [
 		["Input", "name", { css: "flex:1;", placeholder: locale("-name.placeholder"), 
-			// value: require("vcl/Component").defaultDb.name 
+			// value: require("vcl/Component").storageDB.name 
 		}], 
 		["Button", { action: "open" }]
 	]],
@@ -26,8 +26,8 @@ var instantiate = require("blocks/Blocks").instantiate;
 
 		
 
-		["Tab<devtools/pouchdb/AllDocs>", (req("vcl/Component").defaultDb.name), {
-			text: req("vcl/Component").defaultDb.name,
+		["Tab<devtools/pouchdb/AllDocs>", (req("vcl/Component").storageDB.name), {
+			text: req("vcl/Component").storageDB.name,
 			selected: true
 		}],
 		

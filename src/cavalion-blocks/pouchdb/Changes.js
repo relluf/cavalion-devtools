@@ -43,7 +43,7 @@ var options = {};
 	["Bar", { css: "display: flex;" }, [
 		["Element", { content: "dbName" }],
 		["Input", ("dbName"), {
-			value: require("vcl/Component").defaultDb.name
+			value: require("vcl/Component").storageDB.name
 		}],
 		["Button", { action: "listen" }],
 		["Button", { action: "cancel" }]
