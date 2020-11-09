@@ -1,3 +1,9 @@
+var allDroppedItems = () => require("vcl/Application").get()
+		.qsa("devtools/DragDropHandler<>")
+		.map(_ => _.vars("dropped")).flat()
+		.map(_ => _.items)
+		.flat();
+		
 ["", {}, [
     [("#refresh"), {
         on() {
@@ -5,12 +11,7 @@
             var node = scope.image.nodeNeeded();
 
             if(uri.startsWith("dropped://")) {
-            	var dropped = this.app()
-            		.down("devtools/DragDropHandler<>")
-            		.vars("dropped")
-            		[parseInt(uri.split("/")[2], 10)]
-            		.items[0];
-
+            	var dropped = allDroppedItems()[parseInt(uri.split("/")[2], 10)];
             	scope.image.setContent(js.sf("<img src='%s'>", dropped.readerResult));
             } else {
 	            scope.image.setContent(js.sf("<img src='%s/%s?%d&file') no-repeat 50%%,50%%", 
