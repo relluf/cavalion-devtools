@@ -401,7 +401,7 @@ var getKey = (tab) => {
             			var hash = req("util/Hash").md5(scope.ace.getValue())
             			value = {
             				me: this,
-            				root: (() => { try { return eval_ ? eval_(text) : eval(text); } catch(e) { return e; } })(),
+            				// root: (() => { try { return eval_ ? eval_(text) : eval(text); } catch(e) { return e; } })(),
             				text: text,
             				text_len: text.length,
             				text_hash: hash,
@@ -429,7 +429,7 @@ var getKey = (tab) => {
             		} else {
 	                	value = eval_ ? eval_(text) : eval(text);
             		}
-                    printer.print(name, value);
+            		if(value !== undefined) printer.print(name, value);
             	}.apply(this, [thisRequire]));
             } catch(e) {
             	printer.print(name, e);
