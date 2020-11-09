@@ -1,4 +1,5 @@
 ### 2020-11-09 - @1.0.18
+- Introducing: **Alphaview.js** 
 - DragDropHandler: Finetuning after actually using it while dropping loads of images
 - Editor<image>: Now playing nice with dropped images
 
