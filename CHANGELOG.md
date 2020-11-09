@@ -1,4 +1,11 @@
-### 2020-10-24 - @1.0.18*
+### 2020-11-09 - @1.0.18
+- DragDropHandler: Finetuning after actually using it while dropping loads of images
+- Editor<image>: Now playing nice with dropped images
+
+### 2020-10-28
+- DragDropHandler: Finetuning dragleave => dragend
+
+### 2020-10-24
 - Integrating (Arcadis-driven) new Editor<xml>-features (DetailViews)
 
 ### 2020-10-19 - @1.0.17
