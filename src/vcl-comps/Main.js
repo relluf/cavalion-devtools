@@ -30,6 +30,7 @@ function title_css() {
 		"&.veldapps": "background-color:lightgreen;color:darkgreen;",
 		"&.veldapps-alt": "background-color:limegreen;color:white;",
 		"&.eae": "background-color:rgb(14,32,77);color:white;",
+		"&.rws": "background-color:#fbe122; color:maroon;"
 	};
 }
 function replaceChars(uri) {

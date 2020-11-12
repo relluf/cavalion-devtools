@@ -3,6 +3,13 @@
 /*- ### 2020-10-02 Console hook - SIKB12 inspired */
 var ListColumn = require("vcl/ui/ListColumn");
 
+/*- Object.keys(VO.em.instances)
+		.reduce((a, k) => { 
+			a[k] = Object.keys(VO.em.instances[k]).map(_ => VO.em.instances[k][_]); 
+			return a; 
+		}, {})
+*/
+
 function match(obj, q) {
 	q = q.toLowerCase();	
 	if(typeof obj ==="string") {
