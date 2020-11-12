@@ -1,28 +1,29 @@
 "use vcl/ui/Ace, vcl/ui/FormContainer, vcl/ui/Tab, ace/range, locale";
 
 var Tab = {
+	_content:
+		"<div class='text'></div><span class='hashcode'></span>" +
+		"<i class='menu fa fa-caret-down'></i>" +
+		"<a class='menu close'>×</a>",
+
+	initializeNodes: function() {
+		/** @overrides ../Control.prototype.initializeNodes */
+        this.inherited(arguments);
+		this._nodes.close = this._node.childNodes[3];
+	},
     render: function () {
-        var text = this.getVar("resource.uri") || "New";
+        var node = this.getNode();
+        var title = this.vars("resource.uri") || "New";
+        var folder = this.vars("resource.type") === "Folder";
+        var text = title.split("/").pop();
+
+        node.title = title;
+        node.down(".text").textContent = this.vars("modified") ? "* " + text : text;
         
-        this.getNode().title = text;
-        
-        var html = String.format("%H", text.split("/").pop());
-        if(0 && html.charAt(0) === ".") {
-        /*- Disabled because of Editor<folder> */
-        	text = text.split("/");
-        	text.pop();
-        	html = text.pop() + "/" + html;
-        }
-        if (this.getVar("modified")) {
-            html = "* " + html;
-        }
         var ace = this.qs("vcl/ui/Ace");
-        if(ace) {
-            html += String.format(" <span class='hashcode'>[%s]</span>",
-                ace.hashCode());
+        if(!folder && ace /*&& ace.isVisible()*/) {
+	        node.down(".hashcode").textContent = js.sf(" [%s]", ace.hashCode());
         }
-        
-        this._nodes.text.innerHTML = html;
     },
 	show: (tab) => tab.removeClass("tabs-hidden"),
 	hide: (tab) => !tab.hasClass("tabs-hidden") && tab.addClass("tabs-hidden"),
@@ -114,6 +115,12 @@ var Utils = {
         });
         
         this.open = function(evt) {
+        	if(evt instanceof Array) {
+        		evt = {
+        			
+        		}
+        	}
+        	
         	if(typeof evt === "string") {
         		evt = {resource:{uri: evt}, selected: true};
         	}
@@ -165,8 +172,10 @@ var Utils = {
         },
         onExecute: function(evt) {
             var tab = this.inherited(arguments);
-            var owner = tab.getOwner();
+            var owner = tab._owner;
+            tab.initializeNodes = Tab.initializeNodes;
             tab.render = Tab.render;
+            tab._content = Tab._content;
             tab._control.once("formloaded", function() {
             	// var ace = this._form.scope().ace;
              //   var ed = ace.getEditor();
@@ -179,7 +188,7 @@ var Utils = {
                 //     // tab._owner.emit("state-dirty");
                 // });
                 tab.render();
-				this._form.setName(tab.getVar("resource.uri"));
+				this._form.setName(tab.vars("resource.uri"));
             });
             
             tab.set({
