@@ -7,6 +7,9 @@ function allowResource(resource) {
 	return [".git", ".svn", ".DS_Store"].indexOf(resource.uri.split("/").pop()) === -1;
 }
 function sortResource(resource1, resource2) {
+	if(resource1.name === ".md") return -1;
+	if(resource2.name === ".md") return 1;
+	
 	if(resource1.name.startsWith(".") && !resource2.name.startsWith(".")) {
 		return -1;
 	}
