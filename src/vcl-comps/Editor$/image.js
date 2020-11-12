@@ -14,11 +14,11 @@ var allDroppedItems = () => require("vcl/Application").get()
             	var dropped = allDroppedItems()[parseInt(uri.split("/")[2], 10)];
             	scope.image.setContent(js.sf("<img src='%s'>", dropped.readerResult));
             } else {
-	            scope.image.setContent(js.sf("<img src='%s/%s?%d&file') no-repeat 50%%,50%%", 
+	            scope.image.setContent(js.sf("<img src='%s/%s?%d&file'>", 
 	                    "/home", uri, Date.now()));
             }
         }
     }],
-    [("#ace"), {visible: false}],
-    ["vcl/ui/Panel", ("image"), {align: "client"}]
+    [("#ace"), { visible: false, readOnly: true }], // base64?
+    ["vcl/ui/Panel", ("image"), { align: "client", css: "text-align:center;" }]
 ]];
