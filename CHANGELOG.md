@@ -1,3 +1,7 @@
+### 2020-11-11 - @1.0.19
+- Enhances/fixes rendering of the hashcode in editors-tabs - it will now always be visible
+- Fixes a bug where images would not render in devtools/Editor<image>
+
 ### 2020-11-09 - @1.0.18
 - Introducing: **Alphaview.js** 
 - DragDropHandler: Finetuning after actually using it while dropping loads of images
