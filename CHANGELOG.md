@@ -1,3 +1,9 @@
+### 2020-11-16 - @1.0.20
+- Developing Alphaview
+	- Introducing print (MetaCtrl+Enter)
+	- Adding support for single object selection(s)
+	- Improving status info
+
 ### 2020-11-11 - @1.0.19
 - Enhances/fixes rendering of the hashcode in editors-tabs - it will now always be visible
 - Fixes a bug where images would not render in devtools/Editor<image>
