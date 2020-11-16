@@ -24,7 +24,7 @@ function onNodesNeeded(parent) {
     var control = parent.vars("control");
     var uris = this._owner.vars("uris");
     
-	if(uris) {
+	if(parent._name === "fs" && uris) {
 		if(!uris.hasOwnProperty("splice")) {
 			/* OMG, ugly hack, what was wrong with me?! */
 		    Method.override(uris, {
@@ -89,8 +89,15 @@ function onNodesNeeded(parent) {
 			this.apply("Resources.index");
     	// }, 250);
 	}
+	
+	var list = this.vars(["Resources.list"]);
     
-    var r = this.apply("Resources.list", [uri]).then(function (res) {
+    return list.apply(this, [uri]).then(res => {
+    	
+    	if(res.length > 250) {
+    		// alert("A lot of nodes...");
+    	}
+    	
     	res.sort(function(i1, i2) {
     		if(i1.type === i2.type) {
     			return i1.name < i2.name ? -1 : 1;
@@ -110,8 +117,8 @@ function onNodesNeeded(parent) {
             	&& parent._name === "fs" 
             	&& node.addClass("seperator top");
 
+            var checked = false;
             if(uris) {
-                var checked = false;
                 for(var i = 0; i < uris.length && !checked; ++i) {
                 	checked = uris[i].indexOf(item.uri) === 0;
                 }
@@ -132,7 +139,6 @@ function onNodesNeeded(parent) {
     	parent.endLoading();
         return res;
     });
-    return r;
 }
 
 ["vcl/ui/Form", {
@@ -694,7 +700,7 @@ console.log(node, js.sf("expandable: %s", item.expandable));
 	   			resource: { 
 	   				type: "Folder", 
 	   				uri: js.sf("pouchdb://%s/", require("vcl/Component").storageDB.name), 
-	   				name: js.sf("Local Resources", require("vcl/Component").storageDB.name), 
+	   				name: js.sf("Resources", require("vcl/Component").storageDB.name), 
 	   			}
 	   		},
 	   		// classes: "root-invisible seperator top",
@@ -714,6 +720,28 @@ console.log(node, js.sf("expandable: %s", item.expandable));
 	        // 	// }, 2000);
         	// 	this.removeClass("root-invisible");
 	        // }
+    	}],
+    	[("devtools/NavigatorNode"), "Tools", {
+	   		vars: { 
+	   			resource: { 
+	   				type: "Folder", 
+	   				uri: "Library/cavalion-blocks/tools", 
+	   				name: "Tools"
+	   			}
+	   		},
+	        onNodesNeeded: onNodesNeeded
+    	}],
+    	[("devtools/NavigatorNode"), "Tools_devtools", {
+    		classes: "seperator top",
+	   		vars: { 
+	   			resource: { 
+	   				type: "Folder", 
+	   				uri: "Library/cavalion-blocks/tools/devtools", 
+	   				name: "Tools-devtools"
+	   			}
+	   		},
+	   		visible: false,
+	        onNodesNeeded: onNodesNeeded
     	}],
     	[("devtools/NavigatorNode"), "fs", {
 	   		vars: { 
@@ -741,7 +769,8 @@ console.log(node, js.sf("expandable: %s", item.expandable));
 	   		expandable: true,
 	   		visible: false,
 	        onNodesNeeded: onNodesNeeded
-    	}]
+    	}],
+    	// [("devtools/NavigatorNode"), ]
     ]],
     [("vcl/ui/List"), "search-list", { 
     	action: "search-open", 

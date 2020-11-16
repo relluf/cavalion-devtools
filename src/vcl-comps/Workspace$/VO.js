@@ -2,20 +2,21 @@
 
 var B = require("blocks/Blocks");
 
+var localhost = window.location.host === "localhost";
+var paths = window.require.s.contexts._.config.paths;
+
 window.require.config({
 	paths: {
-		"VO": "/home/Workspaces/veldapps.com/Veldoffice/veldoffice-vcl-comps/src/cavalion-blocks/ListOf<>/VO",
-		"sikb": "/home/Workspaces/veldapps.com/veldapps-imsikb/src"
+		// "VO": localhost ? "vo/VO" : "Library/cavalion-blocks/veldoffice/ListOf<>/VO",
+		"sikb": paths['veldapps-imsikb']// : "/home/Workspaces/veldapps.com/veldapps-imsikb/src"
 	}
 });
 
-[[], {
-	
+["", {
 	onLoad() {
-		this.print("VO", req("VO").then(VO => (window.VO = VO)));
+		this.print("VO", req("vo/VO").then(VO => (window.VO = VO)));
 		return this.inherited(arguments);
 	}
-	
 }];
 
 
