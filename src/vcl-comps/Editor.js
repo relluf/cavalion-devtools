@@ -337,7 +337,15 @@ var getKey = (tab) => {
             evt.preventDefault();
         }
     }],
-    ["vcl/Action", ("evaluate"), {
+    ["vcl/Action", ("evaluate"), { 
+    	parent: "print", 
+    	on() { 
+    		console.warn("Should 'evaluate' whether is component is really needed - " +
+    			"because it has been deprecated in favor of 'print'");
+    		this._parent.execute.apply(this._parent, arguments);
+    	}
+    }],
+    ["vcl/Action", ("print"), {
         hotkey: "MetaCtrl+Enter|Alt+MetaCtrl+Enter|Shift+MetaCtrl+Enter",
         onExecute: function(evt) {
             var all = require("js/JsObject").all;

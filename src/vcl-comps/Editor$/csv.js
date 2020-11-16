@@ -74,7 +74,7 @@ $([], {
 		}
     }
 }, [
-    $i(("evaluate"), {
+    $i(("print"), {
     	onLoad() {
     		this.vars("eval", () => { 
     			var label = [this.vars(["resource.uri"]).split("/").pop()], value;
@@ -89,7 +89,11 @@ $([], {
     }),
     
 	$i("ace", { align: "left", width: 750 }),
-	$(("vcl/data/Array"), "array"),
+	$("vcl/data/Array", ("array"), {
+		onGetAttributeValue: function(name, index, value) { 
+			return (this._arr[index] || {})[name]; 
+		}
+	}),
 	
 	$("vcl/Action", ("toggle-source"), {
 		hotkey: "Shift+MetaCtrl+S",
@@ -113,7 +117,7 @@ $([], {
 		}
 	}),
 	
-	$(("vcl/ui/Bar"), [
+	$(("vcl/ui/Bar"), ("menu"), [
 		$("vcl/ui/Input", ("search-input"), { placeholder: locale("Search.placeholder") }),
 		$("vcl/ui/Element", "count", { content: "-" })
 	]),
@@ -163,9 +167,7 @@ $([], {
 			
 			scope.array.setArray(arr.map(function(values) {
 				var obj = {};
-				headers.forEach(function(key, index) {
-					obj[key] = values[index];
-				});
+				headers.forEach((key, index) => obj[key] = values[index]);
 				return obj;
 			}));
 		}

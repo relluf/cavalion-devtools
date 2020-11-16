@@ -88,10 +88,13 @@ $(["./Editor<js>"], {
         this.setTimeout("alignControls", 32);
     }
 }, [
-    $i(("evaluate"), {
+    $i(("print"), {
     	onLoad() {
     		this.vars("eval", () => this.ud("#instantiate").vars("root"));
     		return this.inherited(arguments);
+    	},
+    	onExecute() {
+    		return this.ud("#host").isVisible() ? this.inherited(arguments) : false;
     	}
     }),
 
@@ -198,7 +201,7 @@ $(["./Editor<js>"], {
     	$("vcl/ui/Tab", { action: "toggle-full-width", classes: "without-menu", text: locale(".full-width"), groupIndex: -4, visible: "always" })
 	]),
 	
-    $("vcl/ui/Panel", "host", { 
+    $("vcl/ui/Panel", ("host"), { 
     	action: "toggle-component", align: "client", 
     	selected: "never", executesAction: false, 
     	classes: "animated"
