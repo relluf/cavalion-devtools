@@ -2,6 +2,7 @@
 /*- ### 2020-10-29 Alphaview - Arcadis-demo inspired */
 /*- ### 2020-10-02 Console hook - SIKB12 inspired */
 var ListColumn = require("vcl/ui/ListColumn");
+var Event = require("util/Event");
 
 /*- Object.keys(VO.em.instances)
 		.reduce((a, k) => { 
@@ -252,7 +253,7 @@ var Factories = {
 	onLoad() { 
 		this.qsa("#load").execute(); 
 		this.vars("history", []);
-	} 
+	}
 }, [
 	["Executable", ("load"), {
 		on() {
@@ -301,11 +302,15 @@ var Factories = {
 								tabs.clearState("acceptChildNodes");
 								[].concat(c._controls).forEach(tab => tab.setParent(tabs));
 								tabs.setState("acceptChildNodes", true);
-								tabs._controls[0].setSelected(true)
+								tabs._controls[0].setSelected(true);
 							});
+						} else {
+							var arr = [];
+							for(var k in value) arr.push({key:k, value:value[k]});
+							root.down("#array").setArray(arr);
 						}
-						
 						root.down("#list").show();
+						
 						// root.down("#array").setArray(Object.values(value));
 					} else if(typeof value === "function") {
 						// root.down("#ace").show();
@@ -321,6 +326,22 @@ var Factories = {
 			
 		}
 	}],
+	["Executable", ("print"), {
+		hotkey: "MetaCtrl+Enter",
+		on() {
+			var a = this.ud("#array");
+			var q = this.ud("#q");
+			var ws = this.up("devtools/Workspace<>");
+			var objs = this.ud("#list").getSelection(true);
+			
+			if(objs.length === 0) {
+				ws = null;
+				objs = [].concat(a.getObjects());
+			}
+			
+			(ws || q).print(q.getValue() || "<all>", objs);
+		}
+	}],
 	
 	["Array", ("array"), { 
 		onFilterObject(obj) {
@@ -330,6 +351,9 @@ var Factories = {
 		},
 		onUpdate() {
 			this.ud("#list-status").render();
+		},
+		onGetAttributeValue(name, index, value) { 
+			return (this._arr[index] || {})[name]; 
 		}
 	}],
 	["Bar", ("bar") , [
@@ -440,7 +464,13 @@ var Factories = {
 				this.setTimeout("updateFilter", () => {
 					array.vars("q", this.getValue());
 					array.updateFilter();
+					this.ud("#list-status").render();
+					
+					// if(this.vars("enter-pressed")) {
+					// }
+					
 				}, 250); 
+				// this.removeVar("enter-pressed");
 			} 
 		}],
 		["Group", ("right"), [
@@ -448,26 +478,19 @@ var Factories = {
 			["Element", ("list-status"), { 
 				content: "-",
 				onRender() {
-					var status;
 					this.setTimeout(() => {
-						var arr = this.ud("#array");
-						if(!arr._array) return;
+						var arr = this.ud("#array"), status = [];
+						if(arr._array) {;
 						
-						var total = arr._array.length;
-						var filtered = this.ud("#q").getValue().length > 0 ? (arr._arr||[]).length : 0;
-						var selected = this.ud("#list").getSelection().length;
-						
-						if(filtered === 0 && selected === 0) {
-							status = js.sf("%d items", total);
-						} else {
-							status = js.sf("%d/%d", selected, filtered || total);
-						}
-						
-						if(filtered) {
-							status += js.sf(" (%d)", total);
-						}
-						
-						this.setContent(status);
+							var total = arr._array.length;
+							var filtered = this.ud("#q").getValue().length > 0 ? (arr._arr||[]).length : 0;
+							var selected = this.ud("#list").getSelection().length;
+							
+							selected && status.push(js.sf("%s (%d%%) selected", selected, selected/total*100));
+							filtered && status.push(js.sf("%d (%d%%) filtered", filtered, filtered/total*100));
+							status.push(js.sf("%d %s", total, status.length>1 ? "total" : "items"));
+						}						
+						this.setContent(status.join(" / "));
 					}, 250);
 				}
 			}]
