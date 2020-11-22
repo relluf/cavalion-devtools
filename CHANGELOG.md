@@ -1,3 +1,10 @@
+### 2020-11-22 - @1.0.22
+- Introducing **devtools/OpenLayers<Documents>**
+- tools/pouchdb/Sync: Pulling and pushing seems to be working now :-D
+
+### 2020-11-?? - @1.0.21
+- ?
+
 ### 2020-11-16 - @1.0.20
 - Developing Alphaview
 	- Introducing print (MetaCtrl+Enter)
