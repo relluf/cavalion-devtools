@@ -79,6 +79,7 @@ var Dygraph = require("dygraphs/Dygraph");
 // }
 
 ["vcl-comps:ui/dygraphs/Timeline", {
+	// css: "background-color:white;",
 	align: "client",
 	// vars: { draw: draw },
 	onShow() {
@@ -88,16 +89,16 @@ var Dygraph = require("dygraphs/Dygraph");
 			data = cons.sel[cons.sel.length - 1] || [];
 	    }
 // TODO save/restore period
-		this.print("onShow => TO - draw");
+		// this.print("onShow => TO - draw");
 		var draw = this.vars("draw");
 		this.setTimeout("draw", () => draw.apply(this, [data, {
 			legend: "always",
-			title: "Grondwaterstand 2020",
+			title: "Grondwaterstand",
 			showRoller: true,
 			rollPeriod: 240,
 			// errorBars: true,
 			// customBars: true,
-			ylabel: "Waterstand cm-mv",
+			ylabel: "Waterstand cm-NAP",
 			showRangeSelector: true,
 		    interactionModel: Dygraph.defaultInteractionModel
 			// rangeSelectorPlotFillColor: 'MediumSlateBlue',
@@ -114,5 +115,4 @@ var Dygraph = require("dygraphs/Dygraph");
 		["Button", { action: "history_back", content: "back" }],
 		["Button", { action: "history_forward", content: "forward" }]
 	]]
-
 ]];
