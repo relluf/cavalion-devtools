@@ -1,18 +1,23 @@
 "use js";
 
-var options = {
+var sync_options = {
 	live: true,
 	retry: true	
-}, push_options = {}, pull_options = {};
+}, 
 
-["Container", [
+push_options = {}, pull_options = {};
 
+[("Container"), [
 	["Executable", ("push"), {
-		onExecute() {
+		on() {
 			var PouchDB = require("pouchdb");
 			var console = this.udown("Console<>");
 			
 			var source = new PouchDB(this.udown("#source").getValue());
+			var target = new PouchDB(this.udown("#target").getValue());
+			
+			push_options.db = push_options.db || target;
+			
 			var push = source.push(push_options)
 				.on("change", function (info) {
 				  console.print("change", arguments[0]);
@@ -33,11 +38,15 @@ var options = {
 		}
 	}],
 	["Executable", ("pull"), {
-		onExecute() {
+		on() {
 			var PouchDB = require("pouchdb");
 			var console = this.udown("Console<>");
-			
+
 			var source = new PouchDB(this.udown("#source").getValue());
+			var target = new PouchDB(this.udown("#target").getValue());
+			
+			pull_options.db = pull_options.db || target;
+
 			var pull = source.pull(pull_options)
 				.on("change", function (info) {
 				  console.print("change", arguments[0]);
@@ -58,14 +67,14 @@ var options = {
 		}
 	}],
 	["Executable", ("sync"), {
-		onExecute() {
+		on() {
 			var PouchDB = require("pouchdb");
 			var console = this.udown("Console<>");
 			
 			var source = this.udown("#source").getValue();
 			var target = this.udown("#target").getValue();
 			
-			var sync = PouchDB.sync(source, target, options)
+			var sync = PouchDB.sync(source, target, sync_options)
 				.on("change", function (info) {
 				  console.print("change", arguments[0]);
 				}).on("paused", function (err) {
@@ -85,7 +94,7 @@ var options = {
 		}
 	}],
 	["Executable", ("cancel"), {
-		onExecute() {
+		on() {
 			var console = this.udown("Console<>");
 			try {
 				this.up().vars("sync").cancel();
@@ -94,7 +103,7 @@ var options = {
 			}
 		}
 	}],
-	["Bar", { css: "display: flex;" }, [
+	[("Bar"), { css: "display: flex;" }, [
 		["Button", { action: "push" }],
 		["Button", { action: "pull" }],
 		["Element", { content: "source" }],
@@ -106,17 +115,20 @@ var options = {
 		["Element", { content: "target" }],
 		["Input", ("target"), {
 			css: "flex: 4;",
-			value: "https://dbs.veldapps.com/ralphk-code-va_objects"
+			value: "https://dbs.veldapps.com/ralphk-arcadis-va_objects"
+			// value: "https://dbs.veldapps.com/ralphk-code-va_objects"
 		}],
 		["Button", { action: "cancel" }]
 		
 	]],
 	
-	["Console", { 
+	[("Console"), { 
 		css: "background-color:white;",
 		onLoad() {
 			this.print("this.up()", this.up());
-			this.print("options", options);
+			this.print("push_options", push_options);
+			this.print("pull_options", pull_options);
+			this.print("sync_options", sync_options);
 		}
 	}]
 ]];
