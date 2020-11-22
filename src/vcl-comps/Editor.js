@@ -285,8 +285,8 @@ var getKey = (tab) => {
                     	tab.app().confirm(String.format("404 - %s\n\nThis resource does not exist. Would you like to create it?", resource.uri), function(res) {
                     			if(res === true) {
                     				Resources.create(resource.uri, resource)
-                    					.then(_ => ace.print(_))
-                    					.catch(_ => ace.print(_));
+                    					.then(_ => tab.print(_))
+                    					.catch(_ => tab.print(_));
                     			}
                         	});
 
