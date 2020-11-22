@@ -75,7 +75,7 @@
 			return;
 		}
 
-		var ws_needed = this.udown("#workspace-needed");
+		var ws_needed = this.udr("#workspace-needed");
 		var ws_index = this.up("vcl/ui/Tab").getIndex();
 	
 		this.vars("additional-workspaces", false, []).map(function(ws, index) {

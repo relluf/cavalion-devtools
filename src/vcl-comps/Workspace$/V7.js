@@ -35,7 +35,7 @@ $([], {
 			}
 			
 	/*- TODO this should flow back to devtools/Workspace - double click the corresponding tab to expand/collapse sub tabs. The idea is that the hotkeys activate a workspace (Cmd+1..9 remain fixed to address/focus an area (code/vcl/blocks/veldapps) and then another key could be pressed (ie. rapidly) to select a sub-tab (eg. Cmd+1, 3)*/
-			var ws_needed = this.udown("#workspace-needed");
+			var ws_needed = this.udr("#workspace-needed");
 			var ws_index = this.up("vcl/ui/Tab").getIndex();
 		
 			this.vars("additional-workspaces", false, []).map(function(ws, index) {
