@@ -276,11 +276,11 @@ var Utils = {
 	    			return tab.getVar("resource.uri") === evt.resource.uri;
 	    		});
             }
+            
     		if(!tab) {
     		    if(!evt.formUri) { //?
     		    	this.vars("devtools/Editor")
     		    }
-    		    
     		    if(evt.resource.contentType && evt.resource.type !== "Folder") {
     		    	// TODO use contentType to determine which editor should be
     		    	var type = evt.resource.contentType.split("/").pop();
@@ -290,7 +290,6 @@ var Utils = {
     		    	// TODO form <---> editor
     		    	evt.formUri = evt.editorUri;
     		    }
-    		    
     		    if(!evt.formUri) {
     		    	var uri = (evt.resource.uri || "");
     			    var path = uri ? uri.split("/") : [];
@@ -312,15 +311,16 @@ var Utils = {
                     	}
                     }
     			}
+    		    
     			var on = this.vars("onGetEditorUri");
     			if(on) {
     				
     			}
-    			
-    			
+
 	            tab = scope['editor-factory'].execute(evt, this);
 	            tab.setVar("resource", evt.resource);
 	            tab.nodeNeeded();
+	
     		} else {
     		    if(evt.selected === true) {
     		        tab.setSelected(true);
@@ -329,6 +329,27 @@ var Utils = {
     		if(!evt.dontBringToFront) {
             	tab.setIndex(0);
     		}
+
+			// if(evt.onAvailable || evt.onResourceLoaded || evt.onResourceSaved || evt.onResourceRendered) {
+				var callback = (f, args) => {
+					return f && f.apply(this, args);
+				}, first = true;
+	            tab.once("editor-available", (e) => { first = false; callback(evt.onAvailable, [e]); });
+	            tab.on({
+	            // 	"resource-rendered"(e) { callback(evt.onResourceRendered, [e]); },
+	            	"resource-loaded"(e) { 
+	            		if(first) { tab.emit("editor-available", [e]); }
+	            		callback(evt.onResourceLoaded, [e]); 
+	            	},
+	            // 	"resource-saved"(e) { callback(evt.onResourceSaved, [e]); }
+	            });
+        	// }
+        	
+        	if(tab.down("#ace")) {
+    			tab.setTimeout("available", () => tab.emit("editor-available", []), 0);
+        	}
+        	
+
     		return tab;
         }
     }],
