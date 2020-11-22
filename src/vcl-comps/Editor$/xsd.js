@@ -592,7 +592,7 @@ me.print("parseElement.notHandled", xselem);
     	$(("vcl/ui/Bar"), [
     		$("vcl/ui/Input", "search-input", { classes: "search-top" }),
     	]),
-	    $i(("tabs"), [
+	    $i(("details-tabs"), [
 	    	$("vcl/ui/Tab", { text: locale("-/Import.plural"), control: "imports"  }),
 	    	$("vcl/ui/Tab", { text: "*" || locale("-/Star.symbol"), control: "allstars"}),
 	    	$("vcl/ui/Tab", { text: locale("-/Attribute.plural"), control: "attributes"}),

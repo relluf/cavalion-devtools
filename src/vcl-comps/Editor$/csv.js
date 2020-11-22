@@ -46,7 +46,6 @@ $([], {
         }
         return this.inherited(arguments);
     },
-
     handlers: {
 		"#array onFilterObject": function(obj, q) {
 			if((q = this.vars("q"))) {
@@ -74,6 +73,7 @@ $([], {
 		}
     }
 }, [
+	$i("ace", { align: "left", width: 750 }),
     $i(("print"), {
     	onLoad() {
     		this.vars("eval", () => { 
@@ -87,14 +87,7 @@ $([], {
     		return this.inherited(arguments);
     	}
     }),
-    
-	$i("ace", { align: "left", width: 750 }),
-	$("vcl/data/Array", ("array"), {
-		onGetAttributeValue: function(name, index, value) { 
-			return (this._arr[index] || {})[name]; 
-		}
-	}),
-	
+
 	$("vcl/Action", ("toggle-source"), {
 		hotkey: "Shift+MetaCtrl+S",
 		onLoad() {
@@ -114,26 +107,6 @@ $([], {
 				this.scope().ace.hide();
 			}
 			this.up().writeStorage("toggle-source-state", state);
-		}
-	}),
-	
-	$(("vcl/ui/Bar"), ("menu"), [
-		$("vcl/ui/Input", ("search-input"), { placeholder: locale("Search.placeholder") }),
-		$("vcl/ui/Element", "count", { content: "-" })
-	]),
-	
-	$("vcl/ui/List", ("list"), { 
-		align: "client", autoColumns: true, source: "array",
-		css: "background-color: white; min-width:100%;", 
-		onDblClick: function() {
-			this.print(this.getSelection(true));	
-		},
-		onColumnGetValue: function(column, value, row, source) {
-			value = this._source._arr[row][column._attribute];
-			if(column.getIndex() === 0) {
-				return row + " - " + value;
-			}
-			return value;
 		}
 	}),
 	$("vcl/Action", ("render"), {
@@ -165,11 +138,39 @@ $([], {
 			var arr = Parser.parse(scope.ace.getValue(), options).data;
 			var headers = arr.shift();
 			
-			scope.array.setArray(arr.map(function(values) {
+			arr = arr.map(function(values) {
 				var obj = {};
 				headers.forEach((key, index) => obj[key] = values[index]);
 				return obj;
-			}));
+			});
+			
+			scope.array.setArray(arr);
+			
+			this.up("vcl/ui/Tab").emit("resource-rendered", [{sender: this, data: arr}]);
+		}
+	}),
+
+	$("vcl/data/Array", ("array"), {
+		onGetAttributeValue: function(name, index, value) { 
+			return (this._arr[index] || {})[name]; 
+		}
+	}),
+	$("vcl/ui/Bar", ("menu"), [
+		$("vcl/ui/Input", ("search-input"), { placeholder: locale("Search.placeholder") }),
+		$("vcl/ui/Element", "count", { content: "-" })
+	]),
+	$("vcl/ui/List", ("list"), { 
+		align: "client", autoColumns: true, source: "array",
+		css: "background-color: white; min-width:100%;", 
+		onDblClick: function() {
+			this.print(this.getSelection(true));	
+		},
+		onColumnGetValue: function(column, value, row, source) {
+			value = this._source._arr[row][column._attribute];
+			if(column.getIndex() === 0) {
+				return row + " - " + value;
+			}
+			return value;
 		}
 	})
 ]);

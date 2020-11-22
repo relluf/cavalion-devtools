@@ -101,6 +101,7 @@ $([], {
 	
     $i(("refresh"), { enabled: false }),
     $i(("evaluate"), { enabled: false }),
+    $i(("print"), { enabled: false }),
     $i(("format"), { enabled: false }),
 	
 	// TODO have a .blocks-file for overridden stuff (#CVLN-20200802-1)
@@ -121,34 +122,59 @@ $([], {
 	}),
 	$("vcl/Action", ("editor-needed"), {
 		on(evt) {
+			if(typeof evt === "string") {
+				evt = { resource: { uri: evt } };
+			}
+			
 			var scope = this.scope();
 			evt.resource.uri = js.normalize(this.vars(["resource.uri"]) + "/", evt.resource.uri);
 
+    		var owner = this._owner;
 			var tabs = scope['editors-tabs']; 
 			var tab = (tabs._controls||[]).find(_ => _.vars("resource.uri") === evt.resource.uri);
-			if(tab) {
+			
+			if(!tab) {
+		    	var editor_needed = this.up("devtools/Workspace<>:root").down("#editor-needed");
+				tab = editor_needed.execute({
+					parents: {container: owner, tab: tabs},
+					resource: evt.resource,
+					selected: evt.selected,
+					owner: owner
+				});
+				if(evt.resource.type === "Folder") {
+					tab.addClass("bold");
+				}
+				tab.setCloseable(false);
+				tab.on("dblclick", function() { 
+					if(confirm("Do you want to close this resource?") === true) {
+						this.getControl().getForm().close();
+					}
+				});
+				
+			} else {
 				if(evt.selected) tab.setSelected(true);
-				return tab;
+				// return tab;
 			}
 
-    		var owner = this._owner;
-	    	var editor_needed = this.up("devtools/Workspace<>:root").down("#editor-needed");
+			// if(evt.onAvailable || evt.onResourceLoaded || evt.onResourceSaved || evt.onResourceRendered) {
+				var callback = (f, args) => {
+					return f && f.apply(this, args);
+				}, first = true;
+	            tab.once("editor-available", (e) => { first = false; callback(evt.onAvailable, [e]); });
+	            tab.on({
+	            // 	"resource-rendered"(e) { callback(evt.onResourceRendered, [e]); },
+	            	"resource-loaded"(e) { 
+	            		if(first) { tab.emit("editor-available", [e]); }
+	            		callback(evt.onResourceLoaded, [e]); 
+	            	},
+	            // 	"resource-saved"(e) { callback(evt.onResourceSaved, [e]); }
+	            });
+        	// }
+        	
+        	if(tab.down("#ace")) {
+    			tab.setTimeout("available", () => tab.emit("editor-available", []), 0);
+        	}
 			
-			tab = editor_needed.execute({
-				parents: {container: owner, tab: tabs},
-				resource: evt.resource,
-				selected: evt.selected,
-				owner: owner
-			});
-			if(evt.resource.type === "Folder") {
-				tab.addClass("bold");
-			}
-			tab.setCloseable(false);
-			tab.on("dblclick", function() { 
-				if(confirm("Do you want to close this resource?") === true) {
-					this.getControl().getForm().close();
-				}
-			});
 			return tab;
 		}
 	}),

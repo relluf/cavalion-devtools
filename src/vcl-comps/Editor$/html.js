@@ -38,6 +38,8 @@ var q$ = require("jquery");
 	}
 }, [
     [("#ace"), {
+        align: "left",
+        width: 750,
         onLoad: function() {
         	var scope = this.scope();
 	        var uri = this.vars(["resource.uri"]);
@@ -55,8 +57,28 @@ var q$ = require("jquery");
             	this.scope().render.execute();
         	}.bind(this), 250);
         },
-        align: "client"
     }],
+	[("vcl/Action"), "toggle-source", {
+		hotkey: "Shift+MetaCtrl+S",
+		onLoad() {
+			this.scope().ace.hide();
+			this.up().readStorage("toggle-source-state", (state) => {
+				this.setState(state === true);
+				if(state === true) {
+					this.scope().ace.show();	
+				}
+			});
+		},
+		onExecute() {
+			var state;
+			if((state = this.toggleState()) === true) {
+				this.scope().ace.show();
+			} else {
+				this.scope().ace.hide();
+			}
+			this.up().writeStorage("toggle-source-state", state);
+		}
+	}],
     [("vcl/Action"), "render", {
     	onExecute: function(evt) {
     		var scope = this.scope();
@@ -89,14 +111,14 @@ var q$ = require("jquery");
         	try { 
         		scope.preview.update(_ => pos.forEach(p => q$(p[0]).scrollTop(p[1])));
         		// scope.preview.update(_ => pos.forEach(p => document.querySelector(p[0]).scrollTop = p[1]));
+				this._owner.emit("resource-rendered", [{sender: this.up()}]);
         	} catch(e) {
         		// Ni modo...
         	}
         },
     }],
     [("vcl/ui/Panel"), "preview", {
-        align: "right",
-        width: 375,
+        align: "client",
         css: { 
             "background-color": "#f0f0f0", 
             "border-left": "1px solid silver",
