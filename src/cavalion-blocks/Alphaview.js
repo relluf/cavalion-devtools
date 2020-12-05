@@ -439,6 +439,11 @@ var Factories = {
 			if(selection.length === 0) {
 				selection = this.ud("#array")[filtered ? '_arr' : '_array'];
 			}
+			
+			var getFloat = (obj, keys) => {
+				return parseFloat(obj[keys.filter(key => 
+					obj.hasOwnProperty(key)).pop()]);
+			}
 
 			var gj = {
 				type: "FeatureCollection", 
@@ -448,8 +453,8 @@ var Factories = {
 						geometry: {
 							type: "Point",
 							coordinates: [
-								parseFloat(_.x || _.X || _.xcoord), 
-								parseFloat(_.y || _.Y || _.ycoord)
+								getFloat(_, ["x", "X", "xcoord", "rd_x"]), 
+								getFloat(_, ["y", "Y", "ycoord", "rd_y"])
 							]
 						},
 						properties: _
