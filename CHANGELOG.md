@@ -1,3 +1,9 @@
+### 2020-12-04 - @1.0.24
+- **Alphaview**: Improving/extending map_xy
+
+### 2020-12-27 - @1.0.23
+- ?
+
 ### 2020-11-22 - @1.0.22
 - Introducing **devtools/OpenLayers<Documents>**
 - tools/pouchdb/Sync: Pulling and pushing seems to be working now :-D
