@@ -1,4 +1,4 @@
-"use fast-xml-parser, xml-funcs, veldapps-imsikb/util, veldapps-imkl/util, vcl/ui/ListColumn";
+"use blocks, fast-xml-parser, xml-funcs, veldapps-imsikb/util, veldapps-imkl/util, vcl/ui/ListColumn";
 
 function match(obj, q) {
 	q = q.toLowerCase();	
