@@ -100,9 +100,18 @@ var Dygraph = require("dygraphs/Dygraph");
 			// customBars: true,
 			ylabel: "Waterstand cm-NAP",
 			showRangeSelector: true,
-		    interactionModel: Dygraph.defaultInteractionModel
+		    interactionModel: Dygraph.defaultInteractionModel,
+			rangeSelectorPlotStrokeColor: "navy",
+			rangeSelectorPlotFillColor: "rgba(56, 121, 217, 0)",
+			rangeSelectorPlotFillGradientColor: "rgba(56, 121, 217, 1)",
+			
+			rangeSelectorHeight: 150,
+			
+		    // rangeSelectorBackgroundColor: "yellow",
 			// rangeSelectorPlotFillColor: 'MediumSlateBlue',
-			// rangeSelectorPlotFillGradientColor: 'rgba(123, 104, 238, 0)',
+			// rangeSelectorGradientFillColor: 'rgba(123, 104, 238, 0)',
+			// rangeSelectorBackgroundStrokeColor: "red",
+			
 			// colorValue: 0.9,
 			// fillAlpha: 0.4				
 		}]));
