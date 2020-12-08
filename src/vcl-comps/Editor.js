@@ -320,6 +320,9 @@ var getKey = (tab) => {
                 break;
 
             case "xml":
+            case "svg":
+            case "html":
+            case "xsd":
                 editor.setValue(Xml.beautify(editor.getValue()));
                 break;
 
