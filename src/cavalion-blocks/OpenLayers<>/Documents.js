@@ -35,6 +35,7 @@ function isResourceSupported(resource) {
 		[("Node"), "root-documents", {
 			text: "Documents",
 			expandable: true,
+			index: 0,
 			onKeyDown(evt) {
 				if(evt.keyCode === evt.KEY_F5) {
 					this.reloadChildNodes();	
