@@ -1,3 +1,8 @@
+### 2020-12-08 - @1.0.25
+- Beautifying more XML-formats (although the formatter seems broken)
+- `#VA-20201207-1`
+
+
 ### 2020-12-04 - @1.0.24
 - **Alphaview**: Improving/extending map_xy
 
