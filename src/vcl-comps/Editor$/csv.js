@@ -165,12 +165,12 @@ $([], {
 		onDblClick: function() {
 			this.print(this.getSelection(true));	
 		},
-		onColumnGetValue: function(column, value, row, source) {
-			value = this._source._arr[row][column._attribute];
-			if(column.getIndex() === 0) {
-				return row + " - " + value;
-			}
-			return value;
-		}
+		// onColumnGetValue: function(column, value, row, source) {
+		// 	value = this._source._arr[row][column._attribute];
+		// 	if(column.getIndex() === 0) {
+		// 		return row + " - " + value;
+		// 	}
+		// 	return value;
+		// }
 	})
 ]);

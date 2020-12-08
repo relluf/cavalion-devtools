@@ -21,8 +21,46 @@ var ListColumn = require("vcl/ui/ListColumn");
 
 /*- TODO `#CLVN-20201024-1` Infra for Editor<xml>-detailViews */
 var DetailViews = {
-	imsikb0101: // Alpha, Geo, Profiles
-		["Container", { 
+	imsikb0101: ["devtools/Alphaview", {
+		visible: false,
+		vars: { selected: true },
+		onLoad() { 
+			var root = this.vars(["root"]);
+			var parsed = require("veldapps-imsikb/util").parse(root);
+			// var tabs = [];
+			// for(var ent in parsed.entities) {
+			// 	tabs.push(["Tab", { 
+			// 		textReflects: "innerHTML",
+			// 		text: js.sf("%H <small>(%d)</small>", ent.split(":").pop(), 
+			// 			parsed.entities[ent].length), 
+			// 		vars: { array: parsed.entities[ent] }
+			// 	}]);
+			// }
+
+			this.vars("root:parsed", parsed);
+			this.ud("#reflect").execute([parsed.entities]);
+			this.vars("history", []);
+
+			// if(tabs.length) {						
+			// 	B.i(["Container", tabs]).then(c => {
+			// 		var tabs = this.scope().tabs;
+			// 		tabs.clearState("acceptChildNodes");
+			// 		[].concat(c._controls).forEach(tab => tab.setParent(tabs));
+			// 		tabs.setState("acceptChildNodes", true);
+			// 		tabs._controls[0].setSelected(true);
+			// 	});
+			// }
+		}
+	}, [
+		["#load", {
+			on() {
+				this.ud("#reflect").execute(sel);
+			}
+		}],
+		
+	]],
+	// Alpha, Geo, Profiles
+	imsikb0101_: ["Container", { 
 			css: {
 				// "#bar > *": "margin-right:5px;",
 				// "#bar input": "border-radius: 5px; border-width: 1px; padding: 2px 4px; border-color: #f0f0f0;"
@@ -356,7 +394,7 @@ var DetailViews = {
     	action: "toggle-source",
     	executesAction: "none"
     }],
-    [("#evaluate"), {
+    [("#print"), {
     	onLoad() {
     		this.vars("eval", () => this.vars(["root"]));
     		return this.inherited(arguments);
