@@ -68,6 +68,7 @@ var Factories = {
 					"sam:relatedSamplingFeature", 
 					"@_xlink:href-resolved", 
 					"imsikb0101:Borehole"], rsf))
+			.filter(bh => bh) // filter undefineds
 			.forEach(bh => {
 				if(!boreholes.includes(bh)) {
 					boreholes.push(bh);
@@ -95,43 +96,17 @@ var Factories = {
 					"sam:relatedSamplingFeature", 
 					"@_xlink:href-resolved", 
 					"imsikb0101:Borehole"], rsf))
+			.filter(bh => bh) // filter undefineds
 			.forEach(bh => {
 				if(!boreholes.includes(bh)) {
 					boreholes.push(bh);
 				}
-				var project = js.get(["imsikb0101:usedInProject", 
-					"@_xlink:href-resolved", "imsikb0101:Project"], bh);
-				if(project && !projects.includes(project)) {
-					projects.push(project);
-				}
+				// var project = js.get(["imsikb0101:usedInProject", 
+				// 	"@_xlink:href-resolved", "imsikb0101:Project"], bh);
+				// if(project && !projects.includes(project)) {
+				// 	projects.push(project);
+				// }
 			});
-			// .filter(rsf => {
-			// 	var urn = js.get("sam:SamplingFeatureComplex.sam:role.@_xlink:href", rsf) || "";
-			// 	return ["9", "10"].includes(urn.split(":").pop());
-			// })
-			// .map(rsf => Array
-			// 	.as(js.get(["sam:SamplingFeatureComplex", "sam:relatedSamplingFeature", 
-			// 		"@_xlink:href-resolved", "imsikb0101:Sample", 
-			// 		"sam:relatedSamplingFeature"], rsf) || [])
-			// 	.filter(rsf => {
-			// 		var urn = js.get("sam:SamplingFeatureComplex.sam:role.@_xlink:href", rsf) || "";
-			// 		return urn.endsWith(":id:6");
-			// 	})
-			// 	.map(rsf => js.get(["sam:SamplingFeatureComplex", 
-			// 			"sam:relatedSamplingFeature", 
-			// 			"@_xlink:href-resolved", 
-			// 			"imsikb0101:Borehole"], rsf))
-			// 	.forEach(bh => {
-			// 		if(!boreholes.includes(bh)) {
-			// 			boreholes.push(bh);
-			// 		}
-			// 		var project = js.get(["imsikb0101:usedInProject", 
-			// 			"@_xlink:href-resolved", "imsikb0101:Project"], bh);
-			// 		if(project && !projects.includes(project)) {
-			// 			projects.push(project);
-			// 		}
-			// 	})
-			// );
 
 		return {
 			boreholes: boreholes.filter(_ => _['immetingen:geometry']),
@@ -228,15 +203,16 @@ var Factories = {
 							"sam:relatedSamplingFeature", 
 							"@_xlink:href-resolved", 
 							"imsikb0101:Borehole"], rsf))
+					.filter(bh => bh) // filter undefineds
 					.forEach(bh => {
 						if(!boreholes.includes(bh)) {
 							boreholes.push(bh);
 						}
-						var project = js.get(["imsikb0101:usedInProject", 
-							"@_xlink:href-resolved", "imsikb0101:Project"], bh);
-						if(project && !projects.includes(project)) {
-							projects.push(project);
-						}
+						// var project = js.get(["imsikb0101:usedInProject", 
+						// 	"@_xlink:href-resolved", "imsikb0101:Project"], bh);
+						// if(project && !projects.includes(project)) {
+						// 	projects.push(project);
+						// }
 					})
 				);
 
@@ -334,13 +310,15 @@ var Factories = {
 			var q = this.ud("#q");
 			var ws = this.up("devtools/Workspace<>");
 			var objs = this.ud("#list").getSelection(true);
+			var selected = this.ud("#tabs").getSelectedControl(1);
+			selected = selected && selected.vars("key");
 			
 			if(objs.length === 0) {
 				ws = null;
 				objs = [].concat(a.getObjects());
 			}
 			
-			(ws || q).print(q.getValue() || "<all>", objs);
+			(ws || q._owner).print(q.getValue() || selected || "<all>", objs);
 		}
 	}],
 	["Executable", ("map"), {
@@ -353,22 +331,24 @@ var Factories = {
 			}
 			
 			var key = this.ud("#tabs").getSelectedControl(1).vars("key");
-			var f = Factories[key];
-			
+			var f = Factories[key] || Factories[key.split(":").pop()];
 			this.print("selection", selection.map(
 				obj => js.mixIn({ '@_va:geometry': f(obj) }, obj)));
 				
 			var gj = { type: "FeatureCollection", features: []};
 
 			selection.map(obj => {
-				var geoms = f(obj);
+				var geoms = f(obj) || {};
 				var proj = "EPSG:28992";
 				var propPath = ["imsikb0101:geometry", "gml:Polygon", "gml:exterior", 
 					"gml:LinearRing", "gml:posList"];
 				(geoms.projects||[])
 					.filter(project => js.get(propPath, project))
 					.forEach(project => {
-						var posList = js.get(propPath, project).split(" ").map(f => parseFloat(f));
+						var posList = js.get(propPath, project);
+						if(posList['#text']) posList = posList['#text'];
+						
+						posList = posList.split(" ").map(f => parseFloat(f));
 						// 86882.7455 468217.1085 86894.871 468217.1085 86896.555 468203.299 86899.5865 468185.4475 86903.7235 468172.399 86914.7435 468157.828 86927.2055 468147.7235 86940.005 468141.9975 86931.2475 468114.715 86912.7225 468115.3885 86884.0925 468117.7465 86897.2285 468163.891 86884.4295 468195.552 86882.7455 468217.1085
 						var coords = [];
 						while(posList.length) {
