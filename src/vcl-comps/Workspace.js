@@ -92,7 +92,6 @@ var Utils = {
     }
 };
 
-
 [["ui/Form"], {
     onLoad: function() {
         var scope = this.scope();
@@ -423,7 +422,7 @@ var Utils = {
     
     ["vcl/ui/Panel", ("left-sidebar"), { align: "left", css: "border-right: 1px solid gray;", width: 375 }, [
     	
-        ["vcl/ui/Tabs#left-sidebar-tabs", [
+        ["vcl/ui/Tabs", ("left-sidebar-tabs"), [
             ["vcl/ui/Tab", { text: locale("Navigator"), control: "navigator", selected: true }],
             ["vcl/ui/Tab", { text: locale("Open Tabs"), control: "openTabs" }],
             ["vcl/ui/Tab", { text: locale("Console"), control: "console" }],
@@ -431,7 +430,7 @@ var Utils = {
             ["vcl/ui/Tab", { text: locale("Outline"), control: "outline" }],
             ["vcl/ui/Tab", { text: locale("Bookmarks"), control: "bookmarks", visible: false }],
             ["vcl/ui/Tab", { text: locale("Search"), control: "search-panel", visible: false }],
-            $(["ui/controls/SizeHandle"], { classes: "horizontal", vars: "control: left-sidebar;" })
+           
         ]],
 
         [["./Navigator<>"], "navigator"],
@@ -446,7 +445,7 @@ var Utils = {
         ["vcl/ui/Panel", "inspector-panel", { align: "client", visible: false }]
     ]],
     ["vcl/ui/Panel", ("editors"), { align: "client", css: "background-color: silver;" }, [
-        ["vcl/ui/Tabs", "editors-tabs", {
+        ["vcl/ui/Tabs", ("editors-tabs"), {
             onChange: function(tab, previous) {
 // TODO tell application to render it's title
                 var title = this.app().getTitle(), me = this;
@@ -470,6 +469,20 @@ var Utils = {
             			}
             	});
             }
-        }]
+        }, [
+            [["ui/controls/SizeHandle"], { 
+            	classes: "horizontal left", 
+            	vars: "control: left-sidebar;",
+            	onDragStart(evt) { 
+					// #TOFR-20210102-0 - tracks dragstart so that next onClick can be ignored (dragend doesn't get triggered)
+            		this.vars("ignore-click", true); 
+            	},
+            	onClick(evt) { 
+					// #TOFR-20210102-0
+            		if(!this.vars("ignore-click")) this.vars(["toggleSidebar"])(evt);
+            		this.vars("ignore-click", false);
+            	}
+            }]
+        ]]
     ]] 
 ]];
