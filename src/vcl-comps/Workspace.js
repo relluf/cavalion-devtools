@@ -423,27 +423,27 @@ var Utils = {
     
     ["vcl/ui/Panel", ("left-sidebar"), { align: "left", css: "border-right: 1px solid gray;", width: 375 }, [
     	
-        $("vcl/ui/Tabs#left-sidebar-tabs", [
-            $("vcl/ui/Tab", { text: locale("Navigator"), control: "navigator", selected: true }),
-            $("vcl/ui/Tab", { text: locale("Open Tabs"), control: "openTabs" }),
-            $("vcl/ui/Tab", { text: locale("Console"), control: "console" }),
-            // $("vcl/ui/Tab", { text: locale("Scratch"), control: "scratch" }),
-            $("vcl/ui/Tab", { text: locale("Outline"), control: "outline" }),
-            $("vcl/ui/Tab", { text: locale("Bookmarks"), control: "bookmarks", visible: false }),
-            $("vcl/ui/Tab", { text: locale("Search"), control: "search-panel", visible: false }),
+        ["vcl/ui/Tabs#left-sidebar-tabs", [
+            ["vcl/ui/Tab", { text: locale("Navigator"), control: "navigator", selected: true }],
+            ["vcl/ui/Tab", { text: locale("Open Tabs"), control: "openTabs" }],
+            ["vcl/ui/Tab", { text: locale("Console"), control: "console" }],
+            // ["vcl/ui/Tab", { text: locale("Scratch"), control: "scratch" }],
+            ["vcl/ui/Tab", { text: locale("Outline"), control: "outline" }],
+            ["vcl/ui/Tab", { text: locale("Bookmarks"), control: "bookmarks", visible: false }],
+            ["vcl/ui/Tab", { text: locale("Search"), control: "search-panel", visible: false }],
             $(["ui/controls/SizeHandle"], { classes: "horizontal", vars: "control: left-sidebar;" })
-        ]),
+        ]],
 
-        $(["./Navigator<>"], "navigator"),
-        $(["./Bookmarks"], "bookmarks", { align: "client", visible: false }),
-        $(["./Outline"], "outline", { _align: "client", visible: false }),
-        $(["./OpenTabs"], "openTabs", { visible: false }),
-        $(["./Console"], "console", { visible: false }),
+        [["./Navigator<>"], "navigator"],
+        [["./Bookmarks"], "bookmarks", { align: "client", visible: false }],
+        [["./Outline"], "outline", { _align: "client", visible: false }],
+        [["./OpenTabs"], "openTabs", { visible: false }],
+        [["./Console"], "console", { visible: false }],
         
         // $("vcl/ui/Ace", "scratch", { align: "client", visible: false }),
 
-        $("vcl/ui/Panel", "search-panel", { align: "client", visible: false }),
-        $("vcl/ui/Panel", "inspector-panel", { align: "client", visible: false })
+        ["vcl/ui/Panel", "search-panel", { align: "client", visible: false }],
+        ["vcl/ui/Panel", "inspector-panel", { align: "client", visible: false }]
     ]],
     ["vcl/ui/Panel", ("editors"), { align: "client", css: "background-color: silver;" }, [
         ["vcl/ui/Tabs", "editors-tabs", {
