@@ -1,7 +1,14 @@
-### 2020-12-08 - @1.0.25
-- Beautifying more XML-formats (although the formatter seems broken)
-- `#VA-20201207-1`
+### 2021-01-02 - @1.0.26
+`#TOFR-20210102-0`
 
+- Improves the **Keys**-tool displaying human-readable names for keys and utilizing new App-toast features
+- Adds CSV-export to the **AlphaView**-tool
+
+
+### 2020-12-08 - @1.0.25
+`#VA-20201207-1`
+
+- Beautifying more XML-formats (although the formatter seems broken)
 
 ### 2020-12-04 - @1.0.24
 - **Alphaview**: Improving/extending map_xy
