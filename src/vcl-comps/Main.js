@@ -83,7 +83,7 @@ function focusSidebar(ws, sidebar) {
 	    	".{Tab}.selected": "padding-left:8px;"
 	    },
 	    "#editors-tabs": {
-	    	// "": "background-color:white;",
+	    	"": "padding-left:12px;",
 	    	".{Tab}": "border-top-left-radius:5px; border-top-right-radius:5px;",
 	    	".{Tab}.selected": "padding-left:8px;"
 	    },
@@ -125,8 +125,10 @@ function focusSidebar(ws, sidebar) {
         
         /*- nested devtools/Main<> will initialize at their default worksapces*/
         if(this.up("devtools/Main<>") === null && workspaces) {
+        	this.print("creating workspaces based upon url", workspaces);
         	createWorkspaces(workspaces.split(",").map(_ => ({name: _})));
         } else {
+        	this.print("creating workspaces based upon vars", this.vars("default-workspaces"));
             createWorkspaces(this.vars("default-workspaces") || []);
         }
         this.readStorage("state", function(state) {
@@ -255,6 +257,9 @@ function focusSidebar(ws, sidebar) {
 				});
 			}
 		}
+		
+		// #TOFR-20210102-0
+		me.vars("toggleSidebar", (evt) => toggleSidebar(evt));
 		
 		/*- Sidebar Shift+Cmd+E */
 		HotkeyManager.register("Shift+Meta+48", { type: "keydown",  callback: toggleSidebar });
