@@ -28,6 +28,7 @@ function objectAsTabs() {
 }
 
 var css = {
+	"background": "#f0f0f0",
 	"#bar": "text-align: center;",
 	"#bar > *": "margin-right:5px;",
 	"#bar input": "font-size:12pt;width:300px;max-width:50%; border-radius: 5px; border-width: 1px; padding: 2px 4px; border-color: #f0f0f0;",

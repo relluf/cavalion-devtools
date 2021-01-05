@@ -30,6 +30,7 @@ var getKeyName = (key) => {
 };
 
 ["Console", {
+	css: "background:#f0f0f0;",
 	onLoad() {
 		var app = this.app();
 		this.vars("li", HKM.register({
