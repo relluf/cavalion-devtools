@@ -13,12 +13,18 @@ var Tab = {
 	},
     render: function () {
         var node = this.getNode();
-        var title = this.vars("resource.uri") || "New";
+        var uri = this.vars("resource.uri") || "New";
         var folder = this.vars("resource.type") === "Folder";
-        var text = title.split("/").pop();
+        var title = uri.split("/");
+        
+        if(uri.endsWith("/")) {
+        	folder = true;
+        	title.pop(); 
+        }
+    	title = this.vars("resource.title") || title.pop();
 
-        node.title = title;
-        node.down(".text").textContent = this.vars("modified") ? "* " + text : text;
+        node.title = uri;
+        node.down(".text").textContent = this.vars("modified") ? "* " + title : title;
         
         var ace = this.qs("vcl/ui/Ace");
         if(!folder && ace /*&& ace.isVisible()*/) {
@@ -201,6 +207,98 @@ var Utils = {
             return tab;
         }
     }],
+    ["vcl/Action", ("editor-needed"), {
+        onExecute: function(evt) {
+            var scope = this.scope(), tab;
+            if(typeof evt === "string") {
+            	evt = { resource:{ uri: evt, type: evt.startsWith("folder:") ? "Folder" : "File" } };
+            }
+            if(!evt.resource) { evt.resource = { uri: "" } };
+            
+            if(!evt.parents) {
+	    		var tabs = scope['editors-tabs'].getControls();
+	    		tab = tabs.find(function(tab) {
+	    			return tab.getVar("resource.uri") === evt.resource.uri;
+	    		});
+            }
+            
+    		if(!tab) {
+    		    if(!evt.formUri) { //?
+    		    	this.vars("devtools/Editor")
+    		    }
+    		    if(evt.resource.contentType && evt.resource.type !== "Folder") {
+    		    	// TODO use contentType to determine which editor should be
+    		    	var type = evt.resource.contentType.split("/").pop();
+    		    	evt.editorUri = js.sf("devtools/Editor<%s>", type);
+    		    }
+    		    if(evt.editorUri) {
+    		    	// TODO form <---> editor
+    		    	evt.formUri = evt.editorUri;
+    		    }
+    		    if(!evt.formUri) {
+    		    	var uri = (evt.resource.uri || "");
+    			    var path = uri ? uri.split("/") : [];
+    			    var ext = path[path.length - 1] || "";
+    			    ext = ext.indexOf(".") !== -1 ? ext.split(".").pop() : "";
+    			    if(evt.resource.type === "Folder") {
+    			    	evt.formUri = "devtools/Editor<folder>";
+    			    } else if(path.indexOf("vcl-comps") !== -1 && ext === "js") {
+                        evt.formUri = "devtools/Editor<vcl>";
+    			    } else if(path.indexOf("cavalion-blocks") !== -1 && ext === "js") {
+                        evt.formUri = "devtools/Editor<blocks>";
+    			    } else if(path.length > 1 && uri.indexOf("/var/log/") !== -1) {
+    			    	// TODO #CVLN-20200926-1 find some registration system for these Editor-descendants
+    			    	evt.formUri = "devtools/Editor<var/log>";
+    			    } else if(uri.indexOf("ElliTrack-") !== -1 && uri.endsWith(".txt")) {
+    			    	evt.formUri = "devtools/Editor<tsv/ElliTrack>";
+                    } else {
+                    	if(ext) {
+    			        	evt.formUri = String.format("devtools/Editor<%s>", ext);
+                    	}
+                    }
+    			}
+    		    
+    			var on = this.vars("onGetEditorUri");
+    			if(on) {
+    				
+    			}
+
+	            tab = scope['editor-factory'].execute(evt, this);
+	            tab.setVar("resource", evt.resource);
+	            tab.nodeNeeded();
+	
+    		} else {
+    		    if(evt.selected === true) {
+    		        tab.setSelected(true);
+    		    }
+    		}
+    		if(!evt.dontBringToFront) {
+            	tab.setIndex(0);
+    		}
+
+			// if(evt.onAvailable || evt.onResourceLoaded || evt.onResourceSaved || evt.onResourceRendered) {
+				var callback = (f, args) => {
+					return f && f.apply(this, args);
+				}, first = true;
+	            tab.once("editor-available", (e) => { first = false; callback(evt.onAvailable, [e]); });
+	            tab.on({
+	            // 	"resource-rendered"(e) { callback(evt.onResourceRendered, [e]); },
+	            	"resource-loaded"(e) { 
+	            		if(first) { tab.emit("editor-available", [e]); }
+	            		callback(evt.onResourceLoaded, [e]); 
+	            	},
+	            // 	"resource-saved"(e) { callback(evt.onResourceSaved, [e]); }
+	            });
+        	// }
+        	
+        	if(tab.down("#ace")) {
+    			tab.setTimeout("available", () => tab.emit("editor-available", []), 0);
+        	}
+        	
+
+    		return tab;
+        }
+    }],
     ["vcl/Action", ("editors-next"), {
     	onExecute: function() {
 			var tabs = this.up().qsa("#editors-tabs:visible");
@@ -259,97 +357,6 @@ var Utils = {
             this.scope("editor-factory")
             	.execute(evt)
             	.setSelected(true);
-        }
-    }],
-    ["vcl/Action", ("editor-needed"), {
-        onExecute: function(evt) {
-            var scope = this.scope(), tab;
-            if(typeof evt === "string") {
-            	evt = { resource:{ uri: evt, type: evt.startsWith("folder:") ? "Folder" : "File" } };
-            }
-            if(!evt.resource) { evt.resource = { uri: "" } };
-            
-            if(!evt.parents) {
-	    		var tabs = scope['editors-tabs'].getControls();
-	    		tab = tabs.find(function(tab) {
-	    			return tab.getVar("resource.uri") === evt.resource.uri;
-	    		});
-            }
-            
-    		if(!tab) {
-    		    if(!evt.formUri) { //?
-    		    	this.vars("devtools/Editor")
-    		    }
-    		    if(evt.resource.contentType && evt.resource.type !== "Folder") {
-    		    	// TODO use contentType to determine which editor should be
-    		    	var type = evt.resource.contentType.split("/").pop();
-    		    	evt.editorUri = js.sf("devtools/Editor<%s>", type);
-    		    }
-    		    if(evt.editorUri) {
-    		    	// TODO form <---> editor
-    		    	evt.formUri = evt.editorUri;
-    		    }
-    		    if(!evt.formUri) {
-    		    	var uri = (evt.resource.uri || "");
-    			    var path = uri ? uri.split("/") : [];
-    			    var ext = /*uri.indexOf("<") === -1 && */uri.indexOf(".") !== -1 ? uri.split(".").pop() : "";
-    			    if(evt.resource.type === "Folder") {
-    			    	evt.formUri = "devtools/Editor<folder>";
-    			    } else if(path.indexOf("vcl-comps") !== -1 && ext === "js") {
-                        evt.formUri = "devtools/Editor<vcl>";
-    			    } else if(path.indexOf("cavalion-blocks") !== -1 && ext === "js") {
-                        evt.formUri = "devtools/Editor<blocks>";
-    			    } else if(path.length > 1 && uri.indexOf("/var/log/") !== -1) {
-    			    	// TODO #CVLN-20200926-1 find some registration system for these Editor-descendants
-    			    	evt.formUri = "devtools/Editor<var/log>";
-    			    } else if(uri.indexOf("ElliTrack-") !== -1 && uri.endsWith(".txt")) {
-    			    	evt.formUri = "devtools/Editor<tsv/ElliTrack>";
-                    } else {
-                    	if(ext) {
-    			        	evt.formUri = String.format("devtools/Editor<%s>", ext);
-                    	}
-                    }
-    			}
-    		    
-    			var on = this.vars("onGetEditorUri");
-    			if(on) {
-    				
-    			}
-
-	            tab = scope['editor-factory'].execute(evt, this);
-	            tab.setVar("resource", evt.resource);
-	            tab.nodeNeeded();
-	
-    		} else {
-    		    if(evt.selected === true) {
-    		        tab.setSelected(true);
-    		    }
-    		}
-    		if(!evt.dontBringToFront) {
-            	tab.setIndex(0);
-    		}
-
-			// if(evt.onAvailable || evt.onResourceLoaded || evt.onResourceSaved || evt.onResourceRendered) {
-				var callback = (f, args) => {
-					return f && f.apply(this, args);
-				}, first = true;
-	            tab.once("editor-available", (e) => { first = false; callback(evt.onAvailable, [e]); });
-	            tab.on({
-	            // 	"resource-rendered"(e) { callback(evt.onResourceRendered, [e]); },
-	            	"resource-loaded"(e) { 
-	            		if(first) { tab.emit("editor-available", [e]); }
-	            		callback(evt.onResourceLoaded, [e]); 
-	            	},
-	            // 	"resource-saved"(e) { callback(evt.onResourceSaved, [e]); }
-	            });
-        	// }
-        	
-        	if(tab.down("#ace")) {
-    			tab.setTimeout("available", () => tab.emit("editor-available", []), 0);
-        	}
-        	
-
-    		return tab;
         }
     }],
     ["vcl/Action", ("editor-next"), {
