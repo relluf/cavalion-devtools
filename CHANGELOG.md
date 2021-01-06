@@ -1,4 +1,14 @@
-### 2021-01-02 - @1.0.26
+### 2021/01/05 - @1.0.27
+`#CLVN-20210102-2`
+
+* Adds anchor handling in Markdown documents
+
+### 2021/01/03
+
+* Fixes a bug in [devtools/Editor<>](code:) where loading files without extension would potentially crash
+* BUG devtools/Editor-tab-text: if no name and folder => use folder name
+
+### 2021/01/02 - @1.0.26
 `#TOFR-20210102-0`
 
 - Improves the **Keys**-tool displaying human-readable names for keys and utilizing new App-toast features
