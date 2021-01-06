@@ -1,37 +1,81 @@
-"use on, markdown";
+"use on, markdown, blocks/Factory";
 
 /*-
 
-### 2021/01/04
+### 2021/01/04, 05
 
 * Updating syntax
 * Adds anchor click-handling (`#CVLN-20210102-2`)
 */
-// document.addEventListener("click", (evt) => {
-// 	var anchor = evt.target.up("A", true);
-// 	if(anchor) {
-// 		var href = anchor.href || "";
-// 		if(href.startsWith("code:")) {
-// 			var control = require("vcl/Control").findByNode(anchor);
-// 			var base = control.vars(["resource.uri"]);
-// 			var uri = js.normalize(base, href.substring(href.indexOf("//") + 2));
-// 			var tab = control.udr("#editor-needed").execute({
-// 				resource:{ 
-// 					uri: uri, 
-// 					type: uri.endsWith("/") ? "Folder" : "File",
-// 					title: href.substring(href.indexOf("//") + 2)
-// 				},
-// 				selected: true
-// 			});
-			
-// 			// this.print("prevent click", {anchor: anchor, tab: tab});
-// 			evt.preventDefault();
-// 		}
-// 	}
-// });
 
 var on = require("on");
 var markdown = require("markdown");
+var resolveUri = require("blocks/Factory").resolveUri;
+
+function editorNeeded(control, evt) {
+	if(evt.metaKey === true) {
+		return control.up("devtools/Workspace<>:root").down("#editor-needed");
+	}
+	return control.udr("#editor-needed");
+}
+document.addEventListener("click", (evt) => {
+	var anchor = evt.target.up("A", true);
+	if(anchor) {
+		evt.preventDefault();
+
+		var control = require("vcl/Control").findByNode(anchor);
+		if(!control) {
+			return;
+		}
+
+		var href = js.get("attributes.href.value", anchor) || "";
+		var fslash = href.indexOf("/"), tools;
+
+		if(href === "") {
+			href = anchor.textContent;
+		} else if(href === ":") {
+			href = "tools://" + anchor.textContent;
+		}
+		
+		if(href.startsWith("https://") || 
+			href.startsWith("http://") || 
+			href.startsWith("file://") ||
+			href.startsWith("ftp://")
+		) {
+			return window.open(href, "_blank");
+		}
+		
+		if(href.startsWith("tools:")) {
+			tools = true;
+			href = href.substring("tools:".length);
+		} else if(href.indexOf(":") > fslash && fslash > -1) {
+			href = href.replace(":", anchor.textContent);
+		}
+		
+		// links are relative to the resource
+		var base = control.vars(["resource.uri"]);
+		var tab, uri;
+		
+		if(tools) {
+			uri = js.normalize(base, href.charAt(0) === "/" ? href : ("./" + href));
+			tab = editorNeeded(control, evt).execute({
+				resource: { uri: "Library/cavalion-blocks/tools/" + 
+						resolveUri(uri).substring("cavalion-blocks".length) + ".js"},
+				selected: true
+			});
+		} else {
+			uri = js.normalize(base, href.charAt(0) === "/" ? href : ("./" + href));
+			tab = editorNeeded(control, evt).execute({
+				resource:{ 
+					uri: uri, 
+					type: uri.endsWith("/") ? "Folder" : "File",
+					title: href
+				},
+				selected: true
+			});
+		}
+	}
+});
 
 function render() {
 	var value = this.getValue();
