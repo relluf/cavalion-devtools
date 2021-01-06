@@ -15,7 +15,6 @@ function getNodeText(uri, usedNames) {
 	
 	return r.join("/");
 }
-
 function onNodesNeeded(parent) {
     var owner = this._owner;
     var root = parent === this;
@@ -141,7 +140,7 @@ function onNodesNeeded(parent) {
     });
 }
 
-["vcl/ui/Form", {
+[("vcl/ui/Form"), {
 	activeControl: "search-input",
     onDispatchChildEvent: function (component, name, evt, f, args) {
         if (name.indexOf("key") === 0) {
@@ -241,7 +240,7 @@ function onNodesNeeded(parent) {
         return this.inherited(arguments);
     }
 }, [
-    ["vcl/data/Array", "search-results", {}],
+    [("vcl/data/Array"), "search-results", {}],
     // TODO search-open-pdokviewer-metadata (per resource group/package)
     // TODO pdok/viewer/Layer
     // TODO search-open-devtools/Resource
@@ -359,8 +358,8 @@ function onNodesNeeded(parent) {
     }],
     [("vcl/Action"), "resource-new", {}],
     [("vcl/Action"), "resource-delete", {}],
-    ["vcl/ui/Bar", "search-bar", { classes: "no-border" }, [
-        $("vcl/ui/Input", "search-input", {
+    [("vcl/ui/Bar"), "search-bar", { classes: "no-border" }, [
+        ["vcl/ui/Input", "search-input", {
             placeholder: "Filter (⌥+F)",
             classes: "search-top",
             onDblClick() {
@@ -407,7 +406,7 @@ function onNodesNeeded(parent) {
 // 					}
 //             	}
 //             }
-        })
+        }]
     ]],
     [("vcl/ui/Tree"), "tree", {
         css: {
