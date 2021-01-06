@@ -40,7 +40,7 @@ function copy(obj, r) {
 	return r;
 }
 
-["vcl/ui/Panel", {
+[("vcl/ui/Panel"), {
 	onLoad: function() {
 		this.setParentNode(document.body);
 
@@ -83,5 +83,3 @@ function copy(obj, r) {
 	content: locale("DragDropHandler.dropHereMessage") + " [" + Date.now() + "]",
 	visible: false
 }];
-
-
