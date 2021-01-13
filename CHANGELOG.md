@@ -1,7 +1,15 @@
-### 2021/01/05 - @1.0.27
+### 2021/01/12 - @1.0.30
+- Alphaview: Routing navigation-keystrokes from filter-input to grid
+- Keys: The logging of keystrokes has been enhanced significantly ;-)
+
+### 2021/01/09 - @1.0.29
+- Changes need to be committed still
+- Updating veldapps.com
+
+### 2021/01/06 - @1.0.28
 `#CLVN-20210102-2`
 
-* Adds anchor handling in Markdown documents
+* Adds anchor handling (in Markdown documents)
 
 ### 2021/01/03
 
