@@ -66,15 +66,17 @@ var Source = require("data/Source");
 			["Element", { content: locale("-id.label"), classes: "header" }],
 			["Input", "input", { 
 				onChange: function(obj) {
-					var value = this.getValue();
-					var docs = this.scope("docs");
-					if(value === "") {
-						docs.setOnFilterObject(null);
-					} else {
-						docs.setOnFilterObject(function(obj) {
-							return !obj.id.includes(value);	
-						});
-					}
+					this.setTimeout(() => {
+						var value = this.getValue();
+						var docs = this.scope("docs");
+						if(value === "") {
+							docs.setOnFilterObject(null);
+						} else {
+							docs.setOnFilterObject(function(obj) {
+								return !obj.id.includes(value);	
+							});
+						}
+					}, 250);
 				}
 			}]
 		]]
