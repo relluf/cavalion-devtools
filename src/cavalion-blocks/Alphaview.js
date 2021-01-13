@@ -1,4 +1,5 @@
 "use blocks";
+/*- ### 2021/01/09 Tired of not populating when console is invisible */
 /*- ### 2020-10-29 Alphaview - Arcadis-demo inspired */
 /*- ### 2020-10-02 Console hook - SIKB12 inspired */
 var ListColumn = require("vcl/ui/ListColumn");
@@ -35,6 +36,7 @@ var css = {
 	"#bar #left": "float:left;", "#bar #right": "float:right;"
 };
 
+/*- TODO these Factories have to moved out-a-here (refactor to some SIKB-specific namespace!) */
 var Factories = {
 	'Project': function(obj) {
 		var boreholes = [], projects = [];
@@ -227,6 +229,30 @@ var Factories = {
 
 ["Container", (""), { 
 	css: css, 
+	
+    onDispatchChildEvent: function (component, name, evt, f, args) {
+        if (name.startsWith("key")) {
+            var scope = this.scope();
+            if (component === scope.q) {
+                if ([13, 27, 33, 34, 38, 40].indexOf(evt.keyCode) !== -1) {
+                    var list = scope.list;
+                    if(evt.keyCode === 13 && list.getSelection().length === 0 && list.getCount()) {
+                        list.setSelection([0]);
+                    } else if(evt.keyCode === 27) {
+		                scope.q.setValue("");
+		                scope.q.fire("onChange", [true]); // FIXME
+                    }
+
+                    if (list.isVisible()) {
+                        list.dispatch(name, evt);
+                    }
+                    evt.preventDefault();
+                }
+            }
+        }
+        return this.inherited(arguments);
+    },
+	
 	onLoad() { 
 		this.qsa("#load").execute(); 
 		this.vars("history", []);
@@ -239,11 +265,11 @@ var Factories = {
 			if(!cons) {
 				var ws = this.up("devtools/Workspace<>");
 				cons = ws.down("#left-sidebar < #console #console");
-				if(cons.isVisible()) {
+				// if(cons.isVisible()) {
 					sel = cons.sel || [];
-				} else {
-					sel = app.down("#console #console").sel || [];
-				}
+				// } else {
+					// sel = app.down("#console #console").sel || [];
+				// }
 			} else {
 				sel = cons.sel || [];
 			}
