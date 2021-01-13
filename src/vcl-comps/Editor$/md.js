@@ -2,10 +2,18 @@
 
 /*-
 
-### 2021/01/04, 05
+### 2021/01/06
+
+* Adding support for opening Tools (Library/cavalion-blocks/tools/...)
+	* [devtools/Alphaview](tools://)
+	* [devtools/Alphaview](://)
+	* [devtools/Alphaview](:)
+	* [devtools/Alphaview](:./:)
+
+### 2021/01/04
 
 * Updating syntax
-* Adds anchor click-handling (`#CVLN-20210102-2`)
+* Adding support for clicking anchors (`#CVLN-20210102-2`)
 */
 
 var on = require("on");
@@ -19,9 +27,9 @@ function editorNeeded(control, evt) {
 	return control.udr("#editor-needed");
 }
 document.addEventListener("click", (evt) => {
+// #CVLN-20210102-2
 	var anchor = evt.target.up("A", true);
 	if(anchor) {
-		evt.preventDefault();
 
 		var control = require("vcl/Control").findByNode(anchor);
 		if(!control) {
@@ -29,14 +37,36 @@ document.addEventListener("click", (evt) => {
 		}
 
 		var href = js.get("attributes.href.value", anchor) || "";
-		var fslash = href.indexOf("/"), tools;
-
-		if(href === "") {
-			href = anchor.textContent;
-		} else if(href === ":") {
-			href = "tools://" + anchor.textContent;
-		}
+        var blocks;
+        
+        if(href.startsWith("javascript:")) {
+        	return;
+        }
+        
+		evt.preventDefault();
 		
+        if(href === "[]") {
+        	href = "blocks:/:";
+        } else if(href === "[.]") {
+        	href = "blocks:./:";
+        }
+        
+        if(href.startsWith("[") && href.endsWith("]")) {
+        	href = "blocks:" + href.substring(1).split("]")[0];
+        } else if(href.startsWith(":")) {
+        	href = "blocks" + href;
+        }
+        
+		if(href.startsWith("blocks:")) {
+			href = href.substring("blocks:".length);
+			blocks = true;
+		}
+		var fslash = href.indexOf("/");
+		if(href.indexOf(":") > fslash && fslash > -1) {
+			href = href.replace(":", anchor.textContent);
+		}
+
+		// so the rules apply these anchors as well
 		if(href.startsWith("https://") || 
 			href.startsWith("http://") || 
 			href.startsWith("file://") ||
@@ -45,22 +75,25 @@ document.addEventListener("click", (evt) => {
 			return window.open(href, "_blank");
 		}
 		
-		if(href.startsWith("tools:")) {
-			tools = true;
-			href = href.substring("tools:".length);
-		} else if(href.indexOf(":") > fslash && fslash > -1) {
-			href = href.replace(":", anchor.textContent);
+		if(href === "") {
+			href = anchor.textContent;
+		} else if(href === ":") {
+			blocks = true;
+			href = "/" + anchor.textContent;
 		}
 		
 		// links are relative to the resource
 		var base = control.vars(["resource.uri"]);
 		var tab, uri;
 		
-		if(tools) {
-			uri = js.normalize(base, href.charAt(0) === "/" ? href : ("./" + href));
+		if(blocks) {
+			if(href.charAt(0) === "/") {
+				uri = "Library/cavalion-blocks" + href;
+			} else {
+				uri = js.normalize(base, ("./" + href));
+			}
 			tab = editorNeeded(control, evt).execute({
-				resource: { uri: "Library/cavalion-blocks/tools/" + 
-						resolveUri(uri).substring("cavalion-blocks".length) + ".js"},
+				resource: { uri: resolveUri(uri).substring("cavalion-blocks".length) + ".js"},
 				selected: true
 			});
 		} else {
@@ -69,11 +102,12 @@ document.addEventListener("click", (evt) => {
 				resource:{ 
 					uri: uri, 
 					type: uri.endsWith("/") ? "Folder" : "File",
-					title: href
+					title: href.substring(href.charAt(0) === "/" ? 1 : 0)
 				},
 				selected: true
 			});
 		}
+
 	}
 });
 

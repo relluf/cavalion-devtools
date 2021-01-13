@@ -1,8 +1,9 @@
 /*-
 
-### 2021-01-02 
-# TODOS
+### 2021/01/09
+* More summary info (code, keyCode, key)
 
+### 2021/01/02 
 * render this in a glassy-container above the source
 * while modifier-keys are down => use current toast (and don't let it go yet)
 * hook deeper, Ace seems to steal a lot of events 
@@ -40,8 +41,8 @@ var getKeyName = (key) => {
 					.map(s => Symbols[s] || s)
 					.sort((m1, m2) => Sort[m1] < Sort[m2] ? -1 : 1)
 					.join("");
-				
-				var name = getKeyName(e.keyCode);
+
+				var name = e.code.replace(/^Key/, "");//getKeyName(e.keyCode, e.code);
 				
 				if(e.keyCode >= 16 && e.keyCode <= 18 || e.keyCode === 91 || e.keyCode === 93) {
 					name = "";
@@ -50,13 +51,14 @@ var getKeyName = (key) => {
 				if(e.type !== "keydown" || !name) return;
 
 				name = String.format("%s%s", modifiers, name || "");
-				this.print(e.type, {event: e, name: name});
+				this.print(e.type, {event: e, name: name, code: e.code, key: e.key, keyCode: e.keyCode});
 				
 				// if(modifiers.length === 0) return; 
 				
 				app.toast({ classes: "fade glassy big", content: name });
 			}
 		}));
+		this.print("just hit some keystrokes");
 	},
 	onDestroy() {
 		var li = this.vars("li");
