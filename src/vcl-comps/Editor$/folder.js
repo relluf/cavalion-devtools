@@ -36,7 +36,7 @@ function common(tab) {
 	}
 }
 
-$([], {
+["", {
 	css: {
 		"[id$=-editors-tabs]": "border-top-color: transparent;"
 	},
@@ -90,24 +90,24 @@ $([], {
 		// NOTE do not call inherited, because we are not editing a file? didn't seem to work with jpg/png.js - better override refresh?
     },
 }, [
-	$i(("menu-open"), {
+	[("#menu-open"), {
 		// onExecute: function() {
 		// 	if(confirm(js.sf("I am folder %s, delegate to inherited?", 
 		// 		this.vars(["resource.uri"]).split("/").pop())) === true) {
 		// 			return this.inherited(arguments);
 		// 	}
 		// }
-	}),
+	}],
 	
-    $i(("refresh"), { enabled: false }),
-    $i(("evaluate"), { enabled: false }),
-    $i(("print"), { enabled: false }),
-    $i(("format"), { enabled: false }),
+    [("#refresh"), { enabled: false }],
+    [("#evaluate"), { enabled: false }],
+    [("#print"), { enabled: false }],
+    [("#format"), { enabled: false }],
 	
 	// TODO have a .blocks-file for overridden stuff (#CVLN-20200802-1)
-	$i(("ace"), { visible: false }),
+	[("#ace"), { visible: false }],
 	
-	$("vcl/ui/Tabs", ("editors-tabs"), {
+	["vcl/ui/Tabs", ("editors-tabs"), {
 		action: "prompt-add-resource",
 		executesAction: "onDblClick",
 		onNodeCreated() {
@@ -119,8 +119,8 @@ $([], {
 			if(!newTab) return;
 			this.up().writeStorage("editors-tabs", { selected: newTab && newTab.getIndex() });
 		}
-	}),
-	$("vcl/Action", ("editor-needed"), {
+	}],
+	["vcl/Action", ("editor-needed"), {
 		on(evt) {
 			if(typeof evt === "string") {
 				evt = { resource: { uri: evt } };
@@ -177,8 +177,8 @@ $([], {
 			
 			return tab;
 		}
-	}),
-	$("vcl/Action", ("prompt-add-resource"), {
+	}],
+	["vcl/Action", ("prompt-add-resource"), {
 		onExecute(evt) {
 			console.log(evt.shiftKey, require("util/Event").getKeyModifiers(evt));
 			
@@ -199,8 +199,8 @@ $([], {
 	    		}
 	    	});
 		}
-	}),
-	$("vcl/Action", ("add-resources"), {
+	}],
+	["vcl/Action", ("add-resources"), {
 		onExecute:  function(resources) {
 	    	var scope = this.scope(), app = this.app();
 	    	var uri = this.vars(["resource.uri"]);
@@ -259,8 +259,8 @@ $([], {
 				}
 			});
 		}
-	}), 
-	$("vcl/Action", ("add-resources-try"), {
+	}], 
+	["vcl/Action", ("add-resources-try"), {
 		onExecute:  function(resources) {
 	    	var scope = this.scope(), app = this.app();
 	    	var uri = this.vars(["resource.uri"]) + "/";
@@ -323,5 +323,5 @@ $([], {
 			// 	}
 			// });
 		}
-	}) // 2020-01-19
-]);
+	}] // 2020-01-19
+]];

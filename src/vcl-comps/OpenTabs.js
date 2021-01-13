@@ -1,6 +1,6 @@
-"vcl/ui/ListHeader";
+"use vcl/ui/ListHeader";
 
-$("vcl/ui/Form", {
+["vcl/ui/Form", {
 	activeControl: "search-input",
     onDispatchChildEvent: function (component, name, evt, f, args) {
         if (name.indexOf("key") === 0) {
@@ -25,31 +25,41 @@ $("vcl/ui/Form", {
         return this.inherited(arguments);
     },
     onActivate: function (parent) {
-        this.scope("editors-array").setArray(
-	    	this.up("devtools/Workspace<>:root").qsa("vcl/ui/Tab")
-	        	.map(function(tab) {
-	        		var resource = tab.getVar("resource");
-	        		return !(resource && resource.uri) ? null : {
-	        			name: resource.uri.split("/").pop(),
-	        			uri: resource.uri
-	        		};
-		        })
-	        	.filter(function(resource) { return resource; })
-	        	.sort(function(res1, res2) {
-	        		return res1.name < res2.name ? -1 : 1;
-	        	}));
+        this.scope().refresh.execute({});
     	
 		return this.inherited(arguments);
     }
 }, [
-    $("vcl/data/Array", "editors-array", {
+    ["vcl/data/Array", ("editors-array"), {
     	onFilterObject: function(obj) {
     		var filter = this.getVar("filter");
     		return filter ? obj.uri.indexOf(filter) === -1 : false;
     	}
-    }),
+    }],
     
-    $("vcl/Action", "editor-open", {
+    ["vcl/Action", ("refresh"), {
+    	// hotkey: "keyup:F5",
+    	on() {
+			this.scope("editors-array").setArray(
+		    	this.up("devtools/Workspace<>:root").qsa("vcl/ui/Tab")
+		        	.map(function(tab) {
+		        		var resource = tab.getVar("resource");
+		        		return !(resource && resource.uri) ? null : {
+		        			name: resource.uri.split("/").pop(),
+		        			uri: resource.uri
+		        		};
+			        })
+		        	.filter(function(resource) { return resource; })
+		        	.sort(function(res1, res2) {
+		        		return res1.name < res2.name ? -1 : 1;
+		        	}));
+
+			// this.print("refresh", this.scope("editors-array"));
+    	}
+    	
+    }],
+    
+    ["vcl/Action", ("editor-open"), {
         onExecute: function (evt) {
             var list = this.scope('list');
             var a = this.up("devtools/Workspace<>:root").down("#editor-needed");
@@ -57,8 +67,8 @@ $("vcl/ui/Form", {
             	a.execute({resource: resource, selected: true});
             }, this);
         }
-    }),
-    $("vcl/Action", "search-focus", {
+    }],
+    ["vcl/Action", ("search-focus"), {
         hotkey: "MetaCtrl+191|Alt+F",
         onExecute: function () {
             var scope = this.getScope();
@@ -71,8 +81,8 @@ $("vcl/ui/Form", {
             scope['search-input'].setFocus(true);
             this.setVar("previous", now);
         }
-    }),
-    $("vcl/Action", "search", {
+    }],
+    ["vcl/Action", ("search"), {
         onExecute: function () {
             var scope = this.getScope();
             var text = scope['search-input'].getInputValue();
@@ -108,9 +118,9 @@ $("vcl/ui/Form", {
                         return prev.concat(curr.sort(sort));
                     }));
         }
-    }),
-    $("vcl/ui/Bar#search-bar", { classes: "no-border" }, [
-        $("vcl/ui/Input#search-input", {
+    }],
+    ["vcl/ui/Bar#search-bar", { classes: "no-border" }, [
+        ["vcl/ui/Input#search-input", {
             placeholder: "Filter (⌥+F)",
             onDblClick: function() {
                 this.setInputValue("");
@@ -126,9 +136,9 @@ $("vcl/ui/Form", {
                 array.setVar("filter", this.getInputValue());
                 array.updateFilter();
             }
-        })
-    ]),
-    $("vcl/ui/List", "list", {
+        }]
+    ]],
+    ["vcl/ui/List", ("list"), {
         align: "client",
         action: "editor-open",
         source: "editors-array",
@@ -157,7 +167,7 @@ $("vcl/ui/Form", {
             }
         }
     }, [
-        $("vcl/ui/ListColumn", {
+        ["vcl/ui/ListColumn", {
             content: "#",
             attribute: ".",
             rendering: "innerHTML",
@@ -172,6 +182,6 @@ $("vcl/ui/Form", {
                 classes.push(orgValue.type === "Folder" ? "folder" : "file");
                 cell.className = classes.join(" ");
             }
-        })
-    ])
-]);
+        }]
+    ]]
+]];
