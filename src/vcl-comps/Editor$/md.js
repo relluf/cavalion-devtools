@@ -54,8 +54,8 @@ document.addEventListener("click", (evt) => {
         if(href.startsWith("[") && href.endsWith("]")) {
         	href = "blocks:" + href.substring(1).split("]")[0];
         } else if(href.startsWith(":")) {
-        	href = "blocks" + href;
-        }
+        	href = anchor.textContent + href.substring(1);
+        } 
         
 		if(href.startsWith("blocks:")) {
 			href = href.substring("blocks:".length);
@@ -116,11 +116,11 @@ function render() {
 	
 // #CVLN-20200906-3
 	var impl;
-	if((impl = this.vars("onGetRenderValue"))) {
-		value = impl(value);
+	if((impl = this.vars(["onGetRenderValue"]))) {
+		value = impl(value, this);
 	}
-	if((impl = this.vars("onRender"))) {
-		return impl(value);
+	if((impl = this.vars(["onRender"]))) {
+		return impl(value, this);
 	}
 	
 	var root = markdown.toHTMLTree(value);
