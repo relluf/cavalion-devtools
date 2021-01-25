@@ -1,3 +1,12 @@
+### 2021/01/25 - @1.0.32
+- Housekeeping
+- Removing obsolete sub-workspaces, 
+- Improving `ace`-variable in consoles
+
+### 2021/01/23 - @1.0.31
+- Minor tweaks
+- Publishing in favor of veldoffice-geografie-vcl
+
 ### 2021/01/12 - @1.0.30
 - Alphaview: Routing navigation-keystrokes from filter-input to grid
 - Keys: The logging of keystrokes has been enhanced significantly ;-)
