@@ -1,5 +1,8 @@
 /*-
 
+### 2021/01/16
+- How to limit the console size?
+
 ### 2021/01/09
 * More summary info (code, keyCode, key)
 

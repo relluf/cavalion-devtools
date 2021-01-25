@@ -61,11 +61,12 @@ var q$ = require("jquery");
 	[("vcl/Action"), "toggle-source", {
 		hotkey: "Shift+MetaCtrl+S",
 		onLoad() {
-			this.scope().ace.hide();
+			// this.scope().ace.hide();
 			this.up().readStorage("toggle-source-state", (state) => {
-				this.setState(state === true);
-				if(state === true) {
-					this.scope().ace.show();	
+				state = (state !== false);
+				this.setState(state);
+				if(!state) {
+					this.scope().ace.hide();	
 				}
 			});
 		},
@@ -131,8 +132,8 @@ var q$ = require("jquery");
         },
         visible: true,
         vars: {
-        	"wrapper-start": "<div><h1>PREVIEW</h1><div>",
-        	"wrapper-end": "</div><h3>FOOTER</h3></div>"
+        	"wrapper-start": "",//"<div><h1>PREVIEW</h1><div>",
+        	"wrapper-end": ""//"</div><h3>FOOTER</h3></div>"
         },
         
         onLoad() {

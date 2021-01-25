@@ -224,7 +224,7 @@ var Utils = {
             
     		if(!tab) {
     		    if(!evt.formUri) { //?
-    		    	this.vars("devtools/Editor")
+    		    	this.vars("devtools/Editor");
     		    }
     		    if(evt.resource.contentType && evt.resource.type !== "Folder") {
     		    	// TODO use contentType to determine which editor should be
@@ -272,7 +272,9 @@ var Utils = {
     		        tab.setSelected(true);
     		    }
     		}
-    		if(!evt.dontBringToFront) {
+    		
+    		// TODO oops what a weird name "dontBringToFront"
+    		if(!evt.dontBringToFront && evt.bringToFront !== false) {
             	tab.setIndex(0);
     		}
 

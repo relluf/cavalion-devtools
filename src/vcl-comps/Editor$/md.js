@@ -104,6 +104,7 @@ document.addEventListener("click", (evt) => {
 					type: uri.endsWith("/") ? "Folder" : "File",
 					title: href.substring(href.charAt(0) === "/" ? 1 : 0)
 				},
+				bringToFront: evt.shiftKey === true,
 				selected: true
 			});
 		}

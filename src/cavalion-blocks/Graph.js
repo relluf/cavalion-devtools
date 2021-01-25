@@ -1,5 +1,12 @@
 "use dygraphs/Dygraph";
 
+/*-
+
+### 2021/01/21
+* data = [[dt, value1, value2, ..., valueN]]
+
+*/
+
 var Dygraph = require("dygraphs/Dygraph");
 
 // function draw(data, options) {

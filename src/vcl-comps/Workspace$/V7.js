@@ -12,7 +12,7 @@ $([], {
 			"Workspaces/veldapps.com/V7/src/va/veldoffice",
 			"Workspaces/veldapps.com/V7/tools"
 		],
-		"additional-workspaces": ["build", "va", "va/veldoffice"],
+		// "additional-workspaces": ["build", "va", "va/veldoffice"],
 		"workspace": {
 			"github-repo": "relluf/v7-app"
 		},

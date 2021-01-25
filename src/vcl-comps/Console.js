@@ -9,7 +9,8 @@ var Resources = require("devtools/Resources");
             var scope = this.scope();
             var app = this.app(), me = this;
             var ws = this.up(":root");
-            var ace = ws && ws.down("devtools/Editor<>:root < vcl/ui/Ace:visible");
+            var ace = ws && ws.qsa("devtools/Editor<>:root:visible").map(_ => _.down("#ace"));
+            // var ace = ws && ws.down("devtools/Editor<>:root < vcl/ui/Ace:visible");
             var ed = ace ? ace.getEditor() : null;
             // var paths = window.require.s.contexts._.config.paths;
             

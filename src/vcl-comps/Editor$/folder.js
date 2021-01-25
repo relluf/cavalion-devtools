@@ -1,5 +1,15 @@
 "use devtools/Resources";
-// #editor-needed has a param parents
+
+/*-
+
+### Notes
+
+* `#editor`-needed has a param parents
+
+### 2021/01/13
+* Fix for double backslash while prompting for new uri
+
+*/
 
 var Resources = require("devtools/Resources");
 
@@ -180,18 +190,20 @@ function common(tab) {
 	}],
 	["vcl/Action", ("prompt-add-resource"), {
 		onExecute(evt) {
-			console.log(evt.shiftKey, require("util/Event").getKeyModifiers(evt));
+			// console.log(evt.shiftKey, require("util/Event").getKeyModifiers(evt));
 			
 	    	var editor_needed = this.up("devtools/Workspace<>:root").down("#editor-needed");
 	    	var uri = this.vars(["resource.uri"]);
-	    	var scope = this.scope();
-	    	var owner = this._owner;
+	    	var scope = this.scope(), owner = this._owner;
+	    	var rand = Math.random().toString(36).substring(2, 15);
 	    	
-	    	app.prompt("Enter new resource uri:", uri + "/Resource-" + Math.random().toString(36).substring(2, 15), function(value) {
+	    	if(!uri.endsWith("/")) uri += "/";
+	    	
+	    	app.prompt(js.sf("Enter new resource uri:\n\n[.=%s]", uri), "./Resource-" + rand, function(value) {
 	    		if(value) {
 					var tab = editor_needed.execute({
 						parents: {container: owner, tab: scope['editors-tabs']}, 
-						resource: {uri: value},
+						resource: {uri: js.normalize(uri, value)},
 						selected: true,
 						owner: owner
 					});

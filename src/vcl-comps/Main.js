@@ -280,6 +280,11 @@ function focusSidebar(ws, sidebar) {
 				type: "keydown",
 				callback: create_callback_activateWS(hotkey, i - 1)
 			});
+			// hotkey = String.format("Shift+Ctrl+%d", i + 48);
+			// HotkeyManager.register(hotkey, {
+			// 	type: "keydown",
+			// 	callback: create_callback_activateAce(hotkey, i - 1)
+			// });
 			hotkey = String.format("Meta+Alt+%d", i + 48);
 			HotkeyManager.register(hotkey, {
 				type: "keydown",
