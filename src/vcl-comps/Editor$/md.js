@@ -85,7 +85,12 @@ document.addEventListener("click", (evt) => {
 		// links are relative to the resource
 		var base = control.vars(["resource.uri"]);
 		var tab, uri;
-		
+
+        if(href.endsWith("::")) {
+        	// TODO allow pre/suffix?
+        	return control.udr(href.split(":")[0]).execute(js.normalize(anchor.textContent));
+        }
+
 		if(blocks) {
 			if(href.charAt(0) === "/") {
 				uri = "Library/cavalion-blocks" + href;
