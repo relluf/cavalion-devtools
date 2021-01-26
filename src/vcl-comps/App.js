@@ -156,7 +156,6 @@ var handlers = {
 };
 
 (function OverridesAndOtherHacks() {
-	
 	/*- disable Ctrl+Shift+D */
 	Method.override(Ace.prototype, "onnodecreated", function() {
 	    var r = this.inherited(arguments);
@@ -193,10 +192,10 @@ var handlers = {
 	});
 } ());
 
-$(["App.v1.console"], { 
+[["App.v1.console"], { 
 	title: "Code", 
 	icon: "images/favicon.ico", 
 	handlers: handlers
 }, [
-	$i("client", { formUri: "./Main<>" })
-]);
+	["#client", { formUri: "./Main<>" }]
+]];
