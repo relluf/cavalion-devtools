@@ -19,7 +19,7 @@ function Document_onNodesNeeded(parent) {
 function isResourceSupported(resource) {
 	if(!resource) return false;
 	
-	var uri = resource.uri || "";
+	var uri = (resource.uri || "").toLowerCase();
 	return uri.endsWith(".xml")	|| uri.endsWith(".geojson") || 
 			uri.endsWith(".topojson") || uri.endsWith("-itwbm.json");
 }
