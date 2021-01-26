@@ -1,3 +1,6 @@
+### 2021/01/26 - @1.0.33
+- Fix for case-sensitivity of extensions
+
 ### 2021/01/25 - @1.0.32
 - Housekeeping
 - Removing obsolete sub-workspaces, 
