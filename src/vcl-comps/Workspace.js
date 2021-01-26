@@ -175,7 +175,7 @@ var Utils = {
                 tab: "editors-tabs"
             }
         },
-        onExecute: function(evt) {
+        on(evt) {
             var tab = this.inherited(arguments);
             var owner = tab._owner;
             tab.initializeNodes = Tab.initializeNodes;
@@ -208,13 +208,19 @@ var Utils = {
         }
     }],
     ["vcl/Action", ("editor-needed"), {
-        onExecute: function(evt) {
+        on(evt) {
             var scope = this.scope(), tab;
             if(typeof evt === "string") {
-            	evt = { resource:{ uri: evt, type: evt.startsWith("folder:") ? "Folder" : "File" } };
+            	evt = { 
+            		selected: true,
+            		resource: { 
+            			uri: evt, 
+            			type: evt.startsWith("folder:") ? "Folder" : "File" 
+            		}
+            	};
             }
-            if(!evt.resource) { evt.resource = { uri: "" } };
-            
+
+            if(!evt.resource) { evt.resource = { uri: "" } }
             if(!evt.parents) {
 	    		var tabs = scope['editors-tabs'].getControls();
 	    		tab = tabs.find(function(tab) {
@@ -339,7 +345,7 @@ var Utils = {
     	}
     }],
     ["vcl/Action", ("editors-close-all"), {
-    	onExecute: function(evt) {
+    	on(evt) {
 			var tabs = this.vars(["editors-tabs:focused"]) || this.udown("#editors-tabs");
             var selected = tabs.getSelectedControl(1);
 
@@ -355,7 +361,7 @@ var Utils = {
     	}
     }],
     ["vcl/Action", ("editor-new"), {
-        onExecute: function(evt) {
+        on(evt) {
             this.scope("editor-factory")
             	.execute(evt)
             	.setSelected(true);
@@ -384,7 +390,7 @@ var Utils = {
         }
     }],
     ["vcl/Action", ("editor-close"), {
-        onExecute: function(evt) {
+        on(evt) {
             var scope = this.getScope();
             var selected = scope['editors-tabs'].getSelectedControl(1);
             if(selected) {
@@ -415,12 +421,12 @@ var Utils = {
     	}
     }],
     ["vcl/Action", ("editor-setfocus"), {
-    	onExecute: function(evt) {
+    	on(evt) {
 			this._owner.qs("vcl/ui/Tab:selected:childOf(editors-tabs) #ace").setFocus();
     	}
     }],
     ["vcl/Action", ("editor-focus-in-navigator"), {
-        onExecute: function(evt) {
+        on(evt) {
         	// TODO 
             // var app = this.getApp();
             // var resource = this.getVar("resource", true);
