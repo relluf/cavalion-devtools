@@ -20,7 +20,7 @@ function print(comp, msg, value) {
 		.print(msg, value);
 }
 
-$(["./Editor<js>"], {
+[["./Editor<js>"], {
 	css: styles, 
     onLoad: function() {
         var tab = this.up("vcl/ui/Tab");
@@ -88,7 +88,7 @@ $(["./Editor<js>"], {
         this.setTimeout("alignControls", 32);
     }
 }, [
-    $i(("print"), {
+    [("#print"), {
     	onLoad() {
     		this.vars("eval", () => this.ud("#instantiate").vars("root"));
     		return this.inherited(arguments);
@@ -96,9 +96,9 @@ $(["./Editor<js>"], {
     	onExecute() {
     		return this.ud("#host").isVisible() ? this.inherited(arguments) : false;
     	}
-    }),
+    }],
 
-	$(("vcl/Action"), "instantiate", {
+	[("vcl/Action"), "instantiate", {
 		onExecute: function(evt) {
 			var scope = this.scope(), uri = evt.uri;
 			var owner = scope['@owner'];
@@ -147,8 +147,8 @@ $(["./Editor<js>"], {
 				});
 
 		}
-	}),
-    $(("vcl/Action"), "toggle-source", {
+	}],
+    [("vcl/Action"), "toggle-source", {
         hotkey: "Shift+MetaCtrl+S",
         selected: "state",
         visible: "state",
@@ -157,8 +157,8 @@ $(["./Editor<js>"], {
         onExecute: function() {
         	this.setState(!this.getState());
         }
-    }),
-    $(("vcl/Action"), "toggle-component", {
+    }],
+    [("vcl/Action"), "toggle-component", {
         hotkey: "Shift+MetaCtrl+C",
         selected: "state",
         visible: "state",
@@ -169,8 +169,8 @@ $(["./Editor<js>"], {
         	// var preview = this.scope().preview;
         	// preview.setSelected(!preview.isSelected());
         }
-    }),
-    $(("vcl/Action"), "toggle-instantiate", {
+    }],
+    [("vcl/Action"), "toggle-instantiate", {
         hotkey: "Shift+MetaCtrl+X",
 		onExecute: function(evt) {
 			// TODO source might be lost because of #refresh
@@ -185,28 +185,28 @@ $(["./Editor<js>"], {
 				tc.setState(false);
 			}
 		}    	
-    }),
-    $(("vcl/Action"), "toggle-full-width", {
+    }],
+    [("vcl/Action"), "toggle-full-width", {
         // hotkey: "Shift+MetaCtrl+X",
 		onExecute() { this.toggle(); this.scope().host.toggleClass("full-width");this.scope().host.toggleClass("full-width");this.scope().host.toggleClass("full-width"); },
 		state: false,
 		selected: "state"
-    }),
+    }],
     
-    $i("ace", { align: "left", width: 750 }),
+    ["#ace", { align: "left", width: 750 }],
     
-	$("vcl/ui/Tabs#bottom-tabs", { align: "bottom", classes: "bottom inset", autoSize: "height" }, [
-    	$("vcl/ui/Tab", { action: "toggle-source", text: locale("Source"), control: "ace", groupIndex: -2, visible: "always" }),
-    	$("vcl/ui/Tab", { action: "toggle-component", text: locale("Component"), control: "host", groupIndex: -3, visible: "always" }),
-    	$("vcl/ui/Tab", { action: "toggle-full-width", classes: "without-menu", text: locale(".full-width"), groupIndex: -4, visible: "always" })
-	]),
+	["vcl/ui/Tabs#bottom-tabs", { align: "bottom", classes: "bottom inset", autoSize: "height" }, [
+    	["vcl/ui/Tab", { action: "toggle-source", text: locale("Source"), control: "ace", groupIndex: -2, visible: "always" }],
+    	["vcl/ui/Tab", { action: "toggle-component", text: locale("Component"), control: "host", groupIndex: -3, visible: "always" }],
+    	["vcl/ui/Tab", { action: "toggle-full-width", classes: "without-menu", text: locale(".full-width"), groupIndex: -4, visible: "always" }]
+	]],
 	
-    $("vcl/ui/Panel", ("host"), { 
+    ["vcl/ui/Panel", ("host"), { 
     	action: "toggle-component", align: "client", 
     	selected: "never", executesAction: false, 
     	classes: "animated"
     }, [
-    	$("vcl/ui/Element", {
+    	["vcl/ui/Element", {
     		content: "<h3 style='margin-top:10%;'><center>" + 
     			"Reload <small>&#x2318;+R</small> or Save <small>&#x2318;+S</small> to view the component here<br><small>(or just click here to Reload)</small><br><br><br>" + 
     			"</center></h3><p style='padding-left:16px;'>Other shortcuts that might come handy:<ul>" + 
@@ -216,7 +216,7 @@ $(["./Editor<js>"], {
     		onClick: function() {
     			this.scope().refresh.execute();
     		}
-    	})
-    ])
+    	}]
+    ]]
 
-]);
+]];
