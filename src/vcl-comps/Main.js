@@ -314,7 +314,6 @@ function focusSidebar(ws, sidebar) {
     onDeactivate() {
     	// FIXME deactivate hotkeys
     }
-    
 }, [
     [["devtools/DragDropHandler<dropbox>"]],
     // [["devtools/CtrlCtrl<>"], "ctrlctrl", { visible: false}],
@@ -506,6 +505,21 @@ function focusSidebar(ws, sidebar) {
 					console.warn(e.message);
 				}
             }
+    	}
+    }],
+    
+    [("vcl/Action"), "copy-handler", {
+    	hotkey: "Cmd+C",
+    	hotkeyPreventsDefault: false,
+    	onExecute(evt) {
+    		var focused = require("vcl/Control").focused;
+    		if(focused instanceof require("vcl/ui/Tabs")) {
+    			focused = focused.getSelectedControl(1);
+    		}
+    			
+    		if(focused && (uri = focused.vars(["resource.uri"]))) {
+    			this.print("copy", uri);
+    		}
     	}
     }],
     
