@@ -2,7 +2,7 @@
 
 var Parser = require("lib/bower_components/papaparse/papaparse");
 
-$([], {
+["", {
     onDestroy: function() {
 		this.scope().array.un(this.removeVar("listeners"));
     },
@@ -73,8 +73,9 @@ $([], {
 		}
     }
 }, [
-	$i("ace", { align: "left", width: 750 }),
-    $i(("print"), {
+	["#ace", { align: "left", width: 750 }],
+    
+    [("#print"), {
     	onLoad() {
     		this.vars("eval", () => { 
     			var label = [this.vars(["resource.uri"]).split("/").pop()], value;
@@ -86,7 +87,7 @@ $([], {
     		});
     		return this.inherited(arguments);
     	}
-    }),
+    }],
 
 	$("vcl/Action", ("toggle-source"), {
 		hotkey: "Shift+MetaCtrl+S",
@@ -150,6 +151,7 @@ $([], {
 		}
 	}),
 
+	// TODO List<Array> shared by Editor<gds> - AlphaView?
 	$("vcl/data/Array", ("array"), {
 		onGetAttributeValue: function(name, index, value) { 
 			return (this._arr[index] || {})[name]; 
@@ -173,4 +175,4 @@ $([], {
 		// 	return value;
 		// }
 	})
-]);
+]];
