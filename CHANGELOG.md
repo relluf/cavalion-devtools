@@ -1,3 +1,6 @@
+### 2021/02/02
+- Fixes the un(listen)-crash of `devtools/Workspace` upon destroy
+
 ### 2021/01/26 - @1.0.33
 - Fix for case-sensitivity of extensions
 
