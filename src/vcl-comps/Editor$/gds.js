@@ -1,6 +1,6 @@
-"use lib/bower_components/papaparse/papaparse, amcharts, amcharts.serial, amcharts.xy";
+"use papaparse/papaparse, amcharts, amcharts.serial, amcharts.xy";
 
-var Parser = require("lib/bower_components/papaparse/papaparse");
+var Parser = require("papaparse/papaparse");
 
 ["", {}, [
     [("#ace"), { 
@@ -63,18 +63,6 @@ var Parser = require("lib/bower_components/papaparse/papaparse");
 			var headers = arr.shift();
 			var parseValue = (value) => isNaN(value.replace(",", ".")) ? value : parseFloat(value.replace(",", "."));
 			
-			var vf = this.ud("#valueField"), vf_kPa = this.ud("#valueField_kPa"), cf = this.ud("#categoryField");
-			cf.setOptions(headers.slice(0, 3));
-			vf.setOptions(headers.slice(3)
-				.filter(_ => !_.includes("Undefined"))
-				.filter(_ => !_.includes("Temperature"))
-				.filter(_ => !_.includes("Pressure")));
-			vf_kPa.setOptions(vf._options);
-			
-			vf.setValue(vf._options[1]);
-			vf_kPa.setValue(vf._options[4]);
-			cf.setValue(cf._options[1]);
-			
 			arr = arr.map(values => {
 				var obj = {};
 				headers.forEach((key, index) => obj[key] = parseValue(values[index]));
@@ -94,24 +82,34 @@ var Parser = require("lib/bower_components/papaparse/papaparse");
 
 	["vcl/ui/Panel", ("client"), { align: "client" }, [
 		["vcl/ui/Tabs", { classes: "bottom", align: "bottom" }, [
-		["vcl/ui/Tab", { text: "Table", control: "list"}],
-		["vcl/ui/Tab", { text: "Graphs", selected: true, control: "renderer"}]
-	]],
-		["vcl/ui/List", ("list"), { 
-			align: "client", autoColumns: true, visible: false, 
-			css: "background-color: white; min-width:100%;", 
-			source: "array",
-			onDblClick: function() {
-				this.print(this.getSelection(true));	
-			},
-			// onColumnGetValue: function(column, value, row, source) {
-			// 	value = this._source._arr[row][column._attribute];
-			// 	if(column.getIndex() === 0) {
-			// 		return row + " - " + value;
-			// 	}
-			// 	return value;
-			// }
-		}],
+			["vcl/ui/Tab", { text: "Variables", control: "variables" }],
+			["vcl/ui/Tab", { text: "Measurements", control: "measurements" }],
+			["vcl/ui/Tab", { text: "Graphs", control: "renderer", selected: true }]
+		]],
+		["vcl/ui/Panel", { align: "client", css: "background-color:white;" }, [
+			["vcl/ui/List", ("variables"), { 
+				autoColumns: true,
+				onLoad() { 
+					this.setSource(this.ud("#renderer #array-headers"));
+				},
+				visible: false
+			}],
+			["vcl/ui/List", ("measurements"), { 
+				align: "client", autoColumns: true, visible: false, 
+				css: "background-color: white; min-width:100%;", 
+				source: "array",
+				onDblClick: function() {
+					this.print(this.getSelection(true));	
+				},
+				// onColumnGetValue: function(column, value, row, source) {
+				// 	value = this._source._arr[row][column._attribute];
+				// 	if(column.getIndex() === 0) {
+				// 		return row + " - " + value;
+				// 	}
+				// 	return value;
+				// }
+			}],
+		]],
 		
 		[["devtools/Renderer<gds>"], ("renderer"), { visible: false }]
 	]]
