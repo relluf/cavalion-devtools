@@ -93,7 +93,7 @@ var Factories = {
 		Array.as(sample['sam:relatedSamplingFeature'] || [])
 			.filter(rsf => {
 				var urn = js.get("sam:SamplingFeatureComplex.sam:role.@_xlink:href", rsf) || "";
-				return urn.endsWith(":id:6") || urn.endsWith(":id:10");
+				return urn.endsWith(":id:4") || urn.endsWith(":id:6") || urn.endsWith(":id:10");
 			})
 			.map(rsf => js.get(["sam:SamplingFeatureComplex", 
 					"sam:relatedSamplingFeature", 
@@ -200,7 +200,8 @@ var Factories = {
 						"sam:relatedSamplingFeature"], rsf) || [])
 					.filter(rsf => {
 						var urn = js.get("sam:SamplingFeatureComplex.sam:role.@_xlink:href", rsf) || "";
-						return urn.endsWith(":id:6") || urn.endsWith(":id:10") || urn.endsWith(":id:9");
+						return urn.endsWith(":id:4") || urn.endsWith(":id:6") 
+							|| urn.endsWith(":id:10") || urn.endsWith(":id:9"); //?
 					})
 					.map(rsf => js.get(["sam:SamplingFeatureComplex", 
 							"sam:relatedSamplingFeature", 
