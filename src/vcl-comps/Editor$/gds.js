@@ -81,10 +81,10 @@ var Parser = require("papaparse/papaparse");
 	}],
 
 	["vcl/ui/Panel", ("client"), { align: "client" }, [
-		["vcl/ui/Tabs", { classes: "bottom", align: "bottom" }, [
-			["vcl/ui/Tab", { text: "Variables", control: "variables" }],
-			["vcl/ui/Tab", { text: "Measurements", control: "measurements" }],
-			["vcl/ui/Tab", { text: "Graphs", control: "renderer", selected: true }]
+		["vcl/ui/Tabs", ("tabs-sections"), { classes: "bottom", align: "bottom" }, [
+			["vcl/ui/Tab", { text: "Variabelen", control: "variables" }],
+			["vcl/ui/Tab", { text: "Metingen", control: "measurements" }],
+			["vcl/ui/Tab", { text: "Grafieken", control: "renderer", selected: true }]
 		]],
 		["vcl/ui/Panel", { align: "client", css: "background-color:white;" }, [
 			["vcl/ui/List", ("variables"), { 
