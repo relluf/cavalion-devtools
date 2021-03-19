@@ -9,7 +9,7 @@ var removeTrailingColon = (s) => s.replace(/\:$/, "");
 
 var Tabs = 
 	["vcl/ui/Tabs", ("tabs-graphs"), {}, [
-		["vcl/ui/Tab", { text: "GEF-Casagrande", control: "graph_Casagrande", selected: true }],
+		["vcl/ui/Tab", { text: "Casagrande", control: "graph_Casagrande", selected: true }],
 		["vcl/ui/Tab", { text: "Taylor", control: "graph_Taylor", selected: !true }],
 		["vcl/ui/Tab", { text: "Bjerrum (poriëngetal)", control: "graph_Bjerrum_e", selected: !true }],
 		["vcl/ui/Tab", { text: "Bjerrum (rek)", control: "graph_Bjerrum_r", selected: !true }],
@@ -22,10 +22,10 @@ function makeChart(c, opts) {
 	function render(options) {
 		var node = options.node || this.getNode();
 	
-		this.print("rendering", this.vars("am"));
+		this.print("makeChart", this.vars("am"));
 		
 		var defaults = {
-		    mouseWheelZoomEnabled: true, zoomOutText: "", 
+		    mouseWheelZoomEnabled: true, zoomOutText: " ", 
 		    mouseWheelScrollEnabled: false,
 		    // chartScrollbar: {
 		    //     oppositeAxis: true,
@@ -53,9 +53,12 @@ function makeChart(c, opts) {
 		        valueZoomable:true
 		    },
 		    
+		    // processCount: 1000,
+		    // processTimeout: 450,
+		    
 		    type: "xy",  
 		    colors: ["rgb(56, 121, 217)", "black"],
-		    legend: { useGraphSettings: true },
+		    // legend: { useGraphSettings: true },
 			dataProvider: this.vars("am.data"),
 			minValue: 1, maxValue: 0,
 		    valueAxes: [{
@@ -80,26 +83,20 @@ function makeChart(c, opts) {
 		
 		options.valueAxes.forEach(ax => ax.zoomable = true);
 		// options.valueAxes.forEach(ax => ax.precision = 4);
-
+		var emit = (a, b) => {
+			// this.print("emit: " + a, b);
+			this.emit(a, b);
+		};
 		var chart = AmCharts.makeChart(node, options);
+
 		this.vars("am.chart", chart);
-		
-		chart.addListener("drawn", (e) => this.setTimeout("rendered", () => 
-			this.emit("rendered", [e]), 
-			// this.print("rendered", this.emit("rendered", [e])), 
-			100));
-	
-		chart.addListener("zoomed", (e) => this.setTimeout("zoomed", () => 
-			this.emit("zoomed", [e]),
-			// this.print("zoomed", this.emit("zoomed", [e])), 
-			100));
-	
-		// chart.addListener("changed", (e) => {
-		// 	this.setTimeout("changed", () => 
-		// 		// this.emit("changed", [e]),
-		// 		this.print("changed", this.emit("changed", [e])), 
-		// 		100);
-		// });
+
+		chart.addListener("drawn", (e) => emit("rendered", [e, "drawn"]));
+		chart.addListener("dataUpdated", (e) => emit("rendered", [e, "dataUpdated"]));
+		chart.addListener("rendered", (e) => emit("rendered", [e]));
+		// chart.addListener("init", (e) => emit("rendered", [e, "init"]));
+		// chart.addListener("zoomed", (e) => emit("zoomed", [e]));
+		// chart.addListener("changed", (e) => emit("changed", [e]));
 	}
 	
 	opts.immediate ? render.apply(c, [opts || {}]) : c.nextTick(() => render.apply(c, [opts || {}]));
@@ -118,7 +115,7 @@ function contextNeeded(c) {
 function grenswaarden_Isotachen(context, vars) {
 	var index = {};
 
-	/*- translates context.array logarithmically to index */
+	var arr = context.array.getObjects(), H0 = arr[0][context.valueField];
 	context.array.getObjects().forEach(obj => {
 		var sec = obj[context.categoryField];
 		
@@ -131,7 +128,7 @@ function grenswaarden_Isotachen(context, vars) {
 		index[x][context.valueField] = obj[context.valueField];
 		index[x][context.valueField_kPa] = obj[context.valueField_kPa];
 		
-		var Ev = (obj[context.valueField] * (vars.dH / vars.H));
+		var Ev = -(obj[context.valueField] - H0) / vars.H;
 		index[x].x = parseFloat(x);
 		index[x].y = -Math.log(1 - Ev);
 		index[x].hours = sec / 3600;
@@ -152,10 +149,18 @@ function grenswaarden_Isotachen(context, vars) {
 	});
 	push(previous);
 
-	return log_line_intersect(kPa[0].x, kPa[0].y, kPa[1].x, kPa[1].y, kPa[2].x, kPa[2].y, kPa[3].x, kPa[3].y);
+	var r = log_line_intersect(kPa[0].x, kPa[0].y, kPa[1].x, kPa[1].y, kPa[2].x, kPa[2].y, kPa[3].x, kPa[3].y);
+	r.kPa_ = kPa;
+	return r;
 }
 function grenswaarden_Koppejan(context, vars) {
-	return {sN1N2: {}};
+	var graph = context.array.ud("#graph_Koppejan"), start;
+	vars.slope_variant = 1;
+	var variant1 = graph.get("onRender").apply(graph, [true]);
+	delete vars.slope_variant;
+	var variant2 = graph.get("onRender").apply(graph, [true]);
+	
+	return {variant1: variant1, variant2: variant2};
 }
 
 function line_intersect(x1, y1, x2, y2, x3, y3, x4, y4) {
@@ -271,16 +276,20 @@ var handlers = {
 		}
 		function H50_(stage) {
 			// TODO
-			return (t___(stage)||{t50:{}}).t50[2];
+			return (t___(stage) || {t50: {}}).t50[2];
 		}
 		function deltaH_(stage) {
 			/* delta of stage */
 			var min, max; 
 
-			values_(stage).forEach(obj => {
-				if(min === undefined || min > obj[key_Y]) min = obj[key_Y];
-				if(max === undefined || max < obj[key_Y]) max = obj[key_Y];
-			});
+			// values_(stage).forEach(obj => {
+			// 	if(min === undefined || min > obj[key_Y]) min = obj[key_Y];
+			// 	if(max === undefined || max < obj[key_Y]) max = obj[key_Y];
+			// });
+			
+			var values = values_(stage);
+			min = values[0][key_Y];
+			max = values.length ? values[values.length - 1][key_Y] : undefined;
 		
 			return max === undefined ? 0 : max - min;
 		}
@@ -339,23 +348,24 @@ var handlers = {
 			
 			return Sr;
 		}
-		function t___(stage) {
-			var values = [], meta = {}, index = {}, all = [], previous;
+		function t___(stage, values, meta, guides, trendLines) {
+			var index = {}, all = [], previous;
 			var context = { categoryField: "Time since start of stage (s)", valueField: "Axial Displacement (mm)", stage: stage };
-
+			values = values || [], meta = meta || {};
+			
+	/*- setup Taylor dataset for stage */
 			values_(stage).forEach(obj => {
-					var sec = obj[context.categoryField], x;
+				var sec = obj[context.categoryField], x;
 
-					x = Math.sqrt(sec / 60);
-
-					index[x] = js.mixIn(index[x]);
-					index[x]['Stage Number'] = obj['Stage Number'];
-					index[x][context.categoryField] = sec;
-					index[x].x = parseFloat(x);
-					index[x].y = obj[context.valueField] * 1000;
-					
-					all.push(index[x]);
-				});
+				x = Math.sqrt(sec / 60);
+				index[x] = js.mixIn(index[x]);
+				index[x]['Stage Number'] = obj['Stage Number'];
+				index[x][context.categoryField] = sec;
+				index[x].x = parseFloat(x);
+				index[x].y = obj[context.valueField] * 1000;
+				
+				all.push(index[x]);
+			});
 				
 			Object.keys(index).sort(sort_numeric).forEach(key => {
 					var entry = index[key];
@@ -396,6 +406,13 @@ var handlers = {
 				var y0 = (meta.y0 = values10_40[0].y - values10_40[0].x * slope);
 				var delta1_25_x = (delta * 1.25 - meta.y0) / slope;
 				
+			/*- add guide if applicable) */
+				guides && guides.push({
+					label: "0%", position: "right",
+					value: y0, dashLength: 2,
+					lineAlpha: 1, inside: true
+				});
+				
 		/* find intersection with curve (B) @ 90% consolidation */
 	
 			/*- start with point on 1.15 line where Y=top of 10-40% boundary */
@@ -404,6 +421,7 @@ var handlers = {
 			/*- find position in curve (all) */
 				var minutes = sx1 * sx1;
 				var position = Math.floor(minutes * 2); // TODO this assumes a 30 second interval
+				for(position = 0; position < all.length && all[position].x < minutes; ++position) ;
 
 			/*- bail out when needed... */				
 				if(position >= all.length) return undefined;
@@ -428,11 +446,81 @@ var handlers = {
 				if(passed.length == 1) {
 					passed.push(passed[0]);
 				}
+
+					trendLines && trendLines.push({
+						/*- Q -> a */
+						initialXValue: 0, initialValue: y0,
+						finalXValue: delta1_25_x, finalValue: delta * 1.25,
+						lineColor: "red	", lineThickness: 1
+					}, {
+						/*- measurement used for slope */
+						initialXValue: values10_40[0].x, initialValue: values10_40[0].y,
+						finalXValue: values10_40[values10_40.length - 1].x, finalValue: values10_40[values10_40.length - 1].y,
+						lineColor: "red", lineThickness: 3
+					}, {
+						/* 1.15 line */
+						initialXValue: 0, initialValue: y0,
+						finalXValue: delta1_25_x * 1.15, finalValue: delta * 1.25,
+						lineColor: "red", lineThickness: 1, dashLength: 3
+					});
+							
+	// 		/*- get intersection (B) pag. 24 */
+	// 				meta.B = line_intersect(
+	// 						passed[0][2].x, passed[0][2].y, passed[1][2].x, passed[1][2].y,
+	// 						passed[0][1].x, passed[0][1].y, passed[1][1].x, passed[1][1].y
+	// 					) || passed[0][1];
+
+					
 			/*- get intersection (B) page 24 */
 				meta.B = line_intersect(
 						passed[0][2].x, passed[0][2].y, passed[1][2].x, passed[1][2].y,
 						passed[0][1].x, passed[0][1].y, passed[1][1].x, passed[1][1].y
 					) || passed[0][1];
+					
+				if(meta.B) {
+					trendLines && trendLines.push({
+						initialXValue: meta.B.x, initialValue: 0,
+						finalXValue: meta.B.x, finalValue: meta.B.y,
+						lineColor: "red"
+					});
+					guides && guides.push({
+						label: "50%", position: "right",
+						value: y0 + ((meta.B.y - y0) / 90) * 50, 
+						dashLength: 2, lineAlpha: 1, inside: true
+					}, {
+						label: "90%", position: "right",
+						value: meta.B.y, dashLength: 2,
+						lineAlpha: 1, inside: true
+					}, {
+						label: "100%", position: "right",
+						value: y0 + ((meta.B.y - y0) / 90) * 100, 
+						dashLength: 2, lineAlpha: 1, inside: true
+					});
+				}
+			
+					
+		// 		/*- debug/helpers, showing which lines determine intersection */
+						trendLines && trendLines.push({
+							initialXValue: sx1, initialValue: sy1,
+							finalXValue: sx2, finalValue: sy2,
+							lineColor: "blue", lineThickness: 1, dashLength: 1
+						}, {
+							initialXValue: passed[0][1].x, initialValue: 0,
+							finalXValue: passed[0][1].x, finalValue: passed[0][1].y,
+							lineColor: "green", _dashLength: 2, lineThickness: 2
+						}, {
+							initialXValue: passed[0][2].x, initialValue: 0,
+							finalXValue: passed[0][2].x, finalValue: passed[0][2].y,
+							lineColor: "orange", _dashLength: 2
+						}, {
+							initialXValue: passed[1][1].x, initialValue: 0,
+							finalXValue: passed[1][1].x, finalValue: passed[1][1].y,
+							lineColor: "green", _dashLength: 2, lineThickness: 2
+						}, {
+							initialXValue: passed[1][2].x, initialValue: 0,
+							finalXValue: passed[1][2].x, finalValue: passed[1][2].y,
+							lineColor: "orange", _dashLength: 2
+						});
 						
 		/* find intersection with curve @ 50% consolidation */
 				var xy50, y50 = y0 + ((meta.B.y - y0) / 90) * 50;
@@ -709,14 +797,24 @@ var handlers = {
 			return (EvH2 - EvH1) / 100 / Math.log(pv2 / pv1);
 		}
 
-		var editor, initialize = () => {
+		var editor, initialize = (a) => {
 			context = contextNeeded(this);
 			if(!context.array || !context.array.isActive()) return;
+			
+			if(a===undefined) {
+				try {
+					initialize(null);
+				} catch(e) {
+					console.error(e);
+					return alert(e.message);
+				}
+			}
 			
 	/*- reset cache */
 			cache = { values_: {}, valuesUntil_: {} };
 	/*- source document */
 			lines = editor.qs("#ace").getLines();
+			if(lines.length === 1) return; // can't be right
 	/*- parse headers */	
 			headers = lines.filter(_ => _.split(",").length < 5)
 				.map(_ => _.split("\",\""))
@@ -731,7 +829,10 @@ var handlers = {
 			vars.D = headerValue("Initial Diameter (mm)");
 			vars.m = headerValue("Initial mass (g)");
 			vars.md = headerValue("Initial dry mass (g)");
+			vars.mf = headerValue("Final Mass");
+			vars.mdf = headerValue("Final Dry Mass");
 			vars.stages = nofStages();
+			vars.t___ = t___;
 
 	/*- initialize and calculate some more variables (see documentation `#VA-20201218-3`) */
 			vars.V = Math.PI * (vars.D/2) * (vars.D/2) * vars.H;
@@ -749,27 +850,27 @@ var handlers = {
 			vars.yi = vars.y;
 			vars.ydi = vars.yd;
 			vars.pdi = vars.pd;
-			vars.e0i = vars.e0;
+			vars.ei = vars.e0;
 			vars.Sri = vars.Sr;
 			
 		/*- final vars */
 			vars.Hf = vars.H - vars.dH;
 			vars.Vf = Math.PI * (vars.D/2) * (vars.D/2) * vars.Hf;
-			vars.yf = vars.m / (Math.PI / 4 * vars.D * vars.D * vars.Hf) * vars.G;
-			vars.ydf = vars.md / (Math.PI / 4 * vars.D * vars.D * vars.Hf) * vars.G;
+			vars.yf = vars.mf / (Math.PI / 4 * vars.D * vars.D * vars.Hf) * vars.G;
+			vars.ydf = vars.mdf / (Math.PI / 4 * vars.D * vars.D * vars.Hf) * vars.G;
 			vars.pdf = vars.ydf / (vars.G/1000);
-			vars.e0f = (vars.ps / vars.pdf) - 1;
-			vars.Srf = (vars.w0 * vars.ps) / (vars.e0f * vars.pw);
+			vars.ef = (vars.ps / vars.pdf) - 1;
+			vars.wf = (vars.mf - vars.mdf) / vars.mdf * 100;
+			vars.Srf = (vars.wf * vars.ps) / (vars.ef * vars.pw);
 
-this.print("variables", this.vars("variables"));
-			
-			var nofs = nofStages();
+			var nofs = nofStages(), kPa_ = [];
 			for(var stage = 1; stage <= nofs; ++stage)	{
-				this.vars(js.sf("variables.stages(%s)", stage), t___(stage));
-				this.vars(js.sf("variables.stages(%s).data", stage), values_(stage));
+				// this.vars(js.sf("variables.stages(%s)", stage), t___(stage));
+				// this.vars(js.sf("variables.stages(%s).data", stage), values_(stage));
+				kPa_.push(stage);
 			}
 
-			var dH = 0, prev, kPa_ = [1, 2, 3, 4, 5, 6, 7].map(stage => { 
+			var dH = 0, prev; kPa_ = kPa_.map(stage => { 
 				var current = {
 					x: load_(stage),  // kPa
 					y_rek: (dH += deltaH_(stage)) / Hi_(),
@@ -790,18 +891,25 @@ this.print("variables", this.vars("variables"));
 			});
 
 			vars.kPa_ = kPa_;
+			this.vars("values_", values_);
 
 		/*- Grenswaarden NEN (Bjerrum) */
-			var grenswaarden = {
+			vars.grenswaarden = {
 				nen: log_line_intersect(
 						kPa_[0].x, kPa_[0].y_rek, kPa_[1].x, kPa_[1].y_rek, 
 						kPa_[2].x, kPa_[2].y_rek, kPa_[3].x, kPa_[3].y_rek),
 				iso: grenswaarden_Isotachen(context, vars),
 				kop: grenswaarden_Koppejan(context, vars)
 			};
+			
+			var stages = [];
+			for(var i = 1; i <= vars.stages; ++i) {
+				kPa_[i - 1].iso = vars.grenswaarden.iso.kPa_[i - 1];
+				stages.push(i);
+			}
 
 	/*- Parameters */
-			vars.parameters = [{
+			vars.categories = [{
 				name: "Algemeen",
 				items: [
 					{ name: "Projectnummer", value: "" },
@@ -838,162 +946,101 @@ this.print("variables", this.vars("variables"));
 			}, {
 				name: "Initiële waarden",
 				items: [
-					{ symbol: "D", name: "Diameter", value: vars.D },
-					{ symbol: "ps", name: "Volumegewicht vaste delen", value: vars.ps },
-					{ symbol: "Hi", name: "Hoogte (voor)", value: vars.Hi },
-					{ symbol: "Vi", name: "Volume (voor)", value: vars.Vi },
+					{ symbol: "D", name: "Diameter", unit: "mm", value: vars.D },
+					{ symbol: "ps", name: "Volumegewicht vaste delen", unit: "Mg/m3", value: vars.ps },
+					{ symbol: "Hi", name: "Hoogte (voor)", unit: "mm", value: vars.Hi },
+					{ symbol: "Vi", name: "Volume (voor)", unit: "mm3", value: vars.Vi },
 					{ symbol: "Sri", name: "Verzadigingsgraad (voor)", unit: "%", value: vars.Sri },
-					{ symbol: "w0", name: "Vochtgehalte (voor)", unit: "%", value: vars.w0 },
-					{ symbol: "yi", name: "Volumegewicht nat (voor)", value: vars.yi },
-					{ symbol: "ydi", name: "Volumegewicht droog (voor)", value: vars.ydi },
-					{ symbol: "e0i", name: "Poriëngetal (voor)", value: vars.e0i }
+					{ symbol: "w0", name: "Watergehalte (voor)", unit: "%", value: vars.w0 },
+					{ symbol: "yi", name: "Volumegewicht nat (voor)", unit: "kN/m3", value: vars.yi },
+					{ symbol: "ydi", name: "Volumegewicht droog (voor)", unit: "kN/m3", value: vars.ydi },
+					{ symbol: "ei", name: "Poriëngetal (voor)", unit: "-", value: vars.ei }
 				]
 			}, {
 				name: "Uiteindelijke waarden",
 				items: [
-					{ symbol: "Hf", name: "Hoogte (na)", value: vars.Hf },
-					{ symbol: "Vf", name: "Volume (na)", value: vars.Vf },
+					{ symbol: "Hf", name: "Hoogte (na)", unit: "mm", value: vars.Hf },
+					{ symbol: "Vf", name: "Volume (na)", unit: "mm3", value: vars.Vf },
 					{ symbol: "Srf", name: "Verzadigingsgraad (na)", unit: "%", value: vars.Srf },
-					{ symbol: "wf", name: "Vochtgehalte (na)", unit: "%", value: vars.w0 },
-					{ symbol: "yf", name: "Volumegewicht nat (na)", value: vars.yf },
-					{ symbol: "ydf", name: "Volumegewicht droog (na)", value: vars.ydf },
-					{ symbol: "e0f", name: "Poriëngetal (na)", value: vars.e0f }
+					{ symbol: "wf", name: "Watergehalte (na)", unit: "%", value: vars.wf },
+					{ symbol: "yf", name: "Volumegewicht nat (na)", unit: "kN/m3", value: vars.yf },
+					{ symbol: "ydf", name: "Volumegewicht droog (na)", unit: "kN/m3", value: vars.ydf },
+					{ symbol: "ef", name: "Poriëngetal (na)", unit: "-", value: vars.ef }
 				]
 			}, {
 				name: "Belastingschema",
-				items: [
-					{ name: "Trap 1-kPa", value: load_(1) },
-					{ name: "Trap 2-kPa", value: load_(2) },
-					{ name: "Trap 3-kPa", value: load_(3) },
-					{ name: "Trap 4-kPa", value: load_(4) },
-					{ name: "Trap 5-kPa", value: load_(5) },
-					{ name: "Trap 6-kPa", value: load_(6) },
-					{ name: "Trap 7-kPa", value: load_(7) }
-				]
+				items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), symbol: "load(" + stage + ")", unit: "kPa", value: load_(stage) })),
 			}, {
 				name: "Poriëngetal",
-				items: [
-					{ name: "Trap 1-e", value: e_(1) },
-					{ name: "Trap 2-e", value: e_(2) },
-					{ name: "Trap 3-e", value: e_(3) },
-					{ name: "Trap 4-e", value: e_(4) },
-					{ name: "Trap 5-e", value: e_(5) },
-					{ name: "Trap 6-e", value: e_(6) },
-					{ name: "Trap 7-e", value: e_(7) }
-				]
+				items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), symbol: "e(" + stage + ")", unit: "-", value: e_(stage) })),
+			}, {
+				name: "Lineaire rek",
+				items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), symbol: "Ecv(" + stage + ")", unit: "%", value: kPa_[stage - 1].y_rek })),
+			}, {
+				name: "Natuurlijke rek",
+				items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), symbol: "EvH(" + stage + ")", unit: "%", value: -kPa_[stage - 1].iso.y })),
 			}, {
 				name: "Grensspanning",
 				items: [
-					{ name: "Grensspanning NEN", value: js.get("nen.sN1N2.x", grenswaarden) },
-					{ name: "Grensspanning Isotachen", value: js.get("iso.sN1N2.x", grenswaarden) },
-					{ name: "Grensspanning Koppejan", value: js.get("kop.sN1N2.x", grenswaarden) + 0},
-					{ name: "Rek bij grensspanning NEN", value: js.get("nen.sN1N2.y", grenswaarden) * 100 },
-					{ name: "Rek bij grensspanning Isotachen", value: js.get("iso.sN1N2.y", grenswaarden) * 100},
-					{ name: "Rek bij grensspanning Koppejan", value: js.get("kop.sN1N2.y", grenswaarden) * 100 },
+					{ name: "Grensspanning NEN", unit: "kPa", symbol: "o'p", value: js.get("nen.sN1N2.x", vars.grenswaarden) },
+					{ name: "Grensspanning Isotachen", unit: "kPa", value: js.get("iso.sN1N2.x", vars.grenswaarden) },
+					{ name: "Grensspanning Koppejan", unit: "kPa", value: "?" || js.get("kop.variant1.LLi_1.sN1N2.x", vars.grenswaarden) + 0},
+					{ name: "Rek bij grensspanning NEN", symbol: "ECv", unit: "%", value: js.get("nen.sN1N2.y", vars.grenswaarden) * 100 },
+					{ name: "Rek bij grensspanning Isotachen", unit: "%", value: -js.get("iso.sN1N2.y", vars.grenswaarden) * 100},
+					{ name: "Rek bij grensspanning Koppejan", unit: "%", value: "?" || js.get("kop.variant1.LLi_1.sN1N2.y", vars.grenswaarden) * 100 },
 				]
 			}, {
 				name: "Consolidatie 50%",
-				items: [
-					{ name: "Trap 1-t50", value: t50_(1) },
-					{ name: "Trap 2-t50", value: t50_(2) },
-					{ name: "Trap 3-t50", value: t50_(3) },
-					{ name: "Trap 4-t50", value: t50_(4) },
-					{ name: "Trap 5-t50", value: t50_(5) },
-					{ name: "Trap 6-t50", value: t50_(6) },
-					{ name: "Trap 7-t50", value: t50_(7) },
-				]
+				items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), symbol: "t50(" + stage +")", value: t50_(stage) })),
 			}, {
 				name: "Consolidatie 90%",
-				items: [
-					{ name: "Trap 1-t90", value: t90_(1) },
-					{ name: "Trap 2-t90", value: t90_(2) },
-					{ name: "Trap 3-t90", value: t90_(3) },
-					{ name: "Trap 4-t90", value: t90_(4) },
-					{ name: "Trap 5-t90", value: t90_(5) },
-					{ name: "Trap 6-t90", value: t90_(6) },
-					{ name: "Trap 7-t90", value: t90_(7) },
-				]
+				items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), symbol: "t90(" + stage +")", value: t90_(stage) })),
 			}, {
 				name: "Consolidatiecoëfficiënt",
-				items: [
-					{ name: "Taylor 1-Cv10", value: Cv10_(1, "Taylor") },
-					{ name: "Taylor 2-Cv10", value: Cv10_(2, "Taylor") },
-					{ name: "Taylor 3-Cv10", value: Cv10_(3, "Taylor") },
-					{ name: "Taylor 4-Cv10", value: Cv10_(4, "Taylor") },
-					{ name: "Taylor 5-Cv10", value: Cv10_(5, "Taylor") },
-					{ name: "Taylor 6-Cv10", value: Cv10_(6, "Taylor") },
-					{ name: "Taylor 7-Cv10", value: Cv10_(7, "Taylor") },
-					{ name: "Casagrande 1-Cv10", value: Cv10_(1) },
-					{ name: "Casagrande 2-Cv10", value: Cv10_(2) },
-					{ name: "Casagrande 3-Cv10", value: Cv10_(3) },
-					{ name: "Casagrande 4-Cv10", value: Cv10_(4) },
-					{ name: "Casagrande 5-Cv10", value: Cv10_(5) },
-					{ name: "Casagrande 6-Cv10", value: Cv10_(6) },
-					{ name: "Casagrande 7-Cv10", value: Cv10_(7) }
-				]
+				items: stages.map(stage => 
+					({ name: js.sf("Casagrande-Trap [%d]", stage), unit: "m2/s", symbol: "Cv10(" + stage +")", value: Cv10_(stage) })).concat(stages.map(stage =>
+					({ name: js.sf("Taylor-Trap [%d]", stage), unit: "m2/s", symbol: "Cv10(" + stage + ", true)", value: Cv10_(stage, "Taylor") })
+				))
 			}, {
 				name: "Volumesamendrukkingscoëfficiënt",
-				items: [
-					// { name: "Taylor 1-Mv", value: Mv_(1, true) },
-					{ name: "Taylor 2-Mv", value: Mv_(2, true) },
-					{ name: "Taylor 3-Mv", value: Mv_(3, true) },
-					{ name: "Taylor 4-Mv", value: Mv_(4, true) },
-					{ name: "Taylor 5-Mv", value: Mv_(5, true) },
-					{ name: "Taylor 6-Mv", value: Mv_(6, true) },
-					{ name: "Taylor 7-Mv", value: Mv_(7, true) },
-					// { name: "Casagrande 1-Mv", value: Mv_(1) },
-					{ name: "Casagrande 2-Mv", value: Mv_(2) },
-					{ name: "Casagrande 3-Mv", value: Mv_(3) },
-					{ name: "Casagrande 4-Mv", value: Mv_(4) },
-					{ name: "Casagrande 5-Mv", value: Mv_(5) },
-					{ name: "Casagrande 6-Mv", value: Mv_(6) },
-					{ name: "Casagrande 7-Mv", value: Mv_(7) },
-				]				
+				items: stages.slice(1).map(stage => 
+					({ name: js.sf("Casagrande-Trap [%d]", stage), unit: "1/Mpa", symbol: "Mv(" + stage +")", value: Mv_(stage) })).concat(stages.slice(1).map(stage =>
+					({ name: js.sf("Taylor-Trap [%d]", stage), unit: "1/Mpa", symbol: "Mv(" + stage + ", true)", value: Mv_(stage, "Taylor") })
+				))
 			}, {
 				name: "Waterdoorlatendheid",
-				items: [
-					// { name: "Taylor 1-k10", value: k10_(1, true) },
-					{ name: "Taylor 2-k10", value: k10_(2, true) },
-					{ name: "Taylor 3-k10", value: k10_(3, true) },
-					{ name: "Taylor 4-k10", value: k10_(4, true) },
-					{ name: "Taylor 5-k10", value: k10_(5, true) },
-					{ name: "Taylor 6-k10", value: k10_(6, true) },
-					{ name: "Taylor 7-k10", value: k10_(7, true) },
-					// { name: "Casagrande 1-k10", value: k10_(1) },
-					{ name: "Casagrande 2-k10", value: k10_(2) },
-					{ name: "Casagrande 3-k10", value: k10_(3) },
-					{ name: "Casagrande 4-k10", value: k10_(4) },
-					{ name: "Casagrande 5-k10", value: k10_(5) },
-					{ name: "Casagrande 6-k10", value: k10_(6) },
-					{ name: "Casagrande 7-k10", value: k10_(7) },
-				]
+				items: stages.slice(1).map(stage => 
+					({ name: js.sf("Casagrande-Trap [%d]", stage), unit: "m/s", symbol: "k10(" + stage + ")", value: k10_(stage) })).concat(stages.slice(1).map(stage =>
+					({ name: js.sf("Taylor-Trap [%d]", stage), unit: "m/s", symbol: "k10(" + stage + ", true)", value: k10_(stage, "Taylor") })
+				))
 			}, {
 				name: "Samendrukkingsparameters - NEN/Bjerrum",
-				items: [
-					{ name: "Trap [1-2]-Cc_(2)", value: Cc_(2) },
-					{ name: "Trap [2-3]-Cc_(3)", value: Cc_(3) },
-					{ name: "Trap [3-4]-Cc_(4)", value: Cc_(4) },
-					{ name: "Trap [4-5]-Cc_(5)", value: Cc_(5) },
-					{ name: "Trap [5-6]-Cc_(6)", value: Cc_(6) },
-					{ name: "Trap [6-7]-Cc_(7)", value: Cc_(7) },
-					{ name: "Trap [1-2]-CR_(2)", value: CR_(2) },
-					{ name: "Trap [2-3]-CR_(3)", value: CR_(3) },
-					{ name: "Trap [3-4]-CR_(4)", value: CR_(4) },
-					{ name: "Trap [4-5]-CR_(5)", value: CR_(5) },
-					{ name: "Trap [5-6]-CR_(6)", value: CR_(6) },
-					{ name: "Trap [6-7]-CR_(7)", value: CR_(7) },
-				]				
+				items: stages.slice(1).map(stage => 
+					({ name: js.sf("Trap [%d-%d]", stage - 1, stage, stage), symbol: js.sf("Cc(%d)", stage), value: Cc_(stage) })).concat(stages.slice(1).map(stage =>
+					({ name: js.sf("Trap [%d-%d]", stage - 1, stage, stage), symbol: js.sf("CR(%d)", stage), value: CR_(stage) })
+				))
 			}, {
 				name: "Samendrukkingsparameters - a,b,c-Isotachen",
 				items: [
 					{ name: "onder Pg", symbol: "a", value: iso_a_(0, context, vars) },
 					{ name: "boven Pg", symbol: "b", value: iso_a_(1, context, vars) },
-					{ name: "ontlasten", symbol: "as", value: [iso_a_(3,context,vars), iso_asw_(3, context, vars)] },
-					{ name: "herlasten", symbol: "ar", value: iso_a_(5, context, vars) }
+					// { name: "ontlasten", symbol: "as", value: [iso_a_(3,context,vars), iso_asw_(3, context, vars)] },
+					// { name: "herlasten", symbol: "ar", value: iso_a_(stages.length, context, vars) }
 				]
-			}].map(_ => _.items.map(kvp => mixin({ category: _ }, kvp))).flat();
+			}, {
+				name: "Controle parameters - deltaH",
+				items: stages.map(_ => ({ name: "Trap " + _, symbol: "dH" + _, unit: "mm", value: deltaH_(_) }))
+			}, {
+				name: "Controle parameters - Koppejan - variant 1",
+				items:	stages.map(stage => ({ name: js.sf("Richtingscoëfficiënt regressielijn %d", stage), symbol: "rc" + stage, value: js.get("kop.variant1.slopes", vars.grenswaarden)[stage - 1].rc })).concat(
+						stages.map(stage => ({ name: js.sf("Nulpunt regressielijn %d", stage), symbol: "np" + stage, value: js.get("kop.variant1.slopes", vars.grenswaarden)[stage - 1].np}))),
+			}, {
+				name: "Controle parameters - Koppejan - variant 2",
+				items:	stages.map(stage => ({ name: js.sf("Richtingscoëfficiënt regressielijn %d", stage), symbol: "rc" + stage, value: js.get("kop.variant2.slopes", vars.grenswaarden)[stage - 1].rc })).concat(
+						stages.map(stage => ({ name: js.sf("Nulpunt regressielijn %d", stage), symbol: "np" + stage, value: js.get("kop.variant2.slopes", vars.grenswaarden)[stage - 1].np}))),
+			}];
+			vars.parameters = vars.categories.map(_ => _.items.map(kvp => mixin({ category: _ }, kvp))).flat();
 			
-			this.vars("values_", values_);
 			this.scope("array-headers").setArray(headers.concat(vars.parameters));
 		};
 		
@@ -1049,11 +1096,16 @@ this.print("variables", this.vars("variables"));
 		css: {
 			"": "background-color:white;",
 			"a": "visibility:hidden;",
-			".multiple > div": 
-				"width:48%;height:48%;display:inline-block;" + 
-				"background-color:#fafafa;border:1px dashed black;text-align:center;" +
-				"margin-left:1%;margin-right:1%;margin-top:5px;margin-bottom:5px;" + 
-				"min-width:300px;min-height:300px;"
+			// "&:not(.pdf)": {
+				".multiple > div": "width:48%;height:48%;display:inline-block;" + 
+					"border: 1px dashed black;" +
+					"margin-left:1%;margin-right:1%;margin-top:5px;margin-bottom:5px;" + 
+					"min-width:300px;min-height:300px;",
+			// }, // 190/210
+			"&.pdf > :not(.multiple)": "width: 850px; height: 470px;background-color: rgba(56, 121, 217, 0.075); border: 3px dashed rgb(56, 121, 217);",
+			// "&.pdf > div > .amcharts-main-div": "",
+			"&.pdf .multiple > div.selected": "_width: 850px; _height: 470px;background-color: rgba(56, 121, 217, 0.075); border: 3px dashed rgb(56, 121, 217);",
+			"&.pdf.generate .multiple > div": "height: 470px; width:850px; position:absolute;top:0;left:0;"
 		}
 	}, [
 		["vcl/ui/Panel", ("graph_Casagrande"), {
@@ -1113,11 +1165,15 @@ this.print("variables", this.vars("variables"));
 	
 					makeChart(this, {
 						immediate: true,
+						legend: false,
 						node: this.getChildNode(stage),
-						xAxisTitle: "Tijd [minuten]",
+						// xAxisTitle: "",
+						xAxisTitle: js.sf("Trap %s: zetting [µm] / → [minuten]", stage + 1),
 						xAxisLogarithmic: true
 					});
 						
+					if(stage === 2) this.getChildNode(stage).className += " selected";
+
 					if(++stage < vars.stages) {
 						this.nextTick(render);
 					}
@@ -1139,199 +1195,37 @@ this.print("variables", this.vars("variables"));
 					content.push(js.sf("<div>Stage %s</div>", stage));
 				}
 				this._node.innerHTML = content.join("");
-				
-		/*- render */ stage = 0;
+				stage = 0;
+
+		/*- render */ 
 				var render = () => {
-				    var meta = {context: context}, index = {}, values = [], previous, series = [{
+				    var meta = {context: context}, values = [], guides = [], trendLines = [];
+				    var series = [{
 						title: js.sf("Zetting trap %s [µm]", stage + 1),
 						valueAxis: "y1", valueField: "y"
 					}];
-					
-					var all = [];
-					// context.array.getObjects().filter(obj => ("" + obj['Stage Number']).split(".").pop() == stage)
-					context.values_(stage + 1).forEach(obj => {
-						var sec = obj[context.categoryField], x;
 
-						x = Math.sqrt(sec / 60);
-
-						index[x] = js.mixIn(index[x]);
-						index[x]['Stage Number'] = obj['Stage Number'];
-						index[x][context.categoryField] = sec;
-						index[x].x = parseFloat(x);
-						index[x].y = obj[context.valueField] * 1000;
-						
-						all.push(index[x]);
-					});
-					Object.keys(index).sort(sort_numeric).forEach(key => {
-						var entry = index[key];
-						if(previous) { 
-							entry.delta = entry.y - previous.y;
-						}
-						previous = entry;
-				 		values.push(entry);
-					});
-					
-		/* determine boundaries Y (min-max) */
-					values.forEach(obj => {
-						if(meta.min === undefined || meta.min > obj.y) meta.min = obj.y;
-						if(meta.max === undefined || meta.max < obj.y) meta.max = obj.y;
-					});
-					
-		/* 10-40% boundaries */
-					var delta = (meta.delta = meta.max - meta.min);
-					var h10 = (meta.h10 = 0.1 * delta);
-					var h40 = (meta.h40 = 0.4 * delta);
-					
-					var trendLines = [{
-							initialXValue: 0, initialValue: h10,
-							finalXValue: 100, finalValue: h10,
-							lineColor: "green"
-						}, {
-							initialXValue: 0, initialValue: h40,
-							finalXValue: 100,  finalValue: h40,
-							lineColor: "green"
-						}];
-					var guides = [];
-	
-		/* translate Y values to 0 */
-					values.forEach(_ => _.y -= meta.min);
-	
-		/*- filter values within 10-40% boundary */
-					var values10_40 = (meta.values10_40 = all.filter(obj => obj.y > h10 && obj.y < h40)
-						.sort((i1, i2) => i1.delta < i2.delta ? 1 : -1));
-					if(values10_40.length >= 2) {
-	
-			/*- determine slope of 10-40% boundary */
-						var dx = values10_40[values10_40.length - 1].x - values10_40[0].x;
-						var dy = values10_40[values10_40.length - 1].y - values10_40[0].y;
-						var slope = (meta.slope = dy / dx);
-		
-			/*- find intersection with Y-axis (Q) */
-						var y0 = (meta.y0 = values10_40[0].y - values10_40[0].x * slope);
-						var delta1_25_x = (delta * 1.25 - meta.y0) / slope;
-						
-						guides.push({
-							label: "0%", position: "right",
-							value: y0, dashLength: 2,
-							lineAlpha: 1, inside: true
-						});
-						
-			/* find intersection with curve (B) =90% consolidation */
-		
-				/*- start point on 1.15 line */
-						var sy1 = values10_40[1].y; // y of last 10-40 piece
-						var sx1 = (sy1 - y0) / slope * 1.15;
-						
-				/*- find position in curve (all) */
-						var minutes = sx1 * sx1;
-						var position = Math.floor(minutes * 2);
-						
-						var sy2 = all[position].y;
-						var sx2 = (sy2 - y0) / slope * 1.15;
-						var dsx2 = sx2 - (all[position].x);
-						meta.dsx2 = [[dsx2, all[position], {x: sx2, y: sy2}]];
-		
-				/*- find where line crosses (ie. dsx2 > 0)*/	
-						while(dsx2 > 0 && position < all.length) {
-							position++;
-							
-							sy2 = all[position].y;
-							sx2 = (sy2 - y0) / slope * 1.15;					
-							
-							dsx2 = sx2 - (all[position].x);
-							meta.dsx2.unshift([dsx2, all[position], {x: sx2, y: sy2}]);
-						}
-						
-				/*- the entry with the smallest delta sorts to front (index 0) - make sure there are two entries */
-						if(meta.dsx2.length == 1) {
-							meta.dsx2.push(meta.dsx2[0]);
-						}
-						
-						trendLines.push({
-							/*- Q -> a */
-							initialXValue: 0, initialValue: y0,
-							finalXValue: delta1_25_x, finalValue: delta * 1.25,
-							lineColor: "red	", lineThickness: 1
-						}, {
-							/*- measurement used for slope */
-							initialXValue: values10_40[0].x, initialValue: values10_40[0].y,
-							finalXValue: values10_40[values10_40.length - 1].x, finalValue: values10_40[values10_40.length - 1].y,
-							lineColor: "red", lineThickness: 3
-						}, {
-							/* 1.15 line */
-							initialXValue: 0, initialValue: y0,
-							finalXValue: delta1_25_x * 1.15, finalValue: delta * 1.25,
-							lineColor: "red", lineThickness: 1, dashLength: 3
-						});
-						
-				/*- debug/helpers, showing which lines determine intersection */
-						1 && trendLines.push({
-							initialXValue: sx1, initialValue: sy1,
-							finalXValue: sx2, finalValue: sy2,
-							lineColor: "blue", lineThickness: 4
-						}, {
-							initialXValue: meta.dsx2[0][1].x, initialValue: 0,
-							finalXValue: meta.dsx2[0][1].x, finalValue: meta.dsx2[0][1].y,
-							lineColor: "green", _dashLength: 2, lineThickness: 2
-						}, {
-							initialXValue: meta.dsx2[0][2].x, initialValue: 0,
-							finalXValue: meta.dsx2[0][2].x, finalValue: meta.dsx2[0][2].y,
-							lineColor: "orange", _dashLength: 2
-						}, {
-							initialXValue: meta.dsx2[1][1].x, initialValue: 0,
-							finalXValue: meta.dsx2[1][1].x, finalValue: meta.dsx2[1][1].y,
-							lineColor: "green", _dashLength: 2, lineThickness: 2
-						}, {
-							initialXValue: meta.dsx2[1][2].x, initialValue: 0,
-							finalXValue: meta.dsx2[1][2].x, finalValue: meta.dsx2[1][2].y,
-							lineColor: "orange", _dashLength: 2
-						});
-						
-				/*- get intersection (B) pag. 24 */
-						meta.B = line_intersect(
-								meta.dsx2[0][2].x, meta.dsx2[0][2].y, meta.dsx2[1][2].x, meta.dsx2[1][2].y,
-								meta.dsx2[0][1].x, meta.dsx2[0][1].y, meta.dsx2[1][1].x, meta.dsx2[1][1].y
-							) || meta.dsx2[0][1];
-						if(meta.B) {
-							trendLines.push({
-								initialXValue: meta.B.x, initialValue: 0,
-								finalXValue: meta.B.x, finalValue: meta.B.y,
-								lineColor: "red"
-							});
-							guides.push({
-								label: "50%", position: "right",
-								value: y0 + ((meta.B.y - y0) / 90) * 50, 
-								dashLength: 2, lineAlpha: 1, inside: true
-							}, {
-								label: "90%", position: "right",
-								value: meta.B.y, dashLength: 2,
-								lineAlpha: 1, inside: true
-							}, {
-								label: "100%", position: "right",
-								value: y0 + ((meta.B.y - y0) / 90) * 100, 
-								dashLength: 2, lineAlpha: 1, inside: true
-							});
-						}
-					}
-	
+					vars.t___(stage + 1, values, meta, guides, trendLines);
 					this.vars("am", { series: series, meta: meta, data: values });
-	
+					
+
 					makeChart(this, {
 						immediate: true,
+						legend: false,
 						node: this.getChildNode(stage),
 						trendLines: trendLines,
 					    valueAxes: [{
 					        id: "y1", position: "left", reversed: true,
 							guides: guides
 						}, {
-							position: "bottom", title: "Tijd [√ minuten]"
-						}],
-						minValue: 1, maxValue: 1
+							title: js.sf("Trap %s: zetting [µm] / → [√ minuten]", stage + 1),
+							position: "bottom", _title: "→ [√ minuten]"
+						}]
 					});
 
-					if(++stage < vars.stages) {
-						this.nextTick(render);
-					}
+					if(stage === 2) this.getChildNode(stage).className += " selected";
+					
+					if(++stage < vars.stages) { this.nextTick(render); }
 				};
 				vars.stages && render();
 			}
@@ -1341,7 +1235,6 @@ this.print("variables", this.vars("variables"));
 			onRender() {
 				var context = contextNeeded(this);
 				if(!context.array.isActive()) return;
-
 
 				var series = [{
 					title: "Poriëngetal (e) [-]",
@@ -1377,29 +1270,7 @@ this.print("variables", this.vars("variables"));
 						lineColor: "red", lineAlpha: 0.25,
 						dashLength: 2
 					});
-				this.print("N=b*g^t-y_e", LLi_e);
-				// trendLines.push({
-				// 			initialXValue: kPa_[1].x, initialValue: kPa_[1].y_rek,
-				// 			finalXValue: LLi_e.b1 * Math.pow(LLi_e.g1, kPa_[2].y_rek),
-				// 			finalValue: kPa_[2].y_rek,
-				// 			lineColor: "red", yAxis: "y2"
-				// 		}, {
-				// 			initialXValue: kPa_[2].x, initialValue: kPa_[2].y_rek,
-				// 			finalXValue: LLi_e.b2 * Math.pow(LLi_e.g2, kPa_[0].y_rek),
-				// 			finalValue: kPa_[0].y_rek,
-				// 			lineColor: "red"
-				// 		}, {
-				// 			initialXValue: LLi_e.sN1N2.x, initialValue: LLi_e.sN1N2.y,
-				// 			finalXValue: LLi_e.sN1N2.x, finalValue: 0,
-				// 			lineColor: "red", lineAlpha: 0.25,
-				// 			dashLength: 2
-				// 		}, {
-				// 			initialXValue: LLi_e.sN1N2.x, initialValue: LLi_e.sN1N2.y,
-				// 			finalXValue: 0.1, finalValue: LLi_e.sN1N2.y,
-				// 			lineColor: "red", lineAlpha: 0.25,
-				// 			dashLength: 2
-				// 		});			
-				
+
 				this.vars("am", { series: series, meta: {LLi_e: LLi_e}, data: kPa_, context: context });
 				makeChart(this, { 
 					type: "xy",
@@ -1411,7 +1282,7 @@ this.print("variables", this.vars("variables"));
 							label: js.sf("e0=%.3f", LLi_e.sN1N2.y)
 						}]
 				    }, {
-						position: "bottom", title: "Belasting [kPa]",
+						position: "bottom", title: "Belasting → [kPa]",
 						logarithmic: true, minimum: 5,
 						guides: [{
 							position: "top",
@@ -1427,7 +1298,6 @@ this.print("variables", this.vars("variables"));
 			onRender() {
 				var context = contextNeeded(this);
 				if(!context.array.isActive()) return;
-
 
 				var series = [{
 					title: "Verticale rek [∆H / Ho]",
@@ -1471,7 +1341,7 @@ this.print("variables", this.vars("variables"));
 							label: js.sf("Rek: %.3f %%", LLi_rek.sN1N2.y * 100)
 						}]
 				    }, {
-						position: "bottom", title: "Belasting [kPa]",
+						position: "bottom", title: "Belasting → [kPa]",
 						logarithmic: true, minimum: 5,
 						guides: [{
 							position: "top",
@@ -1496,7 +1366,8 @@ this.print("variables", this.vars("variables"));
 				var vars = this.vars(["variables"]);
 
 				/*- TODO optimize this -- translates context.array logarithmically to index */
-				context.array.getObjects().forEach(obj => {
+				var arr = context.array.getObjects(), H0 = arr[0][context.valueField];
+				arr.forEach(obj => {
 					var sec = obj[context.categoryField];
 					
 					/*- calculate x := log10(sec) - fix to 5 decimals */
@@ -1508,9 +1379,9 @@ this.print("variables", this.vars("variables"));
 					index[x][context.valueField] = obj[context.valueField];
 					index[x][context.valueField_kPa] = obj[context.valueField_kPa];
 					
-					var Ev = (obj[context.valueField] * (vars.dH / vars.H));
+					var Ev = -(obj[context.valueField] - H0) / vars.H;
 					index[x].x = parseFloat(x);
-					index[x].y = -Math.log(1 - Ev);
+					index[x].y = Math.log(1 - Ev);
 					index[x].hours = sec / 3600;
 					index[x].minutes = sec / 60;
 					index[x].seconds = sec;
@@ -1561,7 +1432,7 @@ this.print("variables", this.vars("variables"));
 							label: js.sf("Rek: %.3f %%", LLi_e.sN1N2.y * 100)
 						}]
 					}, {
-						position: "bottom", title: "Belasting [kPa]",
+						position: "bottom", title: "Belasting → [kPa]",
 						minimum: kPa[0].x * 0.75,
 						logarithmic: true,
 						guides: [{
@@ -1574,11 +1445,10 @@ this.print("variables", this.vars("variables"));
 		}],
 		["vcl/ui/Panel", ("graph_Koppejan"), {
 			align: "client", visible: false,
-			onRender() {
+			onRender(returnMeta) {
 				var context = contextNeeded(this);
 				if(!context.array.isActive()) return;
 
-			    var meta = {context: context}, index = {}, allValues = [], previous;
 				var series = [{ 
 					title: "Belasting [kPa]", xAxis: "x2",
 					xField: "x2", yField: "y2"
@@ -1590,7 +1460,8 @@ this.print("variables", this.vars("variables"));
 					xField: "x" + (_ + 2), yField: "vz2",
 					lineColor: _ >= 4 ? "purple" : "red", lineThickness: 1
 				})));
-				
+
+			    var meta = {context: context}, index = {}, allValues = [], previous;
 				var ignore = 30 / (24 * 3600) / 2;
 				context.array.getObjects().forEach((obj, idx, arr) => {
 					/*- translates context.array logarithmically and pushes into allValues */
@@ -1613,7 +1484,8 @@ this.print("variables", this.vars("variables"));
 					index[x].hours = sec / 3600;
 					index[x].minutes = sec / 60;
 					index[x].seconds = sec;
-					index[x].delta = (arr[idx -1][context.valueField] - obj[context.valueField]);
+					
+					if(idx > 0) index[x].delta = (arr[idx -1][context.valueField] - obj[context.valueField]);
 				});
 				
 				var serie2 = [];
@@ -1637,6 +1509,7 @@ this.print("variables", this.vars("variables"));
 				var slopes = [], y = "Axial Displacement (mm)", x = "Time since start of stage (s)";
 				var vars = this.vars(["variables"]);
 				var stages = vars.stages;
+				var slope_variant = vars.slope_variant || 2;
 
 				for(var s = 0; s < stages; ++s) {
 					var z1 = context.values_(s + 1, allValues);
@@ -1645,8 +1518,8 @@ this.print("variables", this.vars("variables"));
 						stage: s + 1,
 						values: z1,
 						// always get 0.1 (tried mean and smallest delta as well)
-						// measurement: z1[Math.round(0.1 * 3600 * 24 / 30)], 
-						measurement: function() {
+						measurement_1: z1[Math.round(0.1 * 3600 * 24 / 30)], 
+						measurement_2: function() {
 							var N = z1.length, ax = 0, ay = 0, sx = z1[0][x], sy = z1[0][y];
 							z1.slice(z1.length - N).forEach(m => {
 								ax += (m[x] - sx);
@@ -1660,14 +1533,15 @@ this.print("variables", this.vars("variables"));
 							m.vz2 = m.y;
 							return m;
 						}(),
-						// measurement: z1.filter(_ => _.delta != 0).sort((i1, i2) => Math.abs(i1.delta) < Math.abs(i2.delta) ? -1 : 1)[0],
+						measurement_3: z1.filter(_ => _.delta != 0).sort((i1, i2) => Math.abs(i1.delta) < Math.abs(i2.delta) ? -1 : 1)[0],
 						last: z1[z1.length - 1]
 					};
+					
+					slope.measurement = slope['measurement_' + slope_variant];
 
 					slope.rc = (slope.last.y - slope.measurement.y) / 
 							Math.log10(Math.round(slope.last[x] / 3600 * 24) / 
 								(slope.measurement[x] / 3600 * 24));
-
 
 					/*- extrapolate next stage */
 					if(s < stages - 1) {
@@ -1757,21 +1631,34 @@ this.print("variables", this.vars("variables"));
 				meta.LLi_1 = LLi_1;
 				meta.trendLines = trendLines;
 
-this.print("slopes", slopes);
+				if(returnMeta === true) {
+					this.print(">>> only return");
+					return meta;
+				}
+				
+				// this.getChildNode(0).className += " selected";
 				
 				makeChart(this, { 
 					type: "xy",
+					// node: this.getChildNode(0),
 				    valueAxes: [{
-				        id: "y1", position: "left", reversed: true,
+				        id: "y1", reversed: true, minimum: 0,
+						// guides: [{
+						// 	value: LLi_1.sN1N2.y, inside: true, lineAlpha: 0,
+						// 	label: js.sf("%.3f mm", LLi_1.sN1N2.y)
+						// }]
+					}, {
+				        id: "y2", position: "right", reversed: true, minimum: 0,
+				        synchronizeWith: "y1", synchronizationMultiplier: 1,
 						guides: [{
 							value: LLi_1.sN1N2.y, inside: true, lineAlpha: 0,
 							label: js.sf("%.3f mm", LLi_1.sN1N2.y)
 						}]
 					}, {
-						id: "x1", title: "Tijd [dagen]", position: "bottom", 
+						id: "x1", title: "→ [dagen]", position: "bottom", 
 						logarithmic: true, minimum: 0.01, maximum: 1000
 					}, {
-						id: "x2", title: "Belasting [kPa]", position: "top",
+						id: "x2", _title: "Belasting → [kPa]", position: "top",
 						synchronizeWith: "x1", synchronizationMultiplier: 1,
 						logarithmic: true, minimum: 0.01,
 						guides: [{
@@ -1781,14 +1668,14 @@ this.print("slopes", slopes);
 					}],
 					trendLines: [{
 						valueAxisX: "x2",
-						initialXValue: ignore, initialValue: LLi_1.sN1N2.y,
+						initialXValue: 10000, initialValue: LLi_1.sN1N2.y,
 						finalXValue: LLi_1.sN1N2.x, finalValue: LLi_1.sN1N2.y,
-						dashLength: 2, lineColor: "green", lineAlpha: 0.1
+						dashLength: 2, lineColor: "green", lineAlpha: 0.5
 					}, {
 						valueAxisX: "x2",
 						initialXValue: LLi_1.sN1N2.x, initialValue: 0,
 						finalXValue: LLi_1.sN1N2.x, finalValue: LLi_1.sN1N2.y,
-						dashLength: 2, lineColor: "green", lineAlpha: 0.1
+						dashLength: 2, lineColor: "green", lineAlpha: 0.5
 					}, {
 						valueAxisX: "x2",
 						initialXValue: serie2[1].x2, initialValue: serie2[1].y,

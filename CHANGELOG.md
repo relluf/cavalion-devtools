@@ -1,6 +1,32 @@
-### 2021/02/18 - @1.0.34
+### 2021/03/18 - 1.1.40
+
+* Persisting serialized SVG and calculated parameters as JSON document
+* Finetuning chart generation
+
+### 2021/03/15
+
+`#VA-20201218-3`
+
+* Integrating feedback (Salvadar Paz Noriega)
+* Corrected/updated Isotachen graph
+* Serializing SVG to JSON
+
+### 2021/03/11 - 1.1.39
+
+`#VA-20201218-3`
+
+* Fixes Taylor to work with a non-30-second interval data stream
+* Finetuning some guidelines 
+
+### 2021/03/10 - 1.1.38
 - Developing `#VA-20201218-3`
-- Introducing `devtools/Renderer` and `devtools/Renderer<gds>`
+- veldoffice-rapportage-vcl@v147
+
+### 2021/03/07 - @1.0.37
+- Developing `#VA-20201218-3`
+
+### 2021/02/18 - @1.0.34
+- Introducing `devtools/Renderer` and `devtools/Renderer<gds>` - `#VA-20201218-3`
 
 ### 2021/02/02
 - Fixes the un(listen)-crash of `devtools/Workspace` upon destroy

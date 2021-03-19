@@ -1,6 +1,6 @@
 {
   "name": "cavalion-devtools",
-  "version": "1.0.34",
+  "version": "1.0.40",
   "description": "Specific set of components for cavalion-code, aka devtools",
   "main": "index.js",
   "scripts": {
@@ -18,5 +18,8 @@
   "bugs": {
     "url": "https://github.com/relluf/cavalion-devtools/issues"
   },
-  "homepage": "https://github.com/relluf/cavalion-devtools#readme"
+  "homepage": "https://github.com/relluf/cavalion-devtools#readme",
+  "dependencies": {
+    "papaparse": "^5.3.0"
+  }
 }
