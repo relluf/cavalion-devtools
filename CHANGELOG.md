@@ -1,3 +1,7 @@
+### 2021/04/05 - 1.1.41
+
+* Developing Renderer<gds> in favor of `#VA-20201218-3`
+
 ### 2021/03/18 - 1.1.40
 
 * Persisting serialized SVG and calculated parameters as JSON document
