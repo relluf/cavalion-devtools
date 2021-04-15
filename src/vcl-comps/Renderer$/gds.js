@@ -6,6 +6,8 @@ var regression = require("lib/node_modules/regression/dist/regression");
 var js = window.js, mixin = js.mixIn;
 var AmCharts = window.AmCharts;
 var sort_numeric = (i1, i2) => parseFloat(i1) < parseFloat(i2) ? -1 : 1;
+var sum = (arr) => arr.reduce((a, v) => a += v, 0);
+var avg = (arr) => arr.length ? sum(arr) / arr.length : 0;	
 var removeTrailingColon = (s) => s.replace(/\:$/, "");
 
 var Tabs = 
@@ -93,6 +95,7 @@ function makeChart(c, opts) {
 		var serializing = this.ud("#graphs").hasClass("pdf");
 		
 		options.valueAxes.forEach(ax => {
+			ax.includeGuidesInMinMax = true;
 			if(serializing) {
 				delete ax.title;
 			} else {
@@ -173,12 +176,10 @@ function grenswaarden_Isotachen(context, vars) {
 	return r;
 }
 function grenswaarden_Koppejan(context, vars) {
-	var graph = context.array.ud("#graph_Koppejan"), start;
-	vars.slope_variant = 1;
-	var variant1 = graph.get("onRender").apply(graph, [true]);
-	delete vars.slope_variant;
-	var variant2 = graph.get("onRender").apply(graph, [true]);
-	
+	/*- refactor function name, since more is returned */
+	var graph = context.array.ud("#graph_Koppejan");
+	var variant1 = render_Koppejan.apply(graph, [true, 1]);
+	var variant2 = render_Koppejan.apply(graph, [true, 2]);
 	return {variant1: variant1, variant2: variant2};
 }
 
@@ -352,13 +353,587 @@ function linear_regression_line(mb /*: { b: number, m: number }*/) {
         return mb.b + mb.m * x;
     };
 }
+function smoothen(values, n, keys) {
+	var rolling = [];
+	values.forEach(value => {
+		if(rolling.length === n) rolling.shift();
+		rolling.push(value);
+		keys.forEach(key => {
+			value[key] = avg(rolling.map(v => parseFloat(v[key])).filter(v=>!isNaN(v)));
+		});
+	});
+}
+function calc_derivatives(values) {
+	var prev1, next1, next2, prev2, dt;
+	values.forEach((current, idx, arr) => {
+		next1 = arr[idx + 1];
+		next2 = arr[idx + 2];
+		if(prev1 && next1) {
+			dt = Math.log(next1.x / current.x);
+			// dt = next1.x - current.x;
+			current["y'"] = (next1.y - prev1.y) / (2*dt);
+			current["y''"] = (next1.y - (2 * current.y) + prev1.y) / (dt*dt);
+			current["y'''"] = (next2 && prev2) && (next2.y - 2*next1.y + 2*prev1.y - prev2.y) / 2*(dt*dt*dt);
+			current.dy = current.y - prev1.y;
+			current["dy'"] = current["y'"] - prev1["y'"];
+			current["dy''"] = current["y''"] - prev1["y''"];
+			current["dy'''"] = current["y'''"] - prev1["y'''"];
+		}
+		prev2 = prev1;
+		prev1 = current;
+	});
+}
+function inflection_points_1(values, guides, trendLines) {
+/*- translate to 0 */
+	var y0 = values[0].y, x = "mins";
+	values.forEach(value => value.y = value.y - y0);
+	var yZ = values[values.length - 1].y;
+	// values.forEach(value => value.y = value.Y);
+	smoothen(values, 5, ["y"]);
+	calc_derivatives(values);
+	
+	/* loop until we find to consecutive dy' less than 0 - ie. when the slope stops increasing */
+	var idx = 0, prev_dy_, count = 0, max = { ip1_count: 0, ip2_count: 0 };
+	while(values[idx][x] < 150) {
+		if(idx && (values[idx - 1]["dy'"] < 0) && ((values[idx - 1]["dy'"] < 0) === (values[idx]["dy'"] < 0))) {
+			values[idx].decrease_count = ++count;
+		} else if(count) {
+			if(max.ip1_count < count) {
+				max.ip1_count = count;
+				max.ip1_idx = idx;
+				max.ip1 = values[idx];
+			}
+			count = 0;
+		}
+		idx++;
+	}
+	idx = 0; count = 0; max.count = 0;
+	while(idx < values.length) {
+		if(idx && (values[idx - 1]["dy'"] > 0) && ((values[idx - 1]["dy'"] > 0) === (values[idx]["dy'"] > 0))) {
+			values[idx].increase_count = ++count;
+		} else if(count) {
+			if(max.ip2_count < count) {
+				max.ip2_count = count;
+				max.ip2_idx = idx;
+				max.ip2 = values[idx];
+			}
+			count = 0;
+		}
+		idx++;
+	}
+	var ip1_ll = log_line_calc(
+		values[max.ip1_idx - 1][x], values[max.ip1_idx + 1][x], 
+		values[max.ip1_idx - 1].y, values[max.ip1_idx + 1].y
+	);
+
+	guides && guides.push({
+		label: "IP", position: "left",
+		value: max.ip1.y, dashLength: 2,
+		lineAlpha: 1, inside: true
+	});
+	trendLines && trendLines.push({
+		initialXValue: ip1_ll.b * Math.pow(ip1_ll.g, 0), initialValue: 0,
+		finalXValue: ip1_ll.b * Math.pow(ip1_ll.g, yZ), finalValue: yZ,
+		lineColor: "red", lineThickness: 1
+	});
+
+	return [max.ip1];
+}
+function inflection_points_CG(values, guides, trendLines) {
+/*- translate to 0 */
+	var y0 = values[0].y, x = "mins";
+	var last = values[values.length - 1];
+	var yZ = last.y;
+	
+	values.forEach(value => (value.Y = value.y));
+	// smoothen(values, 5, ["y"]);
+	calc_derivatives(values);
+	
+	var idx = 0, vpnn = [], vnnp = [];
+	while(values[idx][x] < 150) {
+		if(idx && (values[idx - 1]["dy'"] < 0) && (values[idx]["dy'"] > 0)) {
+			vpnn.push(values[idx]);
+		}
+		idx++;
+	}
+	
+	// idx = 0;
+	while(idx < values.length) {//values[idx][x]) {
+		if(idx && (values[idx - 1]["dy'"] > 0) && (values[idx]["dy'"] < 0)) {
+			vnnp.push(values[idx]);
+		}
+		idx++;
+	}
+
+	var ll1 = log_line_calc(
+		vpnn[1][x], vpnn[3][x], 
+		vpnn[1].y, vpnn[3].y
+	);
+	var ll2 = log_line_calc(
+		vnnp[0][x], last[x], 
+		vnnp[0].y, last.y
+	);
+
+	var LLi_1 = log_line_intersect(
+		vpnn[1][x], vpnn[1].y, 
+		vpnn[3][x], vpnn[3].y,
+		vnnp[0][x], vnnp[0].y, 
+		last[x], last.y);
+		
+/*- Bepaal vervolgens de samendrukking van het proefstuk die overeenkomt met 0 % eonsolidatie door twee tijden in het begin-gedeelte van de kromme te seleceteren die een verhouding van lOp 4 bezitten (t, en t4
+; bijvoorbeeld 0,25 en I min).
+De grootste waarde van de samendrukking bij deze twee tijden moet groter zijn dan een
+kwart maar minder dan de helft van de totale samendrukking voor de desbetreffende
+belasting. De samendrukking van de 0 % consolidatie (d) is gelijk aan de samendrukking
+(a) die optreedt bij de kleinst gekozen tijd, verminderd met het verschil (b - a) in samendrukking van de twee gekozen tijdstippen. Met andere "woorden": d = a - (b -a).*/
+
+	
+	/*- determine 25-50% samendrukking */
+		var meta = {};
+	
+		/* determine boundaries Y (min-max) */
+		values.forEach(value => {
+				if(meta.min === undefined || meta.min > value.Y) meta.min = value.Y;
+				if(meta.max === undefined || meta.max < value.Y) meta.max = value.Y;
+			});
+			
+		/* 25-50% boundaries */
+		var delta = (meta.delta = meta.max - meta.min);
+		var b25 = (meta.b25 = y0 + 0.25 * delta);
+		var b50 = (meta.b50 = y0 + 0.5 * delta);
+		
+		/*- find two values */
+		var t4 = values.find(value => value.y > b25);
+		var t1 = values.find(value => t4 && value.mins >= t4.mins / 4);
+		
+		var h0 = t4 && t1 ? (t1.y - (t4.y - t1.y)) : NaN;
+		var h50 = (h0 + LLi_1.sN1N2.y) / 2; 
+
+	guides && guides.push({
+		label: "0%", position: "right",
+		value: h0, dashLength: 1,
+		lineAlpha: 0.75, inside: true
+	}, {
+		label: "50%", position: "right",
+		value: h50, dashLength: 1,
+		lineAlpha: 0.75, inside: true
+	}, {
+		label: "100%", position: "right",
+		value: LLi_1.sN1N2.y, dashLength: 1,
+		lineAlpha: 0.75, inside: true
+	}, {
+		label: "25-50%", position: "left", 
+		value: b25, dashLength_: 2, lineColor: "green",
+		toValue: b50, fillColor: "green", fillAlpha: 0.05,
+		lineAlpha: 0, inside: true
+	// }, {
+	// 	label_: "50%", position: "left",
+	// 	value: b50, dashLength: 2, lineColor: "green",
+	// 	lineAlpha: 0.35, inside: true
+	});
+	
+	if(guides) {
+		t1 && guides.push({
+			label: "t1", position: "bottom",
+			value: t1.mins, dashLength: 2, lineColor: "orange",
+			lineAlpha: 0.35, inside: true
+		});
+		t4 && guides.push({
+			label: "4t1", position: "bottom",
+			value: t4.mins, dashLength: 2, lineColor: "orange",
+			lineAlpha: 0.35, inside: true
+		});
+	}
+
+	trendLines && trendLines.push({
+		initialXValue: ll1.b * Math.pow(ll1.g, 0), initialValue: 0,
+		finalXValue: ll1.b * Math.pow(ll1.g, yZ), finalValue: yZ,
+		lineColor: "red", lineThickness: 1
+	}, {
+		initialXValue: ll2.b * Math.pow(ll2.g, 0), initialValue: 0,
+		finalXValue: ll2.b * Math.pow(ll2.g, yZ), finalValue: yZ,
+		lineColor: "green", lineThickness: 1
+	});
+
+	return {
+		t50: [0, 0, h50],
+		t100: [LLi_1.sN1N2.x, LLi_1.sN1N2.x, LLi_1.sN1N2.y]
+	};
+}
+
+function render_Casagrande() {
+	var vars = this.vars(["variables"]);
+	var content = [];
+
+/*- reset */
+	for(var stage = 0; stage < vars.stages; ++stage) {
+		content.push(js.sf("<div>Stage %s</div>", stage));
+	}
+	this._node.innerHTML = content.join("");
+	
+/*- render */ stage = 0;
+	var render = () => {
+		var series = [{
+			title: js.sf("Zetting trap %s [µm]", stage + 1),
+			valueAxis: "y1", valueField: "y", 
+			categoryField: "mins" // zetting (mm)
+		}];
+
+		var values = [], meta = {}, trendLines = [], guides = [];
+		vars.casagrande___(stage + 1, values, meta, guides, trendLines);
+		
+		meta.guides = guides;
+		meta.trendLines = trendLines;
+
+		this.vars("am", { series: series, meta: meta, data: values });
+
+		makeChart(this, {
+			immediate: true,
+			// legend: false,
+			node: this.getChildNode(stage),
+			trendLines: trendLines,
+		    valueAxes: [{
+		        id: "y1", position: "left", reversed: true, min: 0,
+				guides: guides.filter(guide => guide.position === "left" || guide.position === "right")
+			}, {
+				title: js.sf("Trap %s: zetting [µm] / tijd [minuten] → ", stage + 1),
+				position: "bottom",
+				guides: guides.filter(guide => guide.position === "top" || guide.position === "bottom"),
+				logarithmic: true
+			}]
+		});
+			
+		if(stage === 2) this.getChildNode(stage).className += " selected";
+
+		if(++stage < vars.stages) {
+			this.nextTick(render);
+		}
+	};
+	vars.stages && render();
+}
+function render_Taylor() {
+	var vars = this.vars(["variables"]);
+	var context = contextNeeded(this);
+	var content = [];
+
+	context.categoryField = "Time since start of stage (s)";
+
+/*- reset */
+	for(var stage = 0; stage < vars.stages; ++stage) {
+		content.push(js.sf("<div>Stage %s</div>", stage));
+	}
+	this._node.innerHTML = content.join("");
+	stage = 0;
+
+/*- render */ 
+	var render = () => {
+	    var meta = {context: context}, values = [], guides = [], trendLines = [];
+	    var series = [{
+			title: js.sf("Zetting trap %s [µm]", stage + 1),
+			valueAxis: "y1", valueField: "y"
+		}];
+
+		vars.taylor___(stage + 1, values, meta, guides, trendLines);
+		this.vars("am", { series: series, meta: meta, data: values });
+		
+		makeChart(this, {
+			immediate: true,
+			legend: false,
+			node: this.getChildNode(stage),
+			trendLines: trendLines,
+		    valueAxes: [{
+		        id: "y1", position: "left", reversed: true,
+				guides: guides
+			}, {
+				title: js.sf("Trap %s: zetting [µm] / tijd [√ minuten] → ", stage + 1),
+				position: "bottom"
+			}]
+		});
+
+		if(stage === 2) this.getChildNode(stage).className += " selected";
+		
+		if(++stage < vars.stages) { this.nextTick(render); }
+	};
+	vars.stages && render();
+}
+function render_Koppejan(returnMeta, variant) {
+	var context = contextNeeded(this);
+	if(!context.array.isActive()) return;
+
+	var series = [{ 
+		title: "Belasting [kPa]", xAxis: "x2",
+		xField: "x2", yField: "y2"
+	}, {
+		title: "Zetting [mm]", xAxis: "x1",
+		xField: "x", yField: "y"
+	}, {
+		title: "Belasting 10 [kPa]", xAxis: "x2",
+		xField: "x2", yField: "vz10",
+		lineColor: "blue", dashLength: 3, lineThickness: 1
+	}].concat([1,2,3,4,5,6].map(_ => ({
+		title: js.sf("Verschoven zetting vz%d [mm]", _ + 1), xAxis: "x1",
+		xField: "x" + (_ + 2), yField: "vz2",
+		lineColor: _ >= 4 ? "purple" : "red", lineThickness: 1
+	})));
+
+	var serie2 = []; // serie2 references only the (7) points where y2 are set, and will it's z10, z100, z1000, z10000 values will be calculated later on
+    var meta = {context: context}, index = {}, allValues = [], previous;
+	var ignore = 30 / (24 * 3600) / 2;
+	context.array.getObjects().forEach((obj, idx, arr) => {
+		/*- translates context.array logarithmically and pushes into allValues */
+		var sec = obj[context.categoryField];
+		var x = sec / (24*3600);
+		
+		/*- ignore the 1st ... */
+		if(x < ignore) return;
+
+		index[x] = js.mixIn(index[x] || obj);
+		index[x]['Stage Number'] = obj['Stage Number'];
+		index[x][context.valueField] = obj[context.valueField];
+		index[x][context.valueField_kPa] = obj[context.valueField_kPa];
+		
+		index[x].index = idx;
+		index[x].x = parseFloat(x);
+		index[x].x2 = obj['Axial Stress (kPa)'];
+		index[x].y = index[x].y2 = obj[context.valueField];
+		index[x].days = sec / (3600*24);
+		index[x].hours = sec / 3600;
+		index[x].minutes = sec / 60;
+		index[x].seconds = sec;
+		
+		if(idx > 0) index[x].delta = (arr[idx -1][context.valueField] - obj[context.valueField]);
+	});
+	
+	Object.keys(index).sort(sort_numeric).forEach(key => {
+		var entry = index[key];
+		if(previous) {
+			if(previous['Stage Number'] === entry['Stage Number']) {
+				delete previous.y2;
+			} else {
+				serie2.push(previous);
+			}
+		}
+		previous = entry;
+		allValues.push(entry);
+	});
+	serie2.push(previous);
+	meta.serie2 = serie2;
+	this.vars("am", { series: series, meta: meta, data: allValues, context: context });
+
+/*- determine slopes (rc) per stage - based on allValues (which are extrapolated already based upon previous rc) */
+	var slopes = [], y = "Axial Displacement (mm)", x = "Time since start of stage (s)";
+	var vars = this.vars(["variables"]);
+	
+	var stages = vars.stages;
+	var slope_variant = variant || 2;
+	var rlines = [];
+
+	for(var s = 0; s < stages; ++s) {
+		var z1 = context.values_(s + 1, allValues);
+		z1.forEach((m,i,a) => {
+			i && (m.delta = m[y] - a[i-1][y]);
+			m.trap = "stage-" + m['Stage Number'];
+		});
+		var slope = {
+			stage: s + 1,
+			values: z1,
+			// always get 0.1 (tried mean and smallest delta as well)
+			measurement_1: z1[Math.round(0.1 * 3600 * 24 / 30)], 
+			measurement_2: function() {
+				// var N = Math.round(z1.length * 0.95);
+				var N = z1.length - 5;
+				var ax = 0, ay = 0, sx = z1[5][x], sy = z1[5][y];
+
+				z1.slice(z1.length - N).forEach(m => {
+					ax += (m[x] - sx);
+					ay += (m[y] - sy);
+				});
+				
+				ax /= N;
+				ay /= N;
+				var m = {};
+				m.x = m[x] = ax + sx;
+				m.y = m[y] = ay + sy;
+				m.vz2 = m.y;
+				return m;
+			}(),
+			measurement_3: z1.filter(_ => _.delta != 0).sort((i1, i2) => Math.abs(i1.delta) < Math.abs(i2.delta) ? -1 : 1)[0],
+			last: z1[z1.length - 1]
+		};
+		
+		slope.measurement = slope['measurement_' + slope_variant];
+		slope.rc = (slope.last.y - slope.measurement.y) / 
+				Math.log10(Math.round(slope.last[x] / 3600 * 24) / 
+					(slope.measurement[x] / 3600 * 24));
+
+		/*- extrapolate next stage */
+		if(s < stages - 1) {
+			var z2 = context.values_(s + 2, allValues);
+			var t1 = (s + 1);
+
+			z2.forEach((obj, i) => {
+				if(!i) return;
+				
+				var t = obj.days;
+				
+				// obj.x3 = (t - t1) || ignore;
+				obj['x' + (s + 3)] = (t - t1) || ignore;
+				
+				obj.yy = obj[y];
+				obj.z1 = z2[0][y] + slope.rc * Math.log10(t);
+				obj.z2 = obj[y] - obj.z1;
+				
+				obj.t = t; obj.t1 = t1;
+
+				// obj.vz2_d = slope.rc * (Math.log10((t - t1) || ignore) - Math.log10(t));
+				obj.vz2 = obj[y] + slope.rc * (Math.log10((t - t1) || ignore) - Math.log10(t));
+			});
+			// this.print("z2", z2);
+		}
+
+		slopes.push(slope);
+
+		var x_ = "x" + (s + 2);
+		if(s && slope.measurement[x_]) {
+			slope.rc_org = slope.rc;
+			slope.rc = (slope.last.vz2 - slope.measurement.vz2) / 
+					Math.log10(Math.round(slope.last[x_]) /  
+						(slope.measurement[x_]));
+		}
+
+		slope.np = slope.last.vz2 || slope.last[y];
+		// var rl = slope.regression_line = regression.logarithmic(z1.map(_ => [_[x], _.vz2 || _[y]]));
+		// rlines.push({
+		// 	initialXValue: 0.01, initialValue: rl.predict(0.01)[1],
+		// 	finalXValue: 10, finalValue: rl.predict(10)[1],
+		// 	lineThickness: 1, lineAlpha: 1, lineColor: "orange"
+		// 	//, dashLength: 1
+		// });
+	}
+
+/*- straight line on log-scale? >> N = b * g ^ t; (https://www.youtube.com/watch?v=i3jbTrJMnKs) */
+		// >>> t = Math.log(N / b) / Math.log(g);
+	var trendLines = slopes.map((S, i, slopes) => {
+	/*- (t1,N1), (t2,N2) => g1, b1 => TODO use log_line_intersect() */
+		var sm = S.measurement;
+		var t1 = sm[y], N1 = sm[x]  / (24*3600);
+		var t2 = S.last[y], N2 = S.last[x]  / (24*3600);
+		var dt1 = t2 - t1;
+		var g1 = Math.pow(N2 / N1, 1 / dt1);
+		var b1 = N1 / Math.pow(g1, t1);
+		
+		var y10 = Math.log(10 / b1) / Math.log(g1);
+		var x10 = 10;
+		var TLy = S.last.vz2 || S.last[y]; // vz2 is not set in stage 1 fallback to measuremnt
+		
+		serie2[i].vz1 = serie2[i].vz2 || serie2[i][y]; // refactor vz2 => vz1 and also place outside this trendLine-loop
+		serie2[i].vz10 = TLy + S.rc * Math.log10(10);
+		serie2[i].vz100 = TLy + S.rc * Math.log10(100);
+		serie2[i].vz1000 = TLy + S.rc * Math.log10(1000);
+		serie2[i].vz10000 = TLy + S.rc * Math.log10(10000);
+		
+		return [{
+			delta: y10 - TLy,//S.last[y],
+			// initialXValue: i + 1, initialValue: S.last[y],
+			initialXValue: 1, initialValue: TLy,
+			finalXValue: 20, finalValue: TLy + S.rc * Math.log10(20),
+			lineAlpha: 1, lineColor: "black", dashLength: 3
+		}];//, rlines.shift()];
+	}).filter((_, i, a) => (_[0].delta > 0));
+	
+	var LLi_1 = log_line_intersect(
+			serie2[0].x2, serie2[0].y, 
+			serie2[1].x2, serie2[1].y, 
+			serie2[2].x2, serie2[2].y, 
+			serie2[3].x2, serie2[3].y);
+			
+	meta.slopes = slopes;
+	meta.LLi_1 = LLi_1;
+	meta.trendLines = trendLines;
+	
+	/*- calculate Cp, Cs, C, C10, ...  */
+
+	var cp, Pg = js.get("kop.variant1.LLi_1.sN1N2.x", vars.grenswaarden), sig = "Stress Target (kPa)";
+	for(var st = 0; st < stages - 1; ++st) {
+		/* 1. 1/Cp = d Ev / ln( ov + dov / ov )	*/
+		
+		var d = Math.log(serie2[st + 1][sig] / serie2[st + 0][sig]);
+		var d10 = Math.log10(serie2[st + 1][sig] / serie2[st + 0][sig]);
+		var H = vars.Hi;
+
+		var Cp = 1 / (((serie2[st + 1].vz1 - serie2[st + 0].vz1) / H) / d);
+		var Cs = 1 / (((serie2[st + 1].vz10 - serie2[st + 0].vz10) / H) / d - (1 / Cp));
+		var C = (1 / ((serie2[st + 1].y - serie2[st + 0].y) / H)) * d;
+		var C10 = (1 / ((serie2[st + 1].y - serie2[st + 0].y) / H)) * d10;
+
+		slopes[st].Cp = Cp;
+		slopes[st].Cs = Cs;
+		slopes[st].C = C;
+		slopes[st].C10 = C10;
+	}
+
+	if(returnMeta === true) {
+		// have to copy serie2 so that it won't be overridden by a second call
+		meta.serie2 = meta.serie2.map(_ => js.mixIn(_));
+		return meta;
+	}
+
+	makeChart(this, { 
+		type: "xy",
+		colors: ["black", "rgb(56, 121, 217)"],
+	    valueAxes: [{
+	        id: "y1", reversed: true, minimum: 0,
+		}, {
+	        id: "y2", position: "right", reversed: true, minimum: 0,
+	        synchronizeWith: "y1", synchronizationMultiplier: 1,
+			guides: [{
+				value: LLi_1.sN1N2.y, inside: true, lineAlpha: 0,
+				label: js.sf("%.3f %%", LLi_1.sN1N2.y / vars.Hi * 100),
+			}],
+			// labelFunction(value, valueText, valueAxis) { return (value / vars.Hi) * 100; }
+		}, {
+			id: "x1", title: "Duur [dagen] → ", position: "bottom", 
+			logarithmic: true, minimum: 0.01, maximum: 1000
+		}, {
+			id: "x2", _title: "Belasting [kPa] → ", position: "top",
+			synchronizeWith: "x1", synchronizationMultiplier: 1,
+			logarithmic: true, minimum: 0.01,
+			guides: [{
+				value: LLi_1.sN1N2.x, inside: true, lineAlpha: 0,
+				label: js.sf("%.3f kPa", LLi_1.sN1N2.x)
+			}]
+		}],
+		trendLines: [{
+			valueAxisX: "x2",
+			initialXValue: 10000, initialValue: LLi_1.sN1N2.y,
+			finalXValue: LLi_1.sN1N2.x, finalValue: LLi_1.sN1N2.y,
+			dashLength: 2, lineColor: "green", lineAlpha: 0.5
+		}, {
+			valueAxisX: "x2",
+			initialXValue: LLi_1.sN1N2.x, initialValue: 0,
+			finalXValue: LLi_1.sN1N2.x, finalValue: LLi_1.sN1N2.y,
+			dashLength: 2, lineColor: "green", lineAlpha: 0.5
+		}, {
+			valueAxisX: "x2",
+			initialXValue: serie2[1].x2, initialValue: serie2[1].y,
+			finalXValue: LLi_1.b1 * Math.pow(LLi_1.g1, serie2[2].y), finalValue: serie2[2].y,
+			lineColor: "green",
+		}, {
+			valueAxisX: "x2",
+			initialXValue: serie2[2].x2, initialValue: serie2[2].y,
+			finalXValue: LLi_1.b2 * Math.pow(LLi_1.g2, serie2[0].y), finalValue: serie2[0].y,
+			lineColor: "green",
+		}].concat(trendLines.flat())
+	});
+}
 
 var handlers = {
 	"loaded": function() {
 		var lines, headers, context, me = this, cache;
 		var vars = this.vars("variables", {});
+
 		var key_Y = "Axial Displacement (mm)";
-		
+
 		vars.G = 9.81 * 1000;
 		vars.pw = 1.00; //(assumed value; note that water density may vary due to temperature)
 
@@ -390,7 +965,7 @@ var handlers = {
 			if(cache.valuesUntil_.hasOwnProperty(stage)) return cache.valuesUntil_[stage];
 			
 			return (cache.valuesUntil_[stage] = context.array.getObjects()
-					.filter(_ => _['Stage Number'] <= ("1." + stage)));
+					.filter(_ => _['Stage Number'] < ("1." + stage)));
 		}
 
 		function load_(stage, which) {
@@ -404,15 +979,16 @@ var handlers = {
 		}
 		function load_ef_(stage) { return load_(stage, "effective"); }
 		function Hi_(stage) {
+			if(stage === undefined) return vars.H;
+			
 			/* initial height of stage */
-			var min, max; 
-
-			valuesUntil_(stage).forEach(obj => {
-				if(min === undefined || min > obj[key_Y]) min = obj[key_Y];
-				if(max === undefined || max < obj[key_Y]) max = obj[key_Y];
-			});
-		
-			return vars.H - (max === undefined ? 0 : max - min);
+			var values = values_(stage);
+			return vars.H - (values.length ? values[0][key_Y] : 0);
+		}
+		function Hf_(stage) {
+			/* final height of stage */
+			var values = values_(stage);
+			return vars.H - (values.length ? values[values.length - 1][key_Y] : 0);
 		}
 		// function H50_(stage) {
 		// 	// TODO
@@ -462,8 +1038,7 @@ var handlers = {
 					Bij eind Trap 3:  Gecorrigeerd totaal vervorming: 0.8082 mm
 					Hf= 20.20 - 0.8082 = 19.3918 mm 	ef= (19.3918 - 7.9275) / 13.42 = 0.8543
 			*/
-			var H = Hi_(stage);
-			var y = vars.m / (Math.PI / 4 * vars.D * vars.D * H) * vars.G;
+			var H = Hf_(stage);
 			var yd = vars.md / (Math.PI / 4 * vars.D * vars.D * H) * vars.G;
 			var pd = yd / (vars.G / 1000);
 
@@ -485,14 +1060,7 @@ var handlers = {
 			return Sr;
 		}
 		
-			// estimates for MB03-5 2.gds
-			var estimates_t50_ip1 = [84.5, 49.5, 73, 425, 14, 27, 20];
-			var estimates_Y_ip1 = [40, 10, 10, 33, 24, 5, 10];
-			var estimates_t50_ip2 = [124, 94, 214, 760, 23, 44, 437];
-			var estimates_Y_ip2 = [75, 28, 45, 280, 24, 44, 100];
-
 		function casagrande___(stage, values, meta, guides, trendLines) {
-// me.print("TODO optimize for casagrande-" + stage);
 			var index = {}, previous;
 			var context = { categoryField: "Time since start of stage (s)", valueField: "Axial Displacement (mm)", stage: stage };
 			values = values || [], meta = meta || {};
@@ -520,75 +1088,19 @@ var handlers = {
 					previous = current;
 					values.push(current);
 				});
-	/* determine boundaries Y (min-max) */
+				
+			meta.ips = inflection_points_CG(values, guides, trendLines);
+			
 			values.forEach(obj => {
 					if(meta.min === undefined || meta.min > obj.y) meta.min = obj.y;
 					if(meta.max === undefined || meta.max < obj.y) meta.max = obj.y;
 				});
-	/* ?!? translate Y values to 0 */
-			values.forEach(_ => _.y -= meta.min);
-		/*  first inflection point: found in curve => @ 50% consolidation */
-			var ip1 = point_find(values, estimates_t50_ip1[stage - 1], "mins");
-		/* second inflection point */
-			var ip2 = point_find(values, estimates_t50_ip2[stage - 1], "mins");
-			if(ip1 && ip2) {
-		/* find intersection AB with DEF @ 100% consolidation */
-				var ll1 = log_line_calc(0.5, ip1.x, estimates_Y_ip1[stage - 1], ip1.y);
-				var ll2 = log_line_calc(0.5, ip2.x, estimates_Y_ip2[stage - 1], ip2.y);
-				var lli = log_line_intersect(
-					0.5, estimates_Y_ip1[stage - 1], ip1.x, ip1.y,
-					0.5, estimates_Y_ip2[stage - 1], ip2.x, ip2.y
-				);
 
-				meta.lli = lli;
-				meta.ll1 = ll1; meta.ll2 = ll2;
-				meta.ip1 = ip1; meta.ip2 = ip2;
-				
-				trendLines && trendLines.push({
-					initialXValue: 0.5, initialValue: estimates_Y_ip1[stage - 1],
-					finalXValue: ip1.x, finalValue: ip1.y,
-					lineColor: "red", lineThickness: 1
-				}, {
-					/*- inflection point */
-					initialXValue: 0.5, initialValue: estimates_Y_ip1[stage - 1],
-					finalXValue: 2000, finalValue: Math.log(2000 / ll1.b) / Math.log(ll1.g),
-					lineColor: "purple", lineThickness: 1
-				}, {
-					initialXValue: 0.5, initialValue: estimates_Y_ip2[stage - 1],
-					finalXValue: ip2.x, finalValue: ip2.y,
-					lineColor: "red", lineThickness: 1
-				});
-				guides && guides.push({
-					label: "0%", position: "right",
-					value: ip1.y - (lli.sN1N2.y - ip1.y), dashLength: 2,
-					lineAlpha: 1, inside: true
-				}, {
-					label: "50%", position: "right",
-					value: ip1.y, dashLength: 2,
-					lineAlpha: 1, inside: true
-				}, {
-					label: "100%", position: "right",
-					value: lli.sN1N2.y, dashLength: 2,
-					lineAlpha: 1, inside: true
-				});
-
-				trendLines && trendLines.push({
-					initialXValue: 0.5, initialValue: lli.sN1N2.y,
-					finalXValue: lli.sN1N2.x, finalValue: lli.sN1N2.y,
-					lineColor: "red", lineAlpha_: 0.25, dashLength: 2
-				}, {
-					initialXValue: lli.sN1N2.x, initialValue: lli.sN1N2.y,
-					finalXValue: lli.sN1N2.x, finalValue: 10000,
-					lineColor: "red", lineAlpha_: 0.25, dashLength: 2
-				});
-				
-				return {
-					t50: [ip1.x * 60, null, ip1.y],
-					t100: [lli.sN1N2.x * 60, null, lli.sN1N2.y]
-				};
-			}
 		/*- NO */
-			return undefined;
+			return {
+				t50: [],
+				t100: []
+			};
 		}
 		function casagrande_t50_(stage) {
 			return (casagrande___(stage)||{t50:{}}).t50[0];
@@ -644,8 +1156,11 @@ var handlers = {
 				.sort((i1, i2) => i1.delta < i2.delta ? 1 : -1));
 
 	/*- is it possible? */
-			if(values10_40.length >= 2) {
+			if(values10_40.length < 2) {
+				values10_40 = all.slice(0, 2);
+			}
 
+			if(values10_40.length >= 2) {
 		/*- YES: determine slope of 10-40% boundary */
 				var dx = values10_40[values10_40.length - 1].x - values10_40[0].x;
 				var dy = values10_40[values10_40.length - 1].y - values10_40[0].y;
@@ -658,8 +1173,8 @@ var handlers = {
 			/*- add guide if applicable) */
 				guides && guides.push({
 					label: "0%", position: "right",
-					value: y0, dashLength: 2,
-					lineAlpha: 1, inside: true
+					value: y0, dashLength: 1,
+					lineAlpha: 0.75, inside: true
 				});
 				
 		/* find intersection with curve (B) @ 90% consolidation */
@@ -727,15 +1242,20 @@ var handlers = {
 					guides && guides.push({
 						label: "50%", position: "right",
 						value: y0 + ((meta.B.y - y0) / 90) * 50, 
-						dashLength: 2, lineAlpha: 1, inside: true
+						dashLength: 1, lineAlpha: 0.75, inside: true
 					}, {
 						label: "90%", position: "right",
-						value: meta.B.y, dashLength: 2,
-						lineAlpha: 1, inside: true
+						value: meta.B.y, dashLength: 1,
+						lineAlpha: 0.75, inside: true
 					}, {
 						label: "100%", position: "right",
 						value: y0 + ((meta.B.y - y0) / 90) * 100, 
-						dashLength: 2, lineAlpha: 1, inside: true
+						dashLength: 1, lineAlpha: 0.75, inside: true
+					}, {
+						label: "10-40%", position: "left",
+						value: h10, toValue: h40,
+						fillColor: "green", fillAlpha: 0.05,
+						lineAlpha: 0, inside: true
 					});
 				}
 					
@@ -783,6 +1303,7 @@ var handlers = {
 				};
 			}
 		/*- NO */
+		
 			return undefined;
 		}
 		function taylor_t50_(stage) {
@@ -839,11 +1360,11 @@ var handlers = {
 					
 					cv;20 =0.197 * 0.00985012 * 1.3 / 100 =2.48 x 10-7 m2/s"					
 			*/
-			var L = 0.5 * H50_(stage, wantsTaylor); 
+			var L = 0.5 * Hi_(stage);//H50_(stage, wantsTaylor); 
 			var fT = 1, cf = wantsTaylor ? 0.848 : 0.197;
-			var t = wantsTaylor ? taylor_t50_(stage) : casagrande_t50_(stage);
-
-			return t !== undefined ? cf * (L*L / 1000) * fT / t : t;
+			var t = wantsTaylor ? taylor_t90_(stage) : casagrande_t50_(stage);
+// m2/s
+			return t !== undefined ? cf * (L*L / (1000*1000)) * fT / t : t;
 		}
 		function kT_(stage, wantsTaylor) {
 			var r = CvT_(stage, wantsTaylor) * Mv_(stage) * vars.pw * vars.G;
@@ -862,9 +1383,8 @@ var handlers = {
 
 			*/
 			
-			var Hi = Hi_(stage), Hf = Hi + deltaH_(stage);
+			var Hi = Hi_(stage), Hf = Hf_(stage);//Hi + deltaH_(stage);
 			var ov1 = load_ef_(stage - 1), ov2 = load_ef_(stage);
-			
 			return ((Hi - Hf) / Hi) * (1000 / (ov2 - ov1));
 		}
 		
@@ -887,9 +1407,8 @@ var handlers = {
 			*/
 			
 			stage--; //vars.kPa_ starts at 0
-			
 			var e1 = vars.kPa_[stage].y_e, e2 = vars.kPa_[stage + 1].y_e;
-			var sv1 = vars.kPa_[stage].x, sv2 = vars.kPa_[stage + 1].x;
+			var sv1 = vars.kPa_[stage].x_ef, sv2 = vars.kPa_[stage + 1].x_ef;
 
 			return -(e2 - e1) / Math.log10(sv2 / sv1);
 		}
@@ -912,6 +1431,9 @@ var handlers = {
 			*/
 			return Cc_(stage); // is gewoon hetzelfde
 		}
+		function Csw_(stage) {
+			return Cc_(stage);
+		}
 
 		function CR_(stage) {
 			/*-
@@ -932,12 +1454,11 @@ var handlers = {
 
 			stage--; //vars.kPa_ starts at 0
 			
-			var Hi = Hi_(stage), Hf = Hi + deltaH_(stage);
-			var Evc1 = 1 - (Hi / vars.H);
-			var Evc2 = Math.log(1 - (Hf / vars.H));
+			var Hi = Hi_(stage), Hf = Hf_(stage);//Hi + deltaH_(stage);
+			var Evc1 = vars.kPa_[stage].y_rek, Evc2 = vars.kPa_[stage + 1].y_rek;
 			var sv1 = vars.kPa_[stage].x_ef, sv2 = vars.kPa_[stage + 1].x_ef;
 
-			return ((Evc2 - Evc1) / 100) / Math.log10(sv2 / sv1);
+			return (Evc2 - Evc1) / Math.log10(sv2 / sv1);
 		}
 		function RR_(stage) {
 			return CR_(stage); // is gewoon hetzelfde
@@ -980,7 +1501,7 @@ var handlers = {
 			return (dH / Hi) / dlogt;
 
 		}
-		function Csw_(stage) {
+		function C_sw__(stage) {
 			/*-
 				Csw (zwelindex) - Csw = -Δe / log ((σ'v + Δσ'v)/σ'v)
 				
@@ -1030,10 +1551,10 @@ var handlers = {
 
 			stage--; //vars.kPa_ starts at 0
 
-			var EvH1 = vars.kPa_[stage].y_rek * 100;
-			var EvH2 = vars.kPa_[stage + 1].y_rek * 100;
-			var pv1 = vars.kPa_[stage].x;
-			var pv2 = vars.kPa_[stage + 1].x;
+			var EvH1 = vars.kPa_[stage].iso.y * 100;
+			var EvH2 = vars.kPa_[stage + 1].iso.y * 100;
+			var pv1 = vars.kPa_[stage].x_ef;
+			var pv2 = vars.kPa_[stage + 1].x_ef;
 			
 			return (EvH2 - EvH1) / 100 / Math.log(pv2 / pv1);
 		}
@@ -1059,6 +1580,7 @@ var handlers = {
 			var EvH2 = vars.kPa_[stage + 1].y_rek * 100;
 			var pv1 = vars.kPa_[stage].x;
 			var pv2 = vars.kPa_[stage + 1].x;
+
 			return (EvH2 - EvH1) / 100 / Math.log(pv2 / pv1);
 		}
 
@@ -1100,6 +1622,7 @@ var handlers = {
 			vars.stages = nofStages();
 			vars.casagrande___ = casagrande___;
 			vars.taylor___ = taylor___;
+			vars.Hi_ = Hi_;
 
 	/*- initialize and calculate some more variables (see documentation `#VA-20201218-3`) */
 			vars.V = Math.PI * (vars.D/2) * (vars.D/2) * vars.H;
@@ -1161,6 +1684,8 @@ var handlers = {
 			});
 
 			vars.kPa_ = kPa_;
+			vars.Hi_ = Hi_;
+
 			this.vars("values_", values_);
 
 		/*- Grenswaarden NEN (Bjerrum) */
@@ -1245,9 +1770,9 @@ var handlers = {
 					{ name: "Bjerrum/NEN", unit: "kPa", symbol: "o'p", value: js.get("nen.sN1N2.x", vars.grenswaarden) },
 					{ name: "Isotachen", unit: "kPa", value: js.get("iso.sN1N2.x", vars.grenswaarden) },
 					{ name: "Koppejan", unit: "kPa", value: js.get("kop.variant1.LLi_1.sN1N2.x", vars.grenswaarden) + 0},
-					{ name: "Rek bij Bjerrum/NEN", symbol: "ECv", unit: "(-)", value: js.get("nen.sN1N2.y", vars.grenswaarden) * 100 },
-					{ name: "Rek bij Isotachen", unit: "(-)", value: js.get("iso.sN1N2.y", vars.grenswaarden) * 100},
-					{ name: "Rek bij Koppejan", unit: "(-)", value: js.get("kop.variant1.LLi_1.sN1N2.y", vars.grenswaarden) * 100 },
+					{ name: "Rek bij Bjerrum/NEN", symbol: "ECv", unit: "%", value: js.get("nen.sN1N2.y", vars.grenswaarden) * 100 },
+					{ name: "Rek bij Isotachen", unit: "%", value: js.get("iso.sN1N2.y", vars.grenswaarden) * 100},
+					{ name: "Rek bij Koppejan", unit: "%", value: js.get("kop.variant1.LLi_1.sN1N2.y", vars.grenswaarden) / vars.Hi * 100 },
 				]
 			}, {
 				name: "Poriëngetal", report: "symbol: true;",
@@ -1273,28 +1798,30 @@ var handlers = {
 			}, {
 				name: "Samendrukkingsindices - NEN/Bjerrum", //report: "debug: true;",
 				items: [
-					{ name: "Primaire index", symbol: "Cp", value: Cc_(1) },
-					{ name: "Secundaire index", symbol: "Cα", value: Cc_(2) },
-					{ name: "Zwelindex", symbol: "Csw", value: Cc_(4) },
-					{ name: "Primaire herbelasting", symbol: "Cr", value: Cc_(stages.length - 1) }
+					{ name: "Primair (1-2)", symbol: "Cc", value: Cc_(1) },
+					{ name: "Primair (2-3)", symbol: "Cc", value: Cc_(2) },
+					{ name: "Primair (3-4)", symbol: "Cc", value: Cc_(3) },
+					{ name: "Ontlasting (4-5)", symbol: "Csw", value: Csw_(4) },
+					{ name: "Herbelasting (5-6)", symbol: "Cr", value: Cr_(5) },
+					{ name: "Primair (6-7)", symbol: "Cc", value: Cc_(6) }
 				]
 			}, {
 				name: "Samendrukkingsgetallen - NEN/Bjerrum", //report: "debug: true;",
 				items: [
-					{ name: "Primaire herbelasting", symbol: "CR", value: CR_(stages.length - 2) },
-					{ name: "Zwelgetal", symbol: "SR", value: CR_(stages.length - 3) },
-					{ name: "Herbelastingsgetal", symbol: "RR", value: CR_(stages.length - 1) },
+					{ name: "Primair (1-2)", symbol: "CR", value: CR_(1) },
+					{ name: "Primair (2-3)", symbol: "CR", value: CR_(2) },
+					{ name: "Primair (3-4)", symbol: "CR", value: CR_(3) },
+					{ name: "Ontlasting (4-5)", symbol: "SR", value: CR_(4) },
+					{ name: "Herbelasting (5-6)", symbol: "RR", value: CR_(5) },
+					{ name: "Primair (6-7)", symbol: "CR", value: CR_(6) }
 				]
-				// items: stages.slice(1).map(stage =>
-				// 	({ name: js.sf("Trap [%d-%d]", stage - 1, stage, stage), symbol: js.sf("CR(%d)", stage), value: CR_(stage) }))
 			}, {
 				name: "Samendrukkingsparameters - a,b,c-Isotachen", //report: "debug: true;",
 				items: [
-					{ name: "onder Pg", symbol: "a", value: iso_a_(1, context, vars) },
-					{ name: "ontlasten", symbol: "asw", value: iso_asw_(4, context, vars) },
-					{ name: "herlasten", symbol: "ar", value: iso_a_(stages.length - 2, context, vars) },
-					{ name: "boven Pg", symbol: "b", value: iso_a_(1, context, vars) },
-					{ name: "bij herlasten", symbol: "c", value: iso_a_(stages.length - 1, context, vars) },
+					{ name: "onder Pg (1-2)", symbol: "a", value: iso_a_(1, context, vars) },
+					{ name: "boven Pg (2-3)", symbol: "b", value: iso_a_(2, context, vars) },
+					{ name: "ontlasten (4-5)", symbol: "asw", value: iso_asw_(4, context, vars) },
+					{ name: "herbelasten (5-6)", symbol: "ar", value: iso_a_(5, context, vars) }
 				]
 			}, {
 				name: "Lineaire rek", report: "debug: true;",
@@ -1315,8 +1842,61 @@ var handlers = {
 				name: "Consolidatie 90% - Taylor", report: "debug: true;",
 				items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), unit: "seconds", symbol: "t90(" + stage +")", value: taylor_t90_(stage) })),
 			}, {
+				name: "Koppejan - zetting (variant 1)", report: "debug: true;",
+				items: [
+					{ name: "1 dag", unit: "mm", symbol: "vz1", value: vars.grenswaarden.kop.variant1.serie2.map(o => o.vz1).join(" ") },
+					{ name: "10 dagen", unit: "mm", symbol: "vz10", value: vars.grenswaarden.kop.variant1.serie2.map(o => o.vz10).join(" ") },
+					{ name: "100 dagen", unit: "mm", symbol: "vz100", value: vars.grenswaarden.kop.variant1.serie2.map(o => o.vz100).join(" ") },
+					{ name: "1000 dagen", unit: "mm", symbol: "vz1000", value: vars.grenswaarden.kop.variant1.serie2.map(o => o.vz1000).join(" ") },
+					{ name: "10000 dagen", unit: "mm", symbol: "vz10000", value: vars.grenswaarden.kop.variant1.serie2.map(o => o.vz10000).join(" ") },
+				]
+			}, {
+				name: "Koppejan - zetting (variant 2)", report: "debug: true;",
+				items: [
+					{ name: "1 dag", unit: "mm", symbol: "vz1", value: vars.grenswaarden.kop.variant2.serie2.map(o => o.vz1).join(" ") },
+					{ name: "10 dagen", unit: "mm", symbol: "vz10", value: vars.grenswaarden.kop.variant2.serie2.map(o => o.vz10).join(" ") },
+					{ name: "100 dagen", unit: "mm", symbol: "vz100", value: vars.grenswaarden.kop.variant2.serie2.map(o => o.vz100).join(" ") },
+					{ name: "1000 dagen", unit: "mm", symbol: "vz1000", value: vars.grenswaarden.kop.variant2.serie2.map(o => o.vz1000).join(" ") },
+					{ name: "10000 dagen", unit: "mm", symbol: "vz10000", value: vars.grenswaarden.kop.variant2.serie2.map(o => o.vz10000).join(" ") },
+				]
+			}, {
+				name: "Koppejan - Compression Constants - variant 2",
+				items: (() => { 
+					var Pg = vars.grenswaarden.kop.variant2.LLi_1.sN1N2.x;
+					var slopes = vars.grenswaarden.kop.variant2.slopes;
+					var serie2 = vars.grenswaarden.kop.variant2.serie2;
+					var sig = "Stress Target (kPa)";
+					
+					var unloaded = 0, pre, post, reload = 0;
+					return slopes.map((o, index) => { 
+						if(index === slopes.length - 1) return [];
+						if(index && !unloaded) {
+							if((unloaded = serie2[index - 1][sig] > serie2[index][sig] ? 1 : 0)) {
+								pre = "A";
+							} else {
+								pre = "C";
+							}
+						} else {
+							if(unloaded) {
+								reload++;
+							}
+							pre = "C";
+						}
+
+						post = serie2[index][sig] < Pg ? "" : "'";
+						post += (reload === 1 ? "(r)" : "");
+
+						return [
+							{ name: js.sf("%s%s [%d-%d]", pre, post, index + 1, index + 2), unit: "", symbol: js.sf("%s%s", pre, post), value: o.C },
+							{ name: js.sf("%s10%s [%d-%d]", pre, post, index + 1, index + 2), unit: "", symbol: js.sf("%s10%s", pre, post), value: o.C10 },
+							{ name: js.sf("%sp%s [%d-%d]", pre, post, index + 1, index + 2), unit: "", symbol: js.sf("%sp%s", pre, post), value: o.Cp },
+							{ name: js.sf("%ss%s [%d-%d]", pre, post, index + 1, index + 2), unit: "", symbol: js.sf("%ss%s", pre, post), value: o.Cs }
+						];
+					}).flat();
+				})()
+			}, {
 				name: "Koppejan - variant 1", report: "debug: true;",
-				items:	stages.map(stage => ({ name: js.sf("Richtingscoëfficiënt regressielijn %d", stage), unit: "seconds", symbol: "rc" + stage, value: js.get("kop.variant1.slopes", vars.grenswaarden)[stage - 1].rc })).concat(
+				items:	stages.map(stage => ({ name: js.sf("Richtingscoëfficiënt regressielijn %d", stage), symbol: "rc" + stage, value: js.get("kop.variant1.slopes", vars.grenswaarden)[stage - 1].rc })).concat(
 						stages.map(stage => ({ name: js.sf("Nulpunt regressielijn %d", stage), symbol: "np" + stage, value: js.get("kop.variant1.slopes", vars.grenswaarden)[stage - 1].np}))),
 			}, {
 				name: "Koppejan - variant 2", report: "debug: true;",
@@ -1369,20 +1949,12 @@ var handlers = {
 				
 			});
 		}
-	},
-	// "#tabs-graphs onChange": function() {
-	// 	// this.print("onChange", arguments);
-	// }
+	}
 };
 
 ["", {  handlers: handlers }, [
 	
-	["vcl/data/Array", ("array-headers"), {
-		// array: [{
-		// 	key: "Key",
-		// 	value: "Value"
-		// }]
-	}],
+	["vcl/data/Array", ("array-headers"), {}],
 
 	Tabs,
 
@@ -1403,235 +1975,13 @@ var handlers = {
 			"&.pdf.generate .multiple > div": "height: 470px; width:850px; position:absolute;top:0;left:0;"
 		}
 	}, [
-		["vcl/ui/Panel", ("graph_Casagrande_"), {
-			align: "client", visible: false, classes: "multiple",
-			onRender() {
-				var vars = this.vars(["variables"]);
-				var context = contextNeeded(this);
-				var content = [];
-
-				context.categoryField = "Time since start of stage (s)";
-
-			/*- reset */
-				for(var stage = 0; stage < vars.stages; ++stage) {
-					content.push(js.sf("<div>Stage %s</div>", stage));
-				}
-				this._node.innerHTML = content.join("");
-				
-			/*- render */ stage = 0;
-				var render = () => {
-				    var meta = {context: context}, index = {}, values = [], previous;
-					var series = [{
-						title: js.sf("Zetting trap %s [µm]", stage + 1),
-						valueAxis: "y1", valueField: "y" // zetting (mm)
-					}];
-					var y0, trendLines = [], guides = [];
-
-					context.values_(stage + 1)
-						.forEach(obj => {
-							/*- translates context.array to seconds */
-							var sec = obj[context.categoryField], x;
-							if(!sec) x = 0.001; else {
-								x = sec / 60;
-							}
-		
-							index[x] = js.mixIn(index[x] || {});
-							index[x]['Stage Number'] = obj['Stage Number'];
-							index[x][context.valueField] = obj[context.valueField];
-							index[x].x = parseFloat(x);
-							index[x].y = obj[context.valueField] * 1000;
-							index[x].sec = obj[context.categoryField];
-							index[x].hours = index[x].sec / 3600;
-							index[x].mins = index[x].sec / 60;
-						});
-					
-					var nds = [];
-					Object.keys(index).sort(sort_numeric).forEach((key, idx, arr) => {
-						var current = index[key], next = index[arr[idx + 1]];
-						if(previous) {
-							current.delta = current[context.valueField] - previous[context.valueField];
-							current.dy = current.y - previous.y;
-						}
-						if(current.dy) {
-							nds.push(current);
-						}
-						values.push(current);
-						previous = current;
-					});
-
-					previous = undefined;					
-					nds.forEach((current, idx, arr) => {
-						var next = arr[idx + 1];
-						if(previous) {
-							current.firstRC = (current.y - previous.y) / (current.x - previous.x);
-							current.secondRC = (current.firstRC - previous.firstRC) / (current.x - previous.x); // TODO avg X
-							current.thirdRC = (current.secondRC - previous.secondRC) / (current.x - previous.x);
-						}
-						previous = current;
-					});
-					
-					meta.nds = nds;
-					meta.data = values;
-					
-					vars.casagrande___(stage + 1, [] || values, meta, guides, trendLines);
-					this.vars("am", { series: series, meta: meta, data: values, nds: nds });
-	
-					makeChart(this, {
-						immediate: true,
-						legend: false,
-						node: this.getChildNode(stage),
-						trendLines: trendLines,
-					    valueAxes: [{
-					        id: "y1", position: "left", reversed: true,
-							guides: guides
-						}, {
-							title: js.sf("Trap %s: zetting [µm] / tijd [minuten] → ", stage + 1),
-							position: "bottom",
-							logarithmic: true
-						}]
-						// xAxisLogarithmic: true
-					});
-						
-					if(stage === 2) this.getChildNode(stage).className += " selected";
-
-					if(++stage < vars.stages) {
-						this.nextTick(render);
-					}
-				};
-				vars.stages && render();
-			}
-		}],
 		["vcl/ui/Panel", ("graph_Casagrande"), {
 			align: "client", visible: false, classes: "multiple",
-			onRender() {
-				var vars = this.vars(["variables"]);
-				var content = [];
-
-			/*- reset */
-				for(var stage = 0; stage < vars.stages; ++stage) {
-					content.push(js.sf("<div>Stage %s</div>", stage));
-				}
-				this._node.innerHTML = content.join("");
-				
-			/*- render */ stage = 0;
-				var render = () => {
-					var series = [{
-						title: js.sf("Zetting trap %s [µm]", stage + 1),
-						valueAxis: "y1", valueField: "y", 
-						categoryField: "mins" // zetting (mm)
-					}];
-
-					var values = [], meta = {}, trendLines = [], guides = [];
-					vars.casagrande___(stage + 1, values, meta, guides, trendLines);
-					this.vars("am", { series: series, meta: meta, data: values });
-					
-					var previous, next, next2, previous2, dt;
-					var avg = {n: 0, "y'": 0, "y''": 0, "y'''": 0};
-					values.forEach((current, idx, arr) => {
-						next = arr[idx + 1];
-						next2 = arr[idx + 2];
-						if(previous && next) {
-							dt = Math.log(next.x / current.x);
-
-							current["y'"] = (next.y - previous.y) / (2*dt);
-							current["y''"] = (next.y - (2 * current.y) + previous.y) / (dt*dt);
-							current["y'''"] = (next2 && previous2) && (next2.y - 2*next.y + 2*previous.y - previous2.y) / 2*(dt*dt*dt);
-							// current["y''''"] = (next.y - 2 * current.y + previous.x) / Math.pow(next.x - previous.x, 2)
-							// current["y'''''"] = (next.y - 2 * current.y + previous.x) / Math.pow(next.x - previous.x, 2)
-							current.dy = current.y - previous.y;
-							current["dy'"] = current["y'"] - previous["y'"];
-							current["dy''"] = current["y''"] - previous["y''"];
-							current["dy'''"] = current["y'''"] - previous["y'''"];
-							if(isNaN(current["y'"])) {
-								current["avg-y'"] = (previous["avg-y'"] * avg.n) / (avg.n + 1);
-								current["avg-y''"] = (previous["avg-y''"] * avg.n) / (avg.n + 1);
-							} else {
-								current["avg-y'"] = (avg["y'"] = ((avg["y'"] * avg.n) + current["y'"]) / (avg.n + 1));
-								current["avg-y''"] = (avg["y''"] = ((avg["y''"] * avg.n) + current["y''"]) / (avg.n + 1));
-							}
-							if(isNaN(current["y''"])) {
-								// current["avg-y'''"] = (previous["avg-y'''"] * avg.n) / (avg.n + 1);
-							} else {
-								current["avg-y'''"] = (avg["y'''"] = ((avg["y'''"] * avg.n) + current["y'''"]) / (avg.n + 1));
-							}
-							
-							avg.n++;
-						}
-						previous2 = previous;
-						previous = current;
-					});
-					
-					makeChart(this, {
-						immediate: true,
-						// legend: false,
-						node: this.getChildNode(stage),
-						trendLines: trendLines,
-					    valueAxes: [{
-					        id: "y1", position: "left", reversed: true,
-							guides: guides, 
-						}, {
-							title: js.sf("Trap %s: zetting [µm] / tijd [minuten] → ", stage + 1),
-							position: "bottom",
-							logarithmic: true
-						}]
-					});
-						
-					if(stage === 2) this.getChildNode(stage).className += " selected";
-
-					if(++stage < vars.stages) {
-						this.nextTick(render);
-					}
-				};
-				vars.stages && render();
-			}
+			onRender: render_Casagrande
 		}],
 		["vcl/ui/Panel", ("graph_Taylor"), {
 			align: "client", visible: false, classes: "multiple",
-			onRender() {
-				var vars = this.vars(["variables"]);
-				var context = contextNeeded(this);
-				var content = [];
-
-				context.categoryField = "Time since start of stage (s)";
-
-		/*- reset */
-				for(var stage = 0; stage < vars.stages; ++stage) {
-					content.push(js.sf("<div>Stage %s</div>", stage));
-				}
-				this._node.innerHTML = content.join("");
-				stage = 0;
-
-		/*- render */ 
-				var render = () => {
-				    var meta = {context: context}, values = [], guides = [], trendLines = [];
-				    var series = [{
-						title: js.sf("Zetting trap %s [µm]", stage + 1),
-						valueAxis: "y1", valueField: "y"
-					}];
-
-					vars.taylor___(stage + 1, values, meta, guides, trendLines);
-					this.vars("am", { series: series, meta: meta, data: values });
-					
-					makeChart(this, {
-						immediate: true,
-						legend: false,
-						node: this.getChildNode(stage),
-						trendLines: trendLines,
-					    valueAxes: [{
-					        id: "y1", position: "left", reversed: true,
-							guides: guides
-						}, {
-							title: js.sf("Trap %s: zetting [µm] / tijd [√ minuten] → ", stage + 1),
-							position: "bottom"
-						}]
-					});
-
-					if(stage === 2) this.getChildNode(stage).className += " selected";
-					
-					if(++stage < vars.stages) { this.nextTick(render); }
-				};
-				vars.stages && render();
-			}
+			onRender: render_Taylor
 		}],
 		["vcl/ui/Panel", ("graph_Bjerrum_e"), {
 			align: "client", visible: false,
@@ -1848,246 +2198,7 @@ var handlers = {
 		}],
 		["vcl/ui/Panel", ("graph_Koppejan"), {
 			align: "client", visible: false,
-			onRender(returnMeta) {
-				var context = contextNeeded(this);
-				if(!context.array.isActive()) return;
-
-				var series = [{ 
-					title: "Belasting [kPa]", xAxis: "x2",
-					xField: "x2", yField: "y2"
-				}, {
-					title: "Zetting [mm]", xAxis: "x1",
-					xField: "x", yField: "y"
-				}].concat([1,2,3,4,5,6].map(_ => ({
-					title: js.sf("Verschoven zetting vz%d [mm]", _ + 1), xAxis: "x1",
-					xField: "x" + (_ + 2), yField: "vz2",
-					lineColor: _ >= 4 ? "purple" : "red", lineThickness: 1
-				})));
-
-			    var meta = {context: context}, index = {}, allValues = [], previous;
-				var ignore = 30 / (24 * 3600) / 2;
-				context.array.getObjects().forEach((obj, idx, arr) => {
-					/*- translates context.array logarithmically and pushes into allValues */
-					var sec = obj[context.categoryField];
-					var x = sec / (24*3600);
-					
-					/*- ignore the 1st ... */
-					if(x < ignore) return;
-
-					index[x] = js.mixIn(index[x] || obj);
-					index[x]['Stage Number'] = obj['Stage Number'];
-					index[x][context.valueField] = obj[context.valueField];
-					index[x][context.valueField_kPa] = obj[context.valueField_kPa];
-					
-					index[x].index = idx;
-					index[x].x = parseFloat(x);
-					index[x].x2 = obj['Axial Stress (kPa)'];
-					index[x].y = index[x].y2 = obj[context.valueField];
-					index[x].days = sec / (3600*24);
-					index[x].hours = sec / 3600;
-					index[x].minutes = sec / 60;
-					index[x].seconds = sec;
-					
-					if(idx > 0) index[x].delta = (arr[idx -1][context.valueField] - obj[context.valueField]);
-				});
-				
-				var serie2 = [];
-				Object.keys(index).sort(sort_numeric).forEach(key => {
-					var entry = index[key];
-					if(previous) {
-						if(previous['Stage Number'] === entry['Stage Number']) {
-							delete previous.y2;
-						} else {
-							serie2.push(previous);
-						}
-					}
-					previous = entry;
-					allValues.push(entry);
-				});
-				serie2.push(previous);
-				meta.serie2 = serie2;
-				this.vars("am", { series: series, meta: meta, data: allValues, context: context });
-
-		/*- determine slopes (rc) per stage - based on allValues (which might be extrapolated already based upon previous rc) */
-				var slopes = [], y = "Axial Displacement (mm)", x = "Time since start of stage (s)";
-				var vars = this.vars(["variables"]);
-				var stages = vars.stages;
-				var slope_variant = vars.slope_variant || 2;
-				var rlines = [];
-
-				for(var s = 0; s < stages; ++s) {
-					var z1 = context.values_(s + 1, allValues);
-					z1.forEach((m,i,a) => i && (m.delta = m[y] - a[i-1][y]));
-					var slope = {
-						stage: s + 1,
-						values: z1,
-						// always get 0.1 (tried mean and smallest delta as well)
-						measurement_1: z1[Math.round(0.1 * 3600 * 24 / 30)], 
-						measurement_2: function() {
-							var N = z1.length, ax = 0, ay = 0, sx = z1[0][x], sy = z1[0][y];
-							z1.slice(z1.length - N).forEach(m => {
-								ax += (m[x] - sx);
-								ay += (m[y] - sy);
-							});
-							ax /= N;
-							ay /= N;
-							var m = {};
-							m.x = m[x] = ax + sx;
-							m.y = m[y] = ay + sy;
-							m.vz2 = m.y;
-							return m;
-						}(),
-						measurement_3: z1.filter(_ => _.delta != 0).sort((i1, i2) => Math.abs(i1.delta) < Math.abs(i2.delta) ? -1 : 1)[0],
-						last: z1[z1.length - 1]
-					};
-					
-					slope.measurement = slope['measurement_' + slope_variant];
-					slope.rc = (slope.last.y - slope.measurement.y) / 
-							Math.log10(Math.round(slope.last[x] / 3600 * 24) / 
-								(slope.measurement[x] / 3600 * 24));
-
-					/*- extrapolate next stage */
-					if(s < stages - 1) {
-						var z2 = context.values_(s + 2, allValues);
-						var t1 = (s + 1);
-
-						z2.forEach((obj, i) => {
-							if(!i) return;
-							
-							var t = obj.days;
-							
-							// obj.x3 = (t - t1) || ignore;
-							obj['x' + (s + 3)] = (t - t1) || ignore;
-							
-							obj.yy = obj[y];
-							obj.z1 = z2[0][y] + slope.rc * Math.log10(t);
-							obj.z2 = obj[y] - obj.z1;
-							
-							obj.t = t; obj.t1 = t1;
-
-							// obj.vz2_d = slope.rc * (Math.log10((t - t1) || ignore) - Math.log10(t));
-							obj.vz2 = obj[y] + slope.rc * (Math.log10((t - t1) || ignore) - Math.log10(t));
-						});
-						// this.print("z2", z2);
-					}
-
-					slopes.push(slope);
-
-					var x_ = "x" + (s + 2);
-					if(s && slope.measurement[x_]) {
-						slope.rc_org = slope.rc;
-						slope.rc = (slope.last.vz2 - slope.measurement.vz2) / 
-								Math.log10(Math.round(slope.last[x_]) /  
-									(slope.measurement[x_]));
-					}
-
-					slope.np = slope.last.vz2 || slope.last[y];
-					var rl = slope.regression_line = regression.logarithmic(z1.map(_ => [_[x], _.vz2 || _[y]]));
-					rlines.push({
-						initialXValue: 0.01, initialValue: rl.predict(0.01)[1],
-						finalXValue: 10, finalValue: rl.predict(10)[1],
-						lineThickness: 1, lineAlpha: 1, lineColor: "orange"
-						//, dashLength: 1
-					});
-				}
-
-		/*- straight line on log-scale? >> N = b * g ^ t; (https://www.youtube.com/watch?v=i3jbTrJMnKs) */
-					// >>> t = Math.log(N / b) / Math.log(g);
-				var trendLines = slopes.map((S, i, slopes) => {
-				/*- (t1,N1), (t2,N2) => g1, b1 => TODO use log_line_intersect() */
-					var sm = S.measurement;
-					var t1 = sm[y], N1 = sm[x]  / (24*3600);
-					var t2 = S.last[y], N2 = S.last[x]  / (24*3600);
-					var dt1 = t2 - t1;
-					var g1 = Math.pow(N2 / N1, 1 / dt1);
-					var b1 = N1 / Math.pow(g1, t1);
-					
-					var y10 = Math.log(10 / b1) / Math.log(g1);
-					var x10 = 10;
-					var TLy = S.last.vz2 || S.last[y]; // vz2 is not set in stage 1 fallback to measuremnt
-					
-					return [{
-						delta: y10 - TLy,//S.last[y],
-						// initialXValue: i + 1, initialValue: S.last[y],
-						initialXValue: 1, initialValue: TLy,
-						finalXValue: 20, finalValue: TLy + S.rc * Math.log10(20),
-						lineAlpha: 1, lineColor: "black", dashLength: 3
-					}];//, rlines.shift()];
-				}).filter((_, i, a) => (_[0].delta > 0));
-				
-				var LLi_1 = log_line_intersect(
-						serie2[0].x2, serie2[0].y, 
-						serie2[1].x2, serie2[1].y, 
-						serie2[2].x2, serie2[2].y, 
-						serie2[3].x2, serie2[3].y);
-						
-				meta.slopes = slopes;
-				meta.LLi_1 = LLi_1;
-				meta.trendLines = trendLines;
-
-
-				if(returnMeta === true) {
-					// this.print(">>> only return");
-					return meta;
-				}
-				
-				// this.getChildNode(0).className += " selected";
-				
-				makeChart(this, { 
-					type: "xy",
-					// node: this.getChildNode(0),
-					// marginRight: 60,
-					colors: ["black", "rgb(56, 121, 217)"],
-				    valueAxes: [{
-				        id: "y1", reversed: true, minimum: 0,
-						// guides: [{
-						// 	value: LLi_1.sN1N2.y, inside: true, lineAlpha: 0,
-						// 	label: js.sf("%.3f mm", LLi_1.sN1N2.y)
-						// }]
-					}, {
-				        id: "y2", position: "right", reversed: true, minimum: 0,
-				        synchronizeWith: "y1", synchronizationMultiplier: 1,
-						guides: [{
-							value: LLi_1.sN1N2.y, inside: true, lineAlpha: 0,
-							label: js.sf("%.3f mm", LLi_1.sN1N2.y)
-						}]
-					}, {
-						id: "x1", title: "Duur [dagen] → ", position: "bottom", 
-						logarithmic: true, minimum: 0.01, maximum: 1000
-					}, {
-						id: "x2", _title: "Belasting [kPa] → ", position: "top",
-						synchronizeWith: "x1", synchronizationMultiplier: 1,
-						logarithmic: true, minimum: 0.01,
-						guides: [{
-							value: LLi_1.sN1N2.x, inside: true, lineAlpha: 0,
-							label: js.sf("%.3f kPa", LLi_1.sN1N2.x)
-						}]
-					}],
-					trendLines: [{
-						valueAxisX: "x2",
-						initialXValue: 10000, initialValue: LLi_1.sN1N2.y,
-						finalXValue: LLi_1.sN1N2.x, finalValue: LLi_1.sN1N2.y,
-						dashLength: 2, lineColor: "green", lineAlpha: 0.5
-					}, {
-						valueAxisX: "x2",
-						initialXValue: LLi_1.sN1N2.x, initialValue: 0,
-						finalXValue: LLi_1.sN1N2.x, finalValue: LLi_1.sN1N2.y,
-						dashLength: 2, lineColor: "green", lineAlpha: 0.5
-					}, {
-						valueAxisX: "x2",
-						initialXValue: serie2[1].x2, initialValue: serie2[1].y,
-						finalXValue: LLi_1.b1 * Math.pow(LLi_1.g1, serie2[2].y), finalValue: serie2[2].y,
-						lineColor: "green",
-					}, {
-						valueAxisX: "x2",
-						initialXValue: serie2[2].x2, initialValue: serie2[2].y,
-						finalXValue: LLi_1.b2 * Math.pow(LLi_1.g2, serie2[0].y), finalValue: serie2[0].y,
-						lineColor: "green",
-					}].concat(trendLines.flat().map(_ => { 
-						return _;
-					}))
-				});
-			}
+			onRender: render_Koppejan
 		}]
 	]]
 ]];

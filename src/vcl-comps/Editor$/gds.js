@@ -36,7 +36,7 @@ var Parser = require("papaparse/papaparse");
     ["vcl/Action", ("render"), {
     	on() {
     		var ace = this.ud("#ace");
-			var lines = ace.getLines().filter(_ => _.split(",").length > 5);
+			var lines = ace.getLines().filter(_ => _.split("\"").length > 15);
 			
 			var options = this.vars(["options"]) || {
 				// delimiter: "",	// auto-detect
@@ -60,6 +60,7 @@ var Parser = require("papaparse/papaparse");
 				// withCredentials: undefined
 			};
 			var arr = Parser.parse(lines.join("\n"), options).data;
+			arr = arr.filter(_ => _.length);
 			var headers = arr.shift();
 			var parseValue = (value) => isNaN(value.replace(",", ".")) ? value : parseFloat(value.replace(",", "."));
 			
