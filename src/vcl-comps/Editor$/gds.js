@@ -2,7 +2,28 @@
 
 var Parser = require("papaparse/papaparse");
 
-["", {}, [
+var css = {
+	"#bar": "text-align: center;",
+	"#bar > *": "margin-right:5px;",
+	"#bar input": "font-size:12pt;width:300px;max-width:50%; border-radius: 5px; border-width: 1px; padding: 2px 4px; border-color: #f0f0f0;",
+	"#bar #left": "float:left;", "#bar #right": "float:right;"
+};
+
+function match(obj, q) {
+	q = q.toLowerCase();	
+	if(typeof obj ==="string") {
+		return obj.toLowerCase().includes(q);
+	}
+	for(var k in obj) {
+		if(js.sf("%n", obj[k]).toLowerCase().includes(q)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+
+["", { css: css }, [
     [("#ace"), { 
     	align: "left", width: 475, action: "toggle-source",
     	executesAction: "none",
@@ -70,15 +91,23 @@ var Parser = require("papaparse/papaparse");
 				return obj;
 			});
 			
-			this.ud("#array").setArray(arr);
+			this.ud("#array-measurements").setArray(arr);
 			this.up("vcl/ui/Tab").emit("resource-rendered", [{sender: this, data: arr}]);
     	}
     }],
 	
-	["vcl/data/Array", ("array"), {
+	["vcl/data/Array", ("array-measurements"), {
 		onGetAttributeValue: function(name, index, value) { 
 			return (this._arr[index] || {})[name]; 
-		}
+		},
+		onFilterObject(obj) {
+			var q = this.vars("q");
+			if(!q) return false;
+			return q.split(/\s/).filter(q => q.length > 0).some(q => !match(obj, q));
+		},
+		onUpdate() {
+			// this.ud("#list-status").render();
+		},
 	}],
 
 	["vcl/ui/Panel", ("client"), { align: "client" }, [
@@ -88,17 +117,36 @@ var Parser = require("papaparse/papaparse");
 			["vcl/ui/Tab", { text: "Grafieken", control: "renderer", selected: true }]
 		]],
 		["vcl/ui/Panel", { align: "client", css: "background-color:white;" }, [
+			["vcl/ui/Bar", ("#bar"), {}, [
+				["vcl/ui/Input", ("q"), { 
+					placeholder: "Filter", 
+					onChange() { 
+						this.setTimeout("updateFilter", () => {
+							var a1 = this.udr("#array-variables");
+							var a2 = this.ud("#array-measurements");
+							a1.vars("q", this.getValue());
+							a1.updateFilter();
+
+							a2.vars("q", this.getValue());
+							a2.updateFilter();
+
+							// this.ud("#list-status").render();
+
+						}, 250); 
+					} 
+				}],
+			]],
 			["vcl/ui/List", ("variables"), { 
 				autoColumns: true,
 				onLoad() { 
-					this.setSource(this.ud("#renderer #array-headers"));
+					this.setSource(this.ud("#renderer #array-variables"));
 				},
 				visible: false
 			}],
 			["vcl/ui/List", ("measurements"), { 
 				align: "client", autoColumns: true, visible: false, 
 				css: "background-color: white; min-width:100%;", 
-				source: "array",
+				source: "array-measurements",
 				onDblClick: function() {
 					this.print(this.getSelection(true));	
 				},
@@ -111,7 +159,6 @@ var Parser = require("papaparse/papaparse");
 				// }
 			}],
 		]],
-		
 		[["devtools/Renderer<gds>"], ("renderer"), { visible: false }]
 	]]
 ]];

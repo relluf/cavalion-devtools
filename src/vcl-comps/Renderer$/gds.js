@@ -178,9 +178,22 @@ function grenswaarden_Isotachen(context, vars) {
 function grenswaarden_Koppejan(context, vars) {
 	/*- refactor function name, since more is returned */
 	var graph = context.array.ud("#graph_Koppejan");
-	var variant1 = render_Koppejan.apply(graph, [true, 1]);
+	// var variant1 = render_Koppejan.apply(graph, [true, 1]);
 	var variant2 = render_Koppejan.apply(graph, [true, 2]);
-	return {variant1: variant1, variant2: variant2};
+	return {variant1: variant2, variant2: variant2};
+}
+
+function match(obj, q) {
+	q = q.toLowerCase();	
+	if(typeof obj ==="string") {
+		return obj.toLowerCase().includes(q);
+	}
+	for(var k in obj) {
+		if(js.sf("%n", obj[k]).toLowerCase().includes(q)) {
+			return true;
+		}
+	}
+	return false;
 }
 
 function line_intersect(x1, y1, x2, y2, x3, y3, x4, y4) {
@@ -439,7 +452,7 @@ function inflection_points_1(values, guides, trendLines) {
 
 	return [max.ip1];
 }
-function inflection_points_CG(values, guides, trendLines) {
+function inflection_points_CG(Hi, values, guides, trendLines) {
 /*- translate to 0 */
 	var y0 = values[0].y, x = "mins";
 	var last = values[values.length - 1];
@@ -526,10 +539,6 @@ belasting. De samendrukking van de 0 % consolidatie (d) is gelijk aan de samendr
 		value: b25, dashLength_: 2, lineColor: "green",
 		toValue: b50, fillColor: "green", fillAlpha: 0.05,
 		lineAlpha: 0, inside: true
-	// }, {
-	// 	label_: "50%", position: "left",
-	// 	value: b50, dashLength: 2, lineColor: "green",
-	// 	lineAlpha: 0.35, inside: true
 	});
 	
 	if(guides) {
@@ -554,10 +563,32 @@ belasting. De samendrukking van de 0 % consolidatie (d) is gelijk aan de samendr
 		finalXValue: ll2.b * Math.pow(ll2.g, yZ), finalValue: yZ,
 		lineColor: "green", lineThickness: 1
 	});
+	
+	var dt1 = vnnp[0][x], dt2 = last[x];
+	var d1 = vnnp[0].y / 1000, d2 = last.y / 1000;
+	var Calpha = ((d2 - d1) / Hi) / Math.log10(dt2 / dt1);
+	
+		var d50 = h50;//guides.filter(_ => _.label === "50%")[0].value;
+		var d100 = LLi_1.sN1N2.y;//guides.filter(_ => _.label === "100%")[0].value;
+		
+		var t50, i50 = values.findIndex(value => value.y >= d50);
+		var t100, i100 = values.findIndex(value => value.y >= d100);
+
+		function calcT(dA, dB, tA, tB) {
+			return Math.pow(10, ((d50 - dA) / (dB - dA)) * Math.log10(tB / tA) + Math.log10(tA));
+		}
+		
+		if(i50 > 0) t50 = calcT(values[i50 - 1].y, values[i50].y, values[i50 - 1].mins, values[i50].mins);
+		if(i100 > 0) t100 = calcT(values[i100 - 1].y, values[i100].y, values[i100 - 1].mins, values[i100].mins);
 
 	return {
-		t50: [0, 0, h50],
-		t100: [LLi_1.sN1N2.x, LLi_1.sN1N2.x, LLi_1.sN1N2.y]
+		t50: t50 ? [t50 * 60, t50, d50] : [],
+		t100: t100 ? [t100 * 60, t100, d100] : [],
+		// t50: [0, 0, h50],
+		// t100: [LLi_1.sN1N2.x, LLi_1.sN1N2.x, LLi_1.sN1N2.y],
+		ll1: ll1, ll2: ll2, t1: t1, t4: t4,
+		dt1: dt1, dt2: dt2, d1: d1, d2: d2,
+		Calpha: Calpha
 	};
 }
 
@@ -927,1034 +958,1080 @@ function render_Koppejan(returnMeta, variant) {
 	});
 }
 
-var handlers = {
-	"loaded": function() {
-		var lines, headers, context, me = this, cache;
-		var vars = this.vars("variables", {});
 
-		var key_Y = "Axial Displacement (mm)";
+function onLoad() {
+	var lines, headers, context, me = this, cache;
+	var vars = this.vars("variables", {});
 
-		vars.G = 9.81 * 1000;
-		vars.pw = 1.00; //(assumed value; note that water density may vary due to temperature)
+	var key_Y = "Axial Displacement (mm)";
 
-		function parseValue(value) {
-			var r = parseFloat(value.replace(/,/, "."));
-			return isNaN(r) ? value : r;
-		}
-		function headerValue(key, parse/*default true*/) {
-			key = key.toLowerCase();
-			key = (headers.filter(_ => _.name.toLowerCase().startsWith(key))[0] || {});
-			return parse !== false && key.value !== undefined ? parseValue(key.value) : key.value;
-		}
+	vars.G = 9.81 * 1000;
+	vars.pw = 1.00; //(assumed value; note that water density may vary due to temperature)
+
+	function parseValue(value) {
+		var r = parseFloat(value.replace(/,/, "."));
+		return isNaN(r) ? value : r;
+	}
+	function headerValue(key, parse/*default true*/) {
+		key = key.toLowerCase();
+		key = (headers.filter(_ => _.name.toLowerCase().startsWith(key))[0] || {});
+		return parse !== false && key.value !== undefined ? parseValue(key.value) : key.value;
+	}
+	
+	function nofStages() {
+		var values = values_();
+		return values.length ? parseInt((values_().pop()['Stage Number'] - 1) * 10, 10) : 0;
+	}
+	function values_(stage, arr) {
+		arr = arr || context.array.getObjects();
+		/*- this cache-thing exist because I am lazy and do not want refactor just yet */
+		if(!arr && cache.values_.hasOwnProperty(stage)) return cache.values_[stage];
 		
-		function nofStages() {
-			var values = values_();
-			return values.length ? parseInt((values_().pop()['Stage Number'] - 1) * 10, 10) : 0;
-		}
-		function values_(stage, arr) {
-			arr = arr || context.array.getObjects();
-			/*- this cache-thing exist because I am lazy and do not want refactor just yet */
-			if(!arr && cache.values_.hasOwnProperty(stage)) return cache.values_[stage];
-			
-			if(stage === undefined) return [].concat(context.array.getObjects());
-			
-			return (cache.values_[stage] = arr.filter(_ => _['Stage Number'] == ("1." + stage)));
-		}
-		function valuesUntil_(stage) {
-			/*- this cache-thing exist because I am lazy and do not want refactor just yet */
-			if(cache.valuesUntil_.hasOwnProperty(stage)) return cache.valuesUntil_[stage];
-			
-			return (cache.valuesUntil_[stage] = context.array.getObjects()
-					.filter(_ => _['Stage Number'] < ("1." + stage)));
-		}
-
-		function load_(stage, which) {
-			if(which === undefined) {
-				var first = values_(stage)[0];
-				return first ? first['Stress Target (kPa)'] : "-";
-			}
-			var last = values_(stage);
-			last = last[last.length - 1];
-			return last ? last['Axial Stress (kPa)'] : "-";
-		}
-		function load_ef_(stage) { return load_(stage, "effective"); }
-		function Hi_(stage) {
-			if(stage === undefined) return vars.H;
-			
-			/* initial height of stage */
-			var values = values_(stage);
-			return vars.H - (values.length ? values[0][key_Y] : 0);
-		}
-		function Hf_(stage) {
-			/* final height of stage */
-			var values = values_(stage);
-			return vars.H - (values.length ? values[values.length - 1][key_Y] : 0);
-		}
-		// function H50_(stage) {
-		// 	// TODO
-		// 	return (taylor___(stage) || {t50: {}}).t50[2];
-		// }
-		function deltaH_(stage) {
-			/* delta of stage */
-			var min, max; 
-
-			// values_(stage).forEach(obj => {
-			// 	if(min === undefined || min > obj[key_Y]) min = obj[key_Y];
-			// 	if(max === undefined || max < obj[key_Y]) max = obj[key_Y];
-			// });
-			
-			var values = values_(stage);
-			min = values[0][key_Y];
-			max = values.length ? values[values.length - 1][key_Y] : undefined;
+		if(stage === undefined) return [].concat(context.array.getObjects());
 		
-			return max === undefined ? 0 : max - min;
-		}
-		function z_(stage) {
-			return values_(stage).pop()[key_Y];
-		}
+		return (cache.values_[stage] = arr.filter(_ => _['Stage Number'] == ("1." + stage)));
+	}
+	function valuesUntil_(stage) {
+		/*- this cache-thing exist because I am lazy and do not want refactor just yet */
+		if(cache.valuesUntil_.hasOwnProperty(stage)) return cache.valuesUntil_[stage];
 		
-		function e_(stage) {
-			/*-
-				Hs = H0/(1 + e0)
-				ef = (Hf - Hs ) / Hs"	
-				e0 = ρs/ρd - 1
+		return (cache.valuesUntil_[stage] = context.array.getObjects()
+				.filter(_ => _['Stage Number'] < ("1." + stage)));
+	}
+
+	function load_(stage, which) {
+		if(which === undefined) {
+			var first = values_(stage)[0];
+			return first ? first['Stress Target (kPa)'] : "-";
+		}
+		var last = values_(stage);
+		last = last[last.length - 1];
+		return last ? last['Axial Stress (kPa)'] : "-";
+	}
+	function load_ef_(stage) { return load_(stage, "effective"); }
+	function Hi_(stage) {
+		if(stage === undefined) return vars.H;
+		
+		/* initial height of stage */
+		var values = values_(stage);
+		return vars.H - (values.length ? values[0][key_Y] : 0);
+	}
+	function Hf_(stage) {
+		/* final height of stage */
+		var values = values_(stage);
+		return vars.H - (values.length ? values[values.length - 1][key_Y] : 0);
+	}
+	// function H50_(stage) {
+	// 	// TODO
+	// 	return (taylor___(stage) || {t50: {}}).t50[2];
+	// }
+	function deltaH_(stage) {
+		/* delta of stage */
+		var min, max; 
+
+		// values_(stage).forEach(obj => {
+		// 	if(min === undefined || min > obj[key_Y]) min = obj[key_Y];
+		// 	if(max === undefined || max < obj[key_Y]) max = obj[key_Y];
+		// });
+		
+		var values = values_(stage);
+		min = values[0][key_Y];
+		max = values.length ? values[values.length - 1][key_Y] : undefined;
+	
+		return max === undefined ? 0 : max - min;
+	}
+	function z_(stage) {
+		return values_(stage).pop()[key_Y];
+	}
+	
+	function e_(stage) {
+		/*-
+			Hs = H0/(1 + e0)
+			ef = (Hf - Hs ) / Hs"	
+			e0 = ρs/ρd - 1
+			
+			-e0: initial void ratio (-)
+			-ef: void ratio at the end of each load stage (-)
+			-H0: initial height of specimen (mm)
+			-Hs: height of solids (mm)
+			-ρs: particle density (density of solid particles) (Mg/m3)
+			-ρd: dry particle density (Mg/m3)"
+			
+				H0= 20.20 mm		ρs=  2.65 Mg/m3
+				γd = 10.21 kN/m3 (calculated previously)
+				ρd=  γd/9.81
+
+				ρd=  10.21 / 9.81 = 1.04 Mg/m3
+				e0= 2.65/1.04 - 1 = 1.5481
 				
-				-e0: initial void ratio (-)
-				-ef: void ratio at the end of each load stage (-)
-				-H0: initial height of specimen (mm)
-				-Hs: height of solids (mm)
-				-ρs: particle density (density of solid particles) (Mg/m3)
-				-ρd: dry particle density (Mg/m3)"
+				Hs= 20.20 / (1 + 1.5481) = 7.9275 mm
 				
-					H0= 20.20 mm		ρs=  2.65 Mg/m3
-					γd = 10.21 kN/m3 (calculated previously)
-					ρd=  γd/9.81
+				Bij eind Trap 3:  Gecorrigeerd totaal vervorming: 0.8082 mm
+				Hf= 20.20 - 0.8082 = 19.3918 mm 	ef= (19.3918 - 7.9275) / 13.42 = 0.8543
+		*/
+		var H = Hf_(stage);
+		var yd = vars.md / (Math.PI / 4 * vars.D * vars.D * H) * vars.G;
+		var pd = yd / (vars.G / 1000);
 
-					ρd=  10.21 / 9.81 = 1.04 Mg/m3
-					e0= 2.65/1.04 - 1 = 1.5481
+		return vars.ps / pd - 1;
+	}
+	function Sr_(stage) {
+		
+		var dH = deltaH_(stage);
+		var H = vars.H - dH;
+
+		var V = Math.PI * (vars.D/2) * (vars.D/2) * H;
+		var y = vars.m / (Math.PI / 4 * vars.D * vars.D * H) * vars.G;
+		var yd = vars.md / (Math.PI / 4 * vars.D * vars.D * H) * vars.G;
+		var w0 = (vars.m - vars.md) / vars.md * 100;
+		var pd = yd / (vars.G/1000);
+		var e0 = (vars.ps / pd) - 1;
+		var Sr = (w0 * vars.ps) / (e0 * vars.pw);
+		
+		return Sr;
+	}
+	
+	function casagrande___(stage, values, meta, guides, trendLines) {
+		guides = guides || []; 
+		
+		var index = {}, previous;
+		var context = { categoryField: "Time since start of stage (s)", valueField: "Axial Displacement (mm)", stage: stage };
+		values = values || [], meta = meta || {};
+/*- setup Casagrande dataset for stage (minutes) */
+		values_(stage).forEach(obj => {
+				var sec = obj[context.categoryField], 
+					x  = sec ? Math.log10(sec / 60) : 0.0001;
 					
-					Hs= 20.20 / (1 + 1.5481) = 7.9275 mm
-					
-					Bij eind Trap 3:  Gecorrigeerd totaal vervorming: 0.8082 mm
-					Hf= 20.20 - 0.8082 = 19.3918 mm 	ef= (19.3918 - 7.9275) / 13.42 = 0.8543
-			*/
-			var H = Hf_(stage);
-			var yd = vars.md / (Math.PI / 4 * vars.D * vars.D * H) * vars.G;
-			var pd = yd / (vars.G / 1000);
+				if(!sec) return;
 
-			return vars.ps / pd - 1;
-		}
-		function Sr_(stage) {
-			
-			var dH = deltaH_(stage);
-			var H = vars.H - dH;
-
-			var V = Math.PI * (vars.D/2) * (vars.D/2) * H;
-			var y = vars.m / (Math.PI / 4 * vars.D * vars.D * H) * vars.G;
-			var yd = vars.md / (Math.PI / 4 * vars.D * vars.D * H) * vars.G;
-			var w0 = (vars.m - vars.md) / vars.md * 100;
-			var pd = yd / (vars.G/1000);
-			var e0 = (vars.ps / pd) - 1;
-			var Sr = (w0 * vars.ps) / (e0 * vars.pw);
-			
-			return Sr;
-		}
-		
-		function casagrande___(stage, values, meta, guides, trendLines) {
-			var index = {}, previous;
-			var context = { categoryField: "Time since start of stage (s)", valueField: "Axial Displacement (mm)", stage: stage };
-			values = values || [], meta = meta || {};
-	/*- setup Casagrande dataset for stage (minutes) */
-			values_(stage).forEach(obj => {
-					var sec = obj[context.categoryField], 
-						x  = sec ? Math.log10(sec / 60) : 0.0001;
-						
-					if(!sec) return;
-
-					index[x] = js.mixIn(index[x]);//||{}, obj);
-					index[x]['Stage Number'] = obj['Stage Number'];
-					index[x][context.categoryField] = sec;
-					index[x].x = parseFloat(x);
-					index[x].y = obj[context.valueField] * 1000;
-					index[x].sec = sec;
-					index[x].mins = sec / 60;
-					index[x].hours = sec / 3600;
-				});
-			Object.keys(index).sort(sort_numeric).forEach(key => {
-					var current = index[key];
-					if(previous) { 
-						current.delta = current.y - previous.y;
-					}
-					previous = current;
-					values.push(current);
-				});
-				
-			meta.ips = inflection_points_CG(values, guides, trendLines);
-			
-			values.forEach(obj => {
-					if(meta.min === undefined || meta.min > obj.y) meta.min = obj.y;
-					if(meta.max === undefined || meta.max < obj.y) meta.max = obj.y;
-				});
-
-		/*- NO */
-			return {
-				t50: [],
-				t100: []
-			};
-		}
-		function casagrande_t50_(stage) {
-			return (casagrande___(stage)||{t50:{}}).t50[0];
-		}
-		function casagrande_t100_(stage) {
-			return (casagrande___(stage)||{t100:{}}).t100[0];
-		}
-		function taylor___(stage, values, meta, guides, trendLines) {
-// me.print("TODO optimize for taylor-" + stage);
-			var index = {}, all = [], previous;
-			var context = { categoryField: "Time since start of stage (s)", valueField: "Axial Displacement (mm)", stage: stage };
-			values = values || [], meta = meta || {};
-			
-	/*- setup Taylor dataset for stage */
-			values_(stage).forEach(obj => {
-				var sec = obj[context.categoryField], x;
-
-				x = Math.sqrt(sec / 60);
-				index[x] = js.mixIn(index[x]);
+				index[x] = js.mixIn(index[x]);//||{}, obj);
 				index[x]['Stage Number'] = obj['Stage Number'];
 				index[x][context.categoryField] = sec;
 				index[x].x = parseFloat(x);
 				index[x].y = obj[context.valueField] * 1000;
-				
-				all.push(index[x]);
+				index[x].sec = sec;
+				index[x].mins = sec / 60;
+				index[x].hours = sec / 3600;
 			});
-				
-			Object.keys(index).sort(sort_numeric).forEach(key => {
-					var entry = index[key];
-					if(previous) { 
-						entry.delta = entry.y - previous.y;
-					}
-					previous = entry;
-			 		values.push(entry);
-				});
+		Object.keys(index).sort(sort_numeric).forEach(key => {
+				var current = index[key];
+				if(previous) { 
+					current.delta = current.y - previous.y;
+				}
+				previous = current;
+				values.push(current);
+			});
 			
-	/* determine boundaries Y (min-max) */
-			values.forEach(obj => {
-					if(meta.min === undefined || meta.min > obj.y) meta.min = obj.y;
-					if(meta.max === undefined || meta.max < obj.y) meta.max = obj.y;
-				});
-				
-	/* 10-40% boundaries */
-			var delta = (meta.delta = meta.max - meta.min);
-			var h10 = (meta.h10 = 0.1 * delta);
-			var h40 = (meta.h40 = 0.4 * delta);
+		meta.ips = inflection_points_CG(Hi_(stage), values, guides, trendLines);
+
+		return {
+			t50: meta.ips.t50,
+			t100: meta.ips.t100,
+			ips: meta.ips
+		};
+	}
+	function casagrande_t50_(stage) {
+		return (casagrande___(stage)||{t50:{}}).t50[0];
+	}
+	function casagrande_t100_(stage) {
+		return (casagrande___(stage)||{t100:{}}).t100[0];
+	}
+	function taylor___(stage, values, meta, guides, trendLines) {
+// me.print("TODO optimize for taylor-" + stage);
+		var index = {}, all = [], previous;
+		var context = { categoryField: "Time since start of stage (s)", valueField: "Axial Displacement (mm)", stage: stage };
+		values = values || [], meta = meta || {};
+		
+/*- setup Taylor dataset for stage */
+		values_(stage).forEach(obj => {
+			var sec = obj[context.categoryField], x;
+
+			x = Math.sqrt(sec / 60);
+			index[x] = js.mixIn(index[x]);
+			index[x]['Stage Number'] = obj['Stage Number'];
+			index[x][context.categoryField] = sec;
+			index[x].x = parseFloat(x);
+			index[x].y = obj[context.valueField] * 1000;
 			
-	/* translate Y values to 0 */
-			values.forEach(_ => _.y -= meta.min);
+			all.push(index[x]);
+		});
+			
+		Object.keys(index).sort(sort_numeric).forEach(key => {
+				var entry = index[key];
+				if(previous) { 
+					entry.delta = entry.y - previous.y;
+				}
+				previous = entry;
+		 		values.push(entry);
+			});
+		
+/* determine boundaries Y (min-max) */
+		values.forEach(obj => {
+				if(meta.min === undefined || meta.min > obj.y) meta.min = obj.y;
+				if(meta.max === undefined || meta.max < obj.y) meta.max = obj.y;
+			});
+			
+/* 10-40% boundaries */
+		var delta = (meta.delta = meta.max - meta.min);
+		var h10 = (meta.h10 = 0.1 * delta);
+		var h40 = (meta.h40 = 0.4 * delta);
+		
+/* translate Y values to 0 */
+		values.forEach(_ => _.y -= meta.min);
 
-	/*- filter values within 10-40% boundary */
-			var values10_40 = (meta.values10_40 = all.filter(obj => obj.y > h10 && obj.y < h40)
-				.sort((i1, i2) => i1.delta < i2.delta ? 1 : -1));
+/*- filter values within 10-40% boundary */
+		var values10_40 = (meta.values10_40 = all.filter(obj => obj.y > h10 && obj.y < h40)
+			.sort((i1, i2) => i1.delta < i2.delta ? 1 : -1));
 
-	/*- is it possible? */
-			if(values10_40.length < 2) {
-				values10_40 = all.slice(0, 2);
+/*- is it possible? */
+		if(values10_40.length < 2) {
+			values10_40 = all.slice(0, 2);
+		}
+
+		if(values10_40.length >= 2) {
+	/*- YES: determine slope of 10-40% boundary */
+			var dx = values10_40[values10_40.length - 1].x - values10_40[0].x;
+			var dy = values10_40[values10_40.length - 1].y - values10_40[0].y;
+			var slope = (meta.slope = dy / dx);
+
+	/*- find intersection with Y-axis (Q) - make up a line with (delta1_25_x) */
+			var y0 = (meta.y0 = values10_40[0].y - values10_40[0].x * slope);
+			var delta1_25_x = (delta * 1.25 - meta.y0) / slope;
+			
+		/*- add guide if applicable) */
+			guides && guides.push({
+				label: "0%", position: "right",
+				value: y0, dashLength: 1,
+				lineAlpha: 0.75, inside: true
+			});
+			
+	/* find intersection with curve (B) @ 90% consolidation */
+
+		/*- start with point on 1.15 line where Y=top of 10-40% boundary */
+			var sy1 = values10_40[1].y;
+			var sx1 = (sy1 - y0) / slope * 1.15;
+		/*- find position in curve (all) */
+			var minutes = sx1 * sx1;
+			var position;// = Math.floor(minutes * 2); // TODO this assumes a 30 second interval
+			for(position = 0; position < all.length && all[position].x < minutes; ++position) ;
+
+		/*- bail out when needed... */				
+			if(position >= all.length) return undefined;
+
+		/*- find end point on 1.15 line */
+			var sy2 = all[position].y;
+			var sx2 = (sy2 - y0) / slope * 1.15;
+		/*- ...where line crosses (ie. dsx2 > 0)*/	
+			var dsx = sx2 - (all[position].x);
+			var passed = [[dsx, all[position], {x: sx2, y: sy2}]];
+			while(dsx > 0 && position < all.length) {
+				position++;
+				
+				sy2 = all[position].y;
+				sx2 = (sy2 - y0) / slope * 1.15;					
+				
+				dsx = sx2 - (all[position].x);
+				passed.unshift([dsx, all[position], {x: sx2, y: sy2}]);
+			}
+				
+			if(passed.length == 1) {
+				passed.push(passed[0]);
 			}
 
-			if(values10_40.length >= 2) {
-		/*- YES: determine slope of 10-40% boundary */
-				var dx = values10_40[values10_40.length - 1].x - values10_40[0].x;
-				var dy = values10_40[values10_40.length - 1].y - values10_40[0].y;
-				var slope = (meta.slope = dy / dx);
-	
-		/*- find intersection with Y-axis (Q) - make up a line with (delta1_25_x) */
-				var y0 = (meta.y0 = values10_40[0].y - values10_40[0].x * slope);
-				var delta1_25_x = (delta * 1.25 - meta.y0) / slope;
-				
-			/*- add guide if applicable) */
-				guides && guides.push({
-					label: "0%", position: "right",
-					value: y0, dashLength: 1,
-					lineAlpha: 0.75, inside: true
+				trendLines && trendLines.push({
+					/*- Q -> a */
+					initialXValue: 0, initialValue: y0,
+					finalXValue: delta1_25_x, finalValue: delta * 1.25,
+					lineColor: "red	", lineThickness: 1
+				}, {
+					/*- measurement used for slope */
+					initialXValue: values10_40[0].x, initialValue: values10_40[0].y,
+					finalXValue: values10_40[values10_40.length - 1].x, finalValue: values10_40[values10_40.length - 1].y,
+					lineColor: "red", lineThickness: 3
+				}, {
+					/* 1.15 line */
+					initialXValue: 0, initialValue: y0,
+					finalXValue: delta1_25_x * 1.15, finalValue: delta * 1.25,
+					lineColor: "red", lineThickness: 1, dashLength: 3
 				});
-				
-		/* find intersection with curve (B) @ 90% consolidation */
-	
-			/*- start with point on 1.15 line where Y=top of 10-40% boundary */
-				var sy1 = values10_40[1].y;
-				var sx1 = (sy1 - y0) / slope * 1.15;
-			/*- find position in curve (all) */
-				var minutes = sx1 * sx1;
-				var position;// = Math.floor(minutes * 2); // TODO this assumes a 30 second interval
-				for(position = 0; position < all.length && all[position].x < minutes; ++position) ;
-
-			/*- bail out when needed... */				
-				if(position >= all.length) return undefined;
-
-			/*- find end point on 1.15 line */
-				var sy2 = all[position].y;
-				var sx2 = (sy2 - y0) / slope * 1.15;
-			/*- ...where line crosses (ie. dsx2 > 0)*/	
-				var dsx = sx2 - (all[position].x);
-				var passed = [[dsx, all[position], {x: sx2, y: sy2}]];
-				while(dsx > 0 && position < all.length) {
-					position++;
-					
-					sy2 = all[position].y;
-					sx2 = (sy2 - y0) / slope * 1.15;					
-					
-					dsx = sx2 - (all[position].x);
-					passed.unshift([dsx, all[position], {x: sx2, y: sy2}]);
-				}
-					
-				if(passed.length == 1) {
-					passed.push(passed[0]);
-				}
-
-					trendLines && trendLines.push({
-						/*- Q -> a */
-						initialXValue: 0, initialValue: y0,
-						finalXValue: delta1_25_x, finalValue: delta * 1.25,
-						lineColor: "red	", lineThickness: 1
-					}, {
-						/*- measurement used for slope */
-						initialXValue: values10_40[0].x, initialValue: values10_40[0].y,
-						finalXValue: values10_40[values10_40.length - 1].x, finalValue: values10_40[values10_40.length - 1].y,
-						lineColor: "red", lineThickness: 3
-					}, {
-						/* 1.15 line */
-						initialXValue: 0, initialValue: y0,
-						finalXValue: delta1_25_x * 1.15, finalValue: delta * 1.25,
-						lineColor: "red", lineThickness: 1, dashLength: 3
-					});
-							
-			/*- get intersection (B) page 24 */
-				meta.B = line_intersect(
-						passed[0][2].x, passed[0][2].y, passed[1][2].x, passed[1][2].y,
-						passed[0][1].x, passed[0][1].y, passed[1][1].x, passed[1][1].y
-					) || passed[0][1];
-					
-				if(meta.B) {
-					trendLines && trendLines.push({
-						initialXValue: meta.B.x, initialValue: 0,
-						finalXValue: meta.B.x, finalValue: meta.B.y,
-						lineColor: "red"
-					});
-					guides && guides.push({
-						label: "50%", position: "right",
-						value: y0 + ((meta.B.y - y0) / 90) * 50, 
-						dashLength: 1, lineAlpha: 0.75, inside: true
-					}, {
-						label: "90%", position: "right",
-						value: meta.B.y, dashLength: 1,
-						lineAlpha: 0.75, inside: true
-					}, {
-						label: "100%", position: "right",
-						value: y0 + ((meta.B.y - y0) / 90) * 100, 
-						dashLength: 1, lineAlpha: 0.75, inside: true
-					}, {
-						label: "10-40%", position: "left",
-						value: h10, toValue: h40,
-						fillColor: "green", fillAlpha: 0.05,
-						lineAlpha: 0, inside: true
-					});
-				}
-					
-		/*- debug/helpers, showing which lines determine intersection */
-						trendLines && trendLines.push({
-							initialXValue: sx1, initialValue: sy1,
-							finalXValue: sx2, finalValue: sy2,
-							lineColor: "blue", lineThickness: 1, dashLength: 1
-						}, {
-							initialXValue: passed[0][1].x, initialValue: 0,
-							finalXValue: passed[0][1].x, finalValue: passed[0][1].y,
-							lineColor: "green", _dashLength: 2, lineThickness: 2
-						}, {
-							initialXValue: passed[0][2].x, initialValue: 0,
-							finalXValue: passed[0][2].x, finalValue: passed[0][2].y,
-							lineColor: "orange", _dashLength: 2
-						}, {
-							initialXValue: passed[1][1].x, initialValue: 0,
-							finalXValue: passed[1][1].x, finalValue: passed[1][1].y,
-							lineColor: "green", _dashLength: 2, lineThickness: 2
-						}, {
-							initialXValue: passed[1][2].x, initialValue: 0,
-							finalXValue: passed[1][2].x, finalValue: passed[1][2].y,
-							lineColor: "orange", _dashLength: 2
-						});
 						
-		/* find intersection with curve @ 50% consolidation */
-				var xy50, y50 = y0 + ((meta.B.y - y0) / 90) * 50;
-			/*- find position in curve (all) */
-				position = 0;
-				while(all[position].y < y50 && position < all.length) {
-					position++;
-				}
-				if(position > 0 && position < all.length - 2) {
-					dx = all[position].x - all[position - 1].x;
-					dy = all[position].y - all[position - 1].y;
-					xy50 = {
-						x: all[position].x - (all[position].y - y50) * (dx / dy), 
-						y: y50
-					};
-				}
-				return {
-					t50: [xy50 ? 60 * (xy50.x * xy50.x) : undefined, xy50 && xy50.x, y50],
-					t90: [60 * (meta.B.x * meta.B.x), meta.B.x, meta.B.y]
+		/*- get intersection (B) page 24 */
+			meta.B = line_intersect(
+					passed[0][2].x, passed[0][2].y, passed[1][2].x, passed[1][2].y,
+					passed[0][1].x, passed[0][1].y, passed[1][1].x, passed[1][1].y
+				) || passed[0][1];
+				
+			if(meta.B) {
+				trendLines && trendLines.push({
+					initialXValue: meta.B.x, initialValue: 0,
+					finalXValue: meta.B.x, finalValue: meta.B.y,
+					lineColor: "red"
+				});
+				guides && guides.push({
+					label: "50%", position: "right",
+					value: y0 + ((meta.B.y - y0) / 90) * 50, 
+					dashLength: 1, lineAlpha: 0.75, inside: true
+				}, {
+					label: "90%", position: "right",
+					value: meta.B.y, dashLength: 1,
+					lineAlpha: 0.75, inside: true
+				}, {
+					label: "100%", position: "right",
+					value: y0 + ((meta.B.y - y0) / 90) * 100, 
+					dashLength: 1, lineAlpha: 0.75, inside: true
+				}, {
+					label: "10-40%", position: "left",
+					value: h10, toValue: h40,
+					fillColor: "green", fillAlpha: 0.05,
+					lineAlpha: 0, inside: true
+				});
+			}
+				
+	/*- debug/helpers, showing which lines determine intersection */
+					trendLines && trendLines.push({
+						initialXValue: sx1, initialValue: sy1,
+						finalXValue: sx2, finalValue: sy2,
+						lineColor: "blue", lineThickness: 1, dashLength: 1
+					}, {
+						initialXValue: passed[0][1].x, initialValue: 0,
+						finalXValue: passed[0][1].x, finalValue: passed[0][1].y,
+						lineColor: "green", _dashLength: 2, lineThickness: 2
+					}, {
+						initialXValue: passed[0][2].x, initialValue: 0,
+						finalXValue: passed[0][2].x, finalValue: passed[0][2].y,
+						lineColor: "orange", _dashLength: 2
+					}, {
+						initialXValue: passed[1][1].x, initialValue: 0,
+						finalXValue: passed[1][1].x, finalValue: passed[1][1].y,
+						lineColor: "green", _dashLength: 2, lineThickness: 2
+					}, {
+						initialXValue: passed[1][2].x, initialValue: 0,
+						finalXValue: passed[1][2].x, finalValue: passed[1][2].y,
+						lineColor: "orange", _dashLength: 2
+					});
+					
+	/* find intersection with curve @ 50% consolidation */
+			var xy50, y50 = y0 + ((meta.B.y - y0) / 90) * 50;
+		/*- find position in curve (all) */
+			position = 0;
+			while(all[position].y < y50 && position < all.length) {
+				position++;
+			}
+			if(position > 0 && position < all.length - 2) {
+				dx = all[position].x - all[position - 1].x;
+				dy = all[position].y - all[position - 1].y;
+				xy50 = {
+					x: all[position].x - (all[position].y - y50) * (dx / dy), 
+					y: y50
 				};
 			}
-		/*- NO */
-		
-			return undefined;
-		}
-		function taylor_t50_(stage) {
-			return (taylor___(stage)||{t50:{}}).t50[0];
-		}
-		function taylor_t90_(stage) {
-			return (taylor___(stage)||{t90:{}}).t90[0];
-		}
-		
-		function H50_(stage, wantsTaylor) {
-			var ci = wantsTaylor ? taylor___(stage) : casagrande___(stage);
-			return  ci && ci.t50 ? ci.t50[2] : NaN;
-		}
-		
-		function CvT_(stage, wantsTaylor) {
-			/*- 	
-				TAYLOR
-			
-					-L: length of drainage path = 0.5*H (half of the specimen height of drainage from both ends) (m)
-					-t90: time to 90% primary consolidation (s)
-					-fT: temperature correction factor.
-					
-					GEGEVENS (VAN TRAP 3)
-					H0= 20.20 mm
-					Gecorrigeerd totaal vervorming voor begin Trap 3: 0.4998 mm
-					Proeftemperatuur= 10 oC
-					Temperatuurcorrectie fT voor referentietemperatuur van 20 oC (zie figuur B.5 NEN-EN-ISO 17892-5) = 1.3
-					√t90 (Geschat)= 40 s
-					
-					Hi = 20.20 - 0.4998 = 19.7002 mm
-					L = 0.50 * 19.7002 = 9.8501 mm = 9.8501 x 10-3 m )
-					t90 = 402 = 1600 s2
-					
-					cv;20 =0.848 * 0.00985012 * 1.3 / 1600 = 6.68 x 10-8 m2/s"					
-			
-				CASAGRANDE
-			
-					"-L: length of drainage path = 0.5*H (half of the specimen height of drainage from both ends) (m)
-					-t50: time to 50% primary consolidation (s)
-					-fT: temperature correction factor."	
-					
-					"GEGEVENS (VAN TRAP 3)
-					H0= 20.20 mm
-					Gecorrigeerd totaal vervorming voor begin Trap 3: 0.4998 mm
-					Proeftemperatuur= 10 oC
-					Temperatuurcorrectie fT voor referentietemperatuur van 20 oC (zie figuur B.5 NEN-EN-ISO 17892-5) = 1.3
-					log t50 (Geschat)= 2 (zie Opmerkingen)
-
-					cv;20 = 0.197 * L2 * fT / t50			
-					
-					Hi = 20.20 - 0.4998 = 19.7002 mm
-					L = 0.50 * 19.7002 = 9.8501 mm = 9.8501 x 10-3 m
-					t50 = 10logt50 = 102 = 100 s
-					
-					cv;20 =0.197 * 0.00985012 * 1.3 / 100 =2.48 x 10-7 m2/s"					
-			*/
-			var L = 0.5 * Hi_(stage);//H50_(stage, wantsTaylor); 
-			var fT = 1, cf = wantsTaylor ? 0.848 : 0.197;
-			var t = wantsTaylor ? taylor_t90_(stage) : casagrande_t50_(stage);
-// m2/s
-			return t !== undefined ? cf * (L*L / (1000*1000)) * fT / t : t;
-		}
-		function kT_(stage, wantsTaylor) {
-			var r = CvT_(stage, wantsTaylor) * Mv_(stage) * vars.pw * vars.G;
-			return isNaN(r) ? undefined : r;
-		}
-		
-		function Mv_(stage) {
-			/*- 
-				mv = ((Hi - Hf) / Hi) * (1000 / (σ'v2 - σ'v1))	
-				
-				"-mv: coefficient of volume compressibility (Mpa-1)
-				-Hi: height of specimen at start of load stage
-				-Hf: height of specimen at end of load stage
-				-σ'v2: vertical effective stress after load increment (kPa)
-				-σ'v1: vertical effective stress before load increment (kPa)"			
-
-			*/
-			
-			var Hi = Hi_(stage), Hf = Hf_(stage);//Hi + deltaH_(stage);
-			var ov1 = load_ef_(stage - 1), ov2 = load_ef_(stage);
-			return ((Hi - Hf) / Hi) * (1000 / (ov2 - ov1));
-		}
-		
-		function Cc_(stage) {
-			/*-
-				Cc (primaire) = -Δe / log ((σ'v + Δσ'v)/σ'v)
-				
-				- Δe= e2 - e1: change in void ratio 
-				- σ'v: vertical effective stress before load increment (kPa)
-				- σ'v + Δσ'v: vertical effective stress after load increment Δσ'v (kPa)"
-
-				GEGEVENS (Data from steepest e-log p segment) 
-				- e1= 1.4461 === segment with smallest slope_e before decompression stage
-				- e2= 1.3144 === next segment
-				- σ'v1= 50 kPa
-				- σ'v2= 125 kPa
-			
-				Cc= - (1.3144 - 1.4461) / log (125/50)
-				Cc= 0.3310
-			*/
-			
-			stage--; //vars.kPa_ starts at 0
-			var e1 = vars.kPa_[stage].y_e, e2 = vars.kPa_[stage + 1].y_e;
-			var sv1 = vars.kPa_[stage].x_ef, sv2 = vars.kPa_[stage + 1].x_ef;
-
-			return -(e2 - e1) / Math.log10(sv2 / sv1);
-		}
-		function Cr_(stage) {
-			/*- 
-				Cr (primaire herbelasting): Cr = -Δe / log ((σ'v + Δσ'v)/σ'v)
-				- Δe= e2 - e1: change in void ratio 
-				- σ'v: vertical effective stress before load increment (kPa)
-				- σ'v + Δσ'v: vertical effective stress after load increment Δσ'v (kPa)"
-				
-				GEGEVENS (Data from reload e-log p segment)
-				- e1= 1.3241
-				- e2= 1.304
-				- σ'v1= 50 kPa
-				- σ'v2= 125 kPa
-				
-				Cr= - (1.304 - 1.3241) / log (125/50)
-				Cr= 0.0505
-				Waarden van poriëngetal berekend op basis van proefdata in de GDS-bestand.			
-			*/
-			return Cc_(stage); // is gewoon hetzelfde
-		}
-		function Csw_(stage) {
-			return Cc_(stage);
-		}
-
-		function CR_(stage) {
-			/*-
-				CR = ΔεVC/ log ((σ'v + Δσ'v)/σ'v)
-				- ΔεVC= εVC2 - εVC1: change in vertical linear (Cauchy) strain
-				- σ'v: vertical effective stress before load increment (kPa)
-				- σ'v + Δσ'v: vertical effective stress after load increment Δσ'v (kPa)"
-			
-				GEGEVENS (Data from steepest εvC-log p segment)
-				- εvC1= 4.00%
-				- εvC2= 9.17 %
-				- σ'v1= 50 kPa
-				- σ'v2= 125 kPa
-				
-				CR= (9.17 - 4.00)/100 / log (125/50)
-				CR= 0.1299
-			*/
-
-			stage--; //vars.kPa_ starts at 0
-			
-			var Hi = Hi_(stage), Hf = Hf_(stage);//Hi + deltaH_(stage);
-			var Evc1 = vars.kPa_[stage].y_rek, Evc2 = vars.kPa_[stage + 1].y_rek;
-			var sv1 = vars.kPa_[stage].x_ef, sv2 = vars.kPa_[stage + 1].x_ef;
-
-			return (Evc2 - Evc1) / Math.log10(sv2 / sv1);
-		}
-		function RR_(stage) {
-			return CR_(stage); // is gewoon hetzelfde
-		}
-
-		function Ca_(stage) {
-			/*- NOT FININSHED
-			
-				Cα (secundaire): Cα = ΔH/Hi * 1 / Δlogt
-				
-				- Hi: height of specimen at start of load stage.
-				- dH: change in specimen height along chosen linear section of the compression - time curve.
-				- dlogt: change in logarithm of time along chosen linear section of the compression - time curve (semilog).
-				
-				GEGEVENS (Data from Trap 3 H-log t segment)
-				- Hi (bij begin Trap 3) = 19.7002 mm
-				- d1= 0.8051 mm
-				- d2= 0.8082 mm
-				- t1= 78150 s
-				- t2= 86070 s
-				
-				Cα = (0.8082 - 0.8051)/19.7002 * 1/ (log 86070 - log 78150)
-				Cα = 0.00375"				"
-				
-				LET OP!: Formula is the same with both CUR Aanb. 101 and ISO 17892-5. 
-				Different from NEN 5118.
-				
-				Two points from tangent line at end of segment selected arbitrarily."
-			*/
-
-			/*- find segment with smallest slope */
-			var swss = [].concat(vars.kPa_)
-				.map((_, i) => js.mixIn({index: i}, _)) // remember index
-				.sort((i1, i2) => i1.slope_e < i2.slope_e ? -1 : 1)[0].index;
-
-			var Hi = Hi_(stage);
-			var dH = deltaH_(stage);
-			var dlogt = Math.log10(vars.kPa_[swss + 1].x) - Math.log10(vars.kPa_[swss].x);
-			
-			return (dH / Hi) / dlogt;
-
-		}
-		function C_sw__(stage) {
-			/*-
-				Csw (zwelindex) - Csw = -Δe / log ((σ'v + Δσ'v)/σ'v)
-				
-				- Δe= e2 - e1: change in void ratio 
-				- σ'v: vertical effective stress before load change (kPa)
-				- σ'v + Δσ'v: vertical effective stress after load change Δσ'v (kPa)"				"GEGEVENS
-				(Data from unloading e-log p segment)
-				- e1= 1.3144
-				- e2= 1.3241
-				- σ'v1= 125 kPa
-				- σ'v2= 50 kPa
-				
-				Csw= - (1.3241 - 1.3144) / log (50/125)
-				Csw= 0.0244
-				Waarden van poriëngetal berekend op basis van proefdata in de GDS-bestand.
-			*/
-
-			stage--; //vars.kPa_ starts at 0
-
-			/*- find segment with smallest slope */
-			var swss = [].concat(vars.kPa_)
-				.map((_, i) => js.mixIn({index: i}, _)) // remember index
-				.sort((i1, i2) => i1.slope_e < i2.slope_e ? -1 : 1)[0].index;
-			
-			var e1 = vars.kPa_[stage], e2 = vars.kPa_[stage + 1];
-			var sv1 = vars.kPa_[stage].x + 1, sv2 = vars.kPa_[stage];
-			
-			return -(e2 - e1) / Math.log10(sv2 / sv1);
-		}
-		
-		function iso_a_(stage, context, vars) {
-			/*- 
-		
-				a (voor Pg) a = ΔεVH/ Δlnσ'v
-				- a: parameter ""a"" determined from 2 or more measurements (load stages) at the beginning of the test. 
-				- εvH= -ln (1 - εvC) : Natural (Hencky) strain measure -σ'v: vertical effective stress 
-				
-				GEGEVENS (Data from first two load stages in εvH-log p segment) 
-				- εvH1= 1.745 % (berekend van lineaire rek Trap 1) 
-				- εvH2= 2.501 % (berekend van lineaire rek Trap 2)
-				- σ'v1= 13 kPa σ'v2= 25 kPa
-		
-				a (voor Pg) = (2.501 - 1.745)/ 100 / ln (25/13) a (voor Pg)= 0.01156
-				- Determined by the first load stages of the test. 
-		
-			*/
-
-			stage--; //vars.kPa_ starts at 0
-
-			var EvH1 = vars.kPa_[stage].iso.y * 100;
-			var EvH2 = vars.kPa_[stage + 1].iso.y * 100;
-			var pv1 = vars.kPa_[stage].x_ef;
-			var pv2 = vars.kPa_[stage + 1].x_ef;
-			
-			return (EvH2 - EvH1) / 100 / Math.log(pv2 / pv1);
-		}
-		function iso_asw_(stage, context, vars) {
-			/*-
-				asw = ΔεVH/ Δlnσ'v
-				- asw: parameter ""a"" determined from 2 or more measurements (load stages) during unloading.
-				- εvH= -ln (1 - εvC) : Natural (Hencky) strain measure
-				- σ'v: vertical effective stress "
-				
-				GEGEVENS (Data from unloading segment in εvH-log p plot)
-				- εvH1= 9.618 % (berekend van lineaire rek Trap 4)
-				- εvH2= 9.201 % (berekend van lineaire rek Trap 5)
-				- σ'v1= 125 kPa
-				- σ'v2= 50 kPa
-
-				asw = (9.201 - 9.618)/ 100 / ln (50/125)
-				asw= 0.00455
-			*/
-			stage--; //vars.kPa_ starts at 0
-
-			var EvH1 = vars.kPa_[stage].y_rek * 100;
-			var EvH2 = vars.kPa_[stage + 1].y_rek * 100;
-			var pv1 = vars.kPa_[stage].x;
-			var pv2 = vars.kPa_[stage + 1].x;
-
-			return (EvH2 - EvH1) / 100 / Math.log(pv2 / pv1);
-		}
-
-		var editor, initialize = (a) => {
-			context = contextNeeded(this);
-			if(!context.array || !context.array.isActive()) return;
-			
-			if(a===undefined) {
-				try {
-					initialize(null);
-				} catch(e) {
-					console.error(e);
-					return alert(e.message);
-				}
-			}
-			
-	/*- reset cache */
-			cache = { values_: {}, valuesUntil_: {} };
-	/*- source document */
-			lines = editor.qs("#ace").getLines();
-			if(lines.length === 1) return; // can't be right
-	/*- parse headers */	
-			headers = lines.filter(_ => _.split(",").length < 5)
-				.map(_ => _.split("\",\""))
-				.filter(_ => _.length === 2)
-				.map(_ => [removeTrailingColon(_[0].substring(1)), 
-					_[1].substring(0, _[1].length - 2)])
-				.map(_ => ({category: "Header", name: _[0], value: _[1]}));
-
-	/*- read variables from header information */
-			vars.ps = headerValue("Specific Gravity");
-			vars.H = headerValue("Initial Height (mm)");
-			vars.D = headerValue("Initial Diameter (mm)");
-			vars.m = headerValue("Initial mass (g)");
-			vars.md = headerValue("Initial dry mass (g)");
-			vars.mf = headerValue("Final Mass");
-			vars.mdf = headerValue("Final Dry Mass");
-			vars.temperature = headerValue("Temperatuur") || 10;
-			vars.stages = nofStages();
-			vars.casagrande___ = casagrande___;
-			vars.taylor___ = taylor___;
-			vars.Hi_ = Hi_;
-
-	/*- initialize and calculate some more variables (see documentation `#VA-20201218-3`) */
-			vars.V = Math.PI * (vars.D/2) * (vars.D/2) * vars.H;
-			vars.y = vars.m / (Math.PI / 4 * vars.D * vars.D * vars.H) * vars.G;
-			vars.yd = vars.md / (Math.PI / 4 * vars.D * vars.D * vars.H) * vars.G;
-			vars.w0 = (vars.m - vars.md) / vars.md * 100;
-			vars.pd = vars.yd / (vars.G/1000);
-			vars.e0 = (vars.ps / vars.pd) - 1;
-			vars.Sr = (vars.w0 * vars.ps) / (vars.e0 * vars.pw);
-			vars.dH = deltaH_();
-
-		/*- initial vars */
-			vars.Hi = vars.H;
-			vars.Vi = vars.V;
-			vars.yi = vars.y;
-			vars.ydi = vars.yd;
-			vars.pdi = vars.pd;
-			vars.ei = vars.e0;
-			vars.Sri = vars.Sr;
-			
-		/*- final vars */
-			vars.Hf = vars.H - vars.dH;
-			vars.Vf = Math.PI * (vars.D/2) * (vars.D/2) * vars.Hf;
-			vars.yf = vars.mf / (Math.PI / 4 * vars.D * vars.D * vars.Hf) * vars.G;
-			vars.ydf = vars.mdf / (Math.PI / 4 * vars.D * vars.D * vars.Hf) * vars.G;
-			vars.pdf = vars.ydf / (vars.G/1000);
-			vars.ef = (vars.ps / vars.pdf) - 1;
-			vars.wf = (vars.mf - vars.mdf) / vars.mdf * 100;
-			vars.Srf = (vars.wf * vars.ps) / (vars.ef * vars.pw);
-
-			var nofs = nofStages(), kPa_ = [];
-			for(var stage = 1; stage <= nofs; ++stage)	{
-				// this.vars(js.sf("taylor___(%s)", stage), taylor___(stage));
-				// this.vars(js.sf("casagrande___(%s)", stage), casagrande___(stage));
-				// this.vars(js.sf("variables.stages(%s).data", stage), values_(stage));
-				kPa_.push(stage);
-			}
-
-			var dH = 0, prev; kPa_ = kPa_.map(stage => { 
-				var current = {
-					x: load_(stage),  // kPa target
-					x_ef: load_(stage, true),  // kPa effective
-					y_rek: (dH += deltaH_(stage)) / Hi_(),
-					y_e: e_(stage),
-					y_z: z_(stage)
-				};
-				if(prev) {
-					current.dx = current.x - prev.x;
-					current.dx_ef = Math.abs(current.x_ef - prev.x_ef);
-					current.dy_rek = Math.abs(current.y_rek - prev.y_rek);
-					current.dy_e = Math.abs(current.y_e - prev.y_e);
-					current.dy_z = Math.abs(current.y_z - prev.y_z);
-					current.slope_rek = current.dy_rek / current.dx;
-					current.slope_e = current.dy_e / current.dx;
-					current.slope_z = current.dy_z / current.dx;
-				}
-				
-				return (prev = current);
-			});
-
-			vars.kPa_ = kPa_;
-			vars.Hi_ = Hi_;
-
-			this.vars("values_", values_);
-
-		/*- Grenswaarden NEN (Bjerrum) */
-			vars.grenswaarden = {
-				nen: log_line_intersect(
-						kPa_[0].x, kPa_[0].y_rek, kPa_[1].x, kPa_[1].y_rek, 
-						kPa_[2].x, kPa_[2].y_rek, kPa_[3].x, kPa_[3].y_rek),
-				iso: grenswaarden_Isotachen(context, vars),
-				kop: grenswaarden_Koppejan(context, vars)
+			return {
+				t50: [xy50 ? 60 * (xy50.x * xy50.x) : undefined, xy50 && xy50.x, y50],
+				t90: [60 * (meta.B.x * meta.B.x), meta.B.x, meta.B.y]
 			};
+		}
+	/*- NO */
+	
+		return undefined;
+	}
+	function taylor_t50_(stage) {
+		return (taylor___(stage)||{t50:{}}).t50[0];
+	}
+	function taylor_t90_(stage) {
+		return (taylor___(stage)||{t90:{}}).t90[0];
+	}
+	
+	function H50_(stage, wantsTaylor) {
+		var ci = wantsTaylor ? taylor___(stage) : casagrande___(stage);
+		return  ci && ci.t50 ? ci.t50[2] : NaN;
+	}
+	
+	function CvT_(stage, wantsTaylor) {
+		/*- 	
+			TAYLOR
+		
+				-L: length of drainage path = 0.5*H (half of the specimen height of drainage from both ends) (m)
+				-t90: time to 90% primary consolidation (s)
+				-fT: temperature correction factor.
+				
+				GEGEVENS (VAN TRAP 3)
+				H0= 20.20 mm
+				Gecorrigeerd totaal vervorming voor begin Trap 3: 0.4998 mm
+				Proeftemperatuur= 10 oC
+				Temperatuurcorrectie fT voor referentietemperatuur van 20 oC (zie figuur B.5 NEN-EN-ISO 17892-5) = 1.3
+				√t90 (Geschat)= 40 s
+				
+				Hi = 20.20 - 0.4998 = 19.7002 mm
+				L = 0.50 * 19.7002 = 9.8501 mm = 9.8501 x 10-3 m )
+				t90 = 402 = 1600 s2
+				
+				cv;20 =0.848 * 0.00985012 * 1.3 / 1600 = 6.68 x 10-8 m2/s"					
+		
+			CASAGRANDE
+		
+				"-L: length of drainage path = 0.5*H (half of the specimen height of drainage from both ends) (m)
+				-t50: time to 50% primary consolidation (s)
+				-fT: temperature correction factor."	
+				
+				"GEGEVENS (VAN TRAP 3)
+				H0= 20.20 mm
+				Gecorrigeerd totaal vervorming voor begin Trap 3: 0.4998 mm
+				Proeftemperatuur= 10 oC
+				Temperatuurcorrectie fT voor referentietemperatuur van 20 oC (zie figuur B.5 NEN-EN-ISO 17892-5) = 1.3
+				log t50 (Geschat)= 2 (zie Opmerkingen)
+
+				cv;20 = 0.197 * L2 * fT / t50			
+				
+				Hi = 20.20 - 0.4998 = 19.7002 mm
+				L = 0.50 * 19.7002 = 9.8501 mm = 9.8501 x 10-3 m
+				t50 = 10logt50 = 102 = 100 s
+				
+				cv;20 =0.197 * 0.00985012 * 1.3 / 100 =2.48 x 10-7 m2/s"					
+		*/
+		var L = 0.5 * Hi_(stage);//H50_(stage, wantsTaylor); 
+		var fT = 1, cf = wantsTaylor ? 0.848 : 0.197;
+		var t = wantsTaylor ? taylor_t90_(stage) : casagrande_t50_(stage);
+// m2/s
+		return t !== undefined ? cf * (L*L / (1000*1000)) * fT / t : t;
+	}
+	function kT_(stage, wantsTaylor) {
+		var r = CvT_(stage, wantsTaylor) * Mv_(stage) * vars.pw * vars.G;
+		return isNaN(r) ? undefined : r;
+	}
+	
+	function Mv_(stage) {
+		/*- 
+			mv = ((Hi - Hf) / Hi) * (1000 / (σ'v2 - σ'v1))	
 			
-			var stages = [];
-			for(var i = 1; i <= vars.stages; ++i) {
-				kPa_[i - 1].iso = vars.grenswaarden.iso.kPa_[i - 1];
-				stages.push(i);
+			"-mv: coefficient of volume compressibility (Mpa-1)
+			-Hi: height of specimen at start of load stage
+			-Hf: height of specimen at end of load stage
+			-σ'v2: vertical effective stress after load increment (kPa)
+			-σ'v1: vertical effective stress before load increment (kPa)"			
+
+		*/
+		
+		var Hi = Hi_(stage), Hf = Hf_(stage);//Hi + deltaH_(stage);
+		var ov1 = load_ef_(stage - 1), ov2 = load_ef_(stage);
+		return ((Hi - Hf) / Hi) * (1000 / (ov2 - ov1));
+	}
+	
+	function Cc_(stage) {
+		/*-
+			Cc (primaire) = -Δe / log ((σ'v + Δσ'v)/σ'v)
+			
+			- Δe= e2 - e1: change in void ratio 
+			- σ'v: vertical effective stress before load increment (kPa)
+			- σ'v + Δσ'v: vertical effective stress after load increment Δσ'v (kPa)"
+
+			GEGEVENS (Data from steepest e-log p segment) 
+			- e1= 1.4461 === segment with smallest slope_e before decompression stage
+			- e2= 1.3144 === next segment
+			- σ'v1= 50 kPa
+			- σ'v2= 125 kPa
+		
+			Cc= - (1.3144 - 1.4461) / log (125/50)
+			Cc= 0.3310
+		*/
+		
+		stage--; //vars.kPa_ starts at 0
+		var e1 = vars.kPa_[stage].y_e, e2 = vars.kPa_[stage + 1].y_e;
+		var sv1 = vars.kPa_[stage].x_ef, sv2 = vars.kPa_[stage + 1].x_ef;
+
+		return -(e2 - e1) / Math.log10(sv2 / sv1);
+	}
+	function Cr_(stage) {
+		/*- 
+			Cr (primaire herbelasting): Cr = -Δe / log ((σ'v + Δσ'v)/σ'v)
+			- Δe= e2 - e1: change in void ratio 
+			- σ'v: vertical effective stress before load increment (kPa)
+			- σ'v + Δσ'v: vertical effective stress after load increment Δσ'v (kPa)"
+			
+			GEGEVENS (Data from reload e-log p segment)
+			- e1= 1.3241
+			- e2= 1.304
+			- σ'v1= 50 kPa
+			- σ'v2= 125 kPa
+			
+			Cr= - (1.304 - 1.3241) / log (125/50)
+			Cr= 0.0505
+			Waarden van poriëngetal berekend op basis van proefdata in de GDS-bestand.			
+		*/
+		return Cc_(stage); // is gewoon hetzelfde
+	}
+	function Csw_(stage) {
+		return Cc_(stage);
+	}
+
+	function CR_(stage) {
+		/*-
+			CR = ΔεVC/ log ((σ'v + Δσ'v)/σ'v)
+			- ΔεVC= εVC2 - εVC1: change in vertical linear (Cauchy) strain
+			- σ'v: vertical effective stress before load increment (kPa)
+			- σ'v + Δσ'v: vertical effective stress after load increment Δσ'v (kPa)"
+		
+			GEGEVENS (Data from steepest εvC-log p segment)
+			- εvC1= 4.00%
+			- εvC2= 9.17 %
+			- σ'v1= 50 kPa
+			- σ'v2= 125 kPa
+			
+			CR= (9.17 - 4.00)/100 / log (125/50)
+			CR= 0.1299
+		*/
+
+		stage--; //vars.kPa_ starts at 0
+		
+		var Hi = Hi_(stage), Hf = Hf_(stage);//Hi + deltaH_(stage);
+		var Evc1 = vars.kPa_[stage].y_rek, Evc2 = vars.kPa_[stage + 1].y_rek;
+		var sv1 = vars.kPa_[stage].x_ef, sv2 = vars.kPa_[stage + 1].x_ef;
+
+		return (Evc2 - Evc1) / Math.log10(sv2 / sv1);
+	}
+	function RR_(stage) {
+		return CR_(stage); // is gewoon hetzelfde
+	}
+
+	function Ca_(stage) {
+		/*- NOT FININSHED
+		
+			Cα (secundaire): Cα = ΔH/Hi * 1 / Δlogt
+			
+			- Hi: height of specimen at start of load stage.
+			- dH: change in specimen height along chosen linear section of the compression - time curve.
+			- dlogt: change in logarithm of time along chosen linear section of the compression - time curve (semilog).
+			
+			GEGEVENS (Data from Trap 3 H-log t segment)
+			- Hi (bij begin Trap 3) = 19.7002 mm
+			- d1= 0.8051 mm
+			- d2= 0.8082 mm
+			- t1= 78150 s
+			- t2= 86070 s
+			
+			Cα = (0.8082 - 0.8051)/19.7002 * 1/ (log 86070 - log 78150)
+			Cα = 0.00375"				"
+			
+			LET OP!: Formula is the same with both CUR Aanb. 101 and ISO 17892-5. 
+			Different from NEN 5118.
+			
+			Two points from tangent line at end of segment selected arbitrarily."
+		*/
+
+		/*- find segment with smallest slope */
+		var swss = [].concat(vars.kPa_)
+			.map((_, i) => js.mixIn({index: i}, _)) // remember index
+			.sort((i1, i2) => i1.slope_e < i2.slope_e ? -1 : 1)[0].index;
+
+		var Hi = Hi_(stage);
+		var dH = deltaH_(stage);
+		var dlogt = Math.log10(vars.kPa_[swss + 1].x) - Math.log10(vars.kPa_[swss].x);
+		
+		return (dH / Hi) / dlogt;
+
+	}
+	function C_sw__(stage) {
+		/*-
+			Csw (zwelindex) - Csw = -Δe / log ((σ'v + Δσ'v)/σ'v)
+			
+			- Δe= e2 - e1: change in void ratio 
+			- σ'v: vertical effective stress before load change (kPa)
+			- σ'v + Δσ'v: vertical effective stress after load change Δσ'v (kPa)"				"GEGEVENS
+			(Data from unloading e-log p segment)
+			- e1= 1.3144
+			- e2= 1.3241
+			- σ'v1= 125 kPa
+			- σ'v2= 50 kPa
+			
+			Csw= - (1.3241 - 1.3144) / log (50/125)
+			Csw= 0.0244
+			Waarden van poriëngetal berekend op basis van proefdata in de GDS-bestand.
+		*/
+
+		stage--; //vars.kPa_ starts at 0
+
+		/*- find segment with smallest slope */
+		var swss = [].concat(vars.kPa_)
+			.map((_, i) => js.mixIn({index: i}, _)) // remember index
+			.sort((i1, i2) => i1.slope_e < i2.slope_e ? -1 : 1)[0].index;
+		
+		var e1 = vars.kPa_[stage], e2 = vars.kPa_[stage + 1];
+		var sv1 = vars.kPa_[stage].x + 1, sv2 = vars.kPa_[stage];
+		
+		return -(e2 - e1) / Math.log10(sv2 / sv1);
+	}
+	
+	function iso_a_(stage, context, vars) {
+		/*- 
+	
+			a (voor Pg) a = ΔεVH/ Δlnσ'v
+			- a: parameter ""a"" determined from 2 or more measurements (load stages) at the beginning of the test. 
+			- εvH= -ln (1 - εvC) : Natural (Hencky) strain measure -σ'v: vertical effective stress 
+			
+			GEGEVENS (Data from first two load stages in εvH-log p segment) 
+			- εvH1= 1.745 % (berekend van lineaire rek Trap 1) 
+			- εvH2= 2.501 % (berekend van lineaire rek Trap 2)
+			- σ'v1= 13 kPa σ'v2= 25 kPa
+	
+			a (voor Pg) = (2.501 - 1.745)/ 100 / ln (25/13) a (voor Pg)= 0.01156
+			- Determined by the first load stages of the test. 
+	
+		*/
+
+		stage--; //vars.kPa_ starts at 0
+
+		var EvH1 = vars.kPa_[stage].iso.y * 100;
+		var EvH2 = vars.kPa_[stage + 1].iso.y * 100;
+		var pv1 = vars.kPa_[stage].x_ef;
+		var pv2 = vars.kPa_[stage + 1].x_ef;
+		
+		return (EvH2 - EvH1) / 100 / Math.log(pv2 / pv1);
+	}
+	function iso_asw_(stage, context, vars) {
+		/*-
+			asw = ΔεVH/ Δlnσ'v
+			- asw: parameter ""a"" determined from 2 or more measurements (load stages) during unloading.
+			- εvH= -ln (1 - εvC) : Natural (Hencky) strain measure
+			- σ'v: vertical effective stress "
+			
+			GEGEVENS (Data from unloading segment in εvH-log p plot)
+			- εvH1= 9.618 % (berekend van lineaire rek Trap 4)
+			- εvH2= 9.201 % (berekend van lineaire rek Trap 5)
+			- σ'v1= 125 kPa
+			- σ'v2= 50 kPa
+
+			asw = (9.201 - 9.618)/ 100 / ln (50/125)
+			asw= 0.00455
+		*/
+		stage--; //vars.kPa_ starts at 0
+
+		var EvH1 = vars.kPa_[stage].y_rek * 100;
+		var EvH2 = vars.kPa_[stage + 1].y_rek * 100;
+		var pv1 = vars.kPa_[stage].x;
+		var pv2 = vars.kPa_[stage + 1].x;
+
+		return (EvH2 - EvH1) / 100 / Math.log(pv2 / pv1);
+	}
+	function iso_c_(stage, context, vars, cg) {
+		/*-
+			c = ΔεVH/ Δln ((t - t1)/t0)
+			
+			-c: creep parameter ""c""  determined from a log t - εvH plot.
+			-εvH= -ln (1 - εvC) : Natural (Hencky) strain measure
+			-t: time
+			-t1: start time of the load step where c is being calculated
+			-t0: reference time of 1 day.
+			
+			GEGEVENS
+			(Data from Trap 7 in εvH-log t plot)
+			εvH1= 14.896415 % (berekend van lineaire rek)
+			εvH2= 15.466748 % (berekend van lineaire rek)
+			t1= 24360 s
+			t2= 86070 s
+			
+			c = (15.466748 - 14.896415)/ 100 / (ln 86070 - ln 24360)
+			c= 0.004518
+		*/
+
+		stage--; //vars.kPa_ starts at 0
+
+		var EvH1 = vars.kPa_[stage].iso.y * 100;
+		var EvH2 = vars.kPa_[stage + 1].iso.y * 100;
+		var t1 = cg.ips.dt1;
+		var t2 = cg.ips.dt2;
+		
+		return (EvH2 - EvH1) / 100 / (Math.log(t2 / t1));
+	}
+
+	var editor, initialize = (a) => {
+		context = contextNeeded(this);
+		if(!context.array || !context.array.isActive()) return;
+		
+		if(a===undefined) {
+			try {
+				return initialize(null);
+			} catch(e) {
+				console.error(e);
+				return alert(e.message);
 			}
+		}
+		
+/*- reset cache */
+		cache = { values_: {}, valuesUntil_: {} };
+/*- source document */
+		lines = editor.qs("#ace").getLines();
+		if(lines.length === 1) return; // can't be right
+/*- parse headers */	
+		headers = lines.filter(_ => _.split(",").length < 5)
+			.map(_ => _.split("\",\""))
+			.filter(_ => _.length === 2)
+			.map(_ => [removeTrailingColon(_[0].substring(1)), 
+				_[1].substring(0, _[1].length - 2)])
+			.map(_ => ({category: "Header", name: _[0], value: _[1]}));
 
-	/*- Parameters */
-			vars.categories = [{
-				name: "Projectgegevens",
-				items: [
-					{ name: "Projectnummer", value: headerValue("Job reference", false) },
-					{ name: "Omschrijving", value: "" },
-					{ name: "Aantal trappen", value: nofStages() },
-					{ name: "Proef periode", value: js.sf("%s - %s", headerValue("Date Test Started", false), headerValue("Date Test Finished", false)) },
-					{ name: "Beproevingstemperatuur", value: headerValue("Temperatuur") },
-					{ name: "Opmerking proef", value: "" },
-					// { name: "Opdrachtgever", value: "" },
-					// { name: "Opdrachtnemer", value: "" },
-					// { name: "Coördinaten", value: "" }
-				]
-			}, {
-				name: "Monstergegevens",
-				items: [
-					{ name: "Monster", value: headerValue("Sample Name", false) },
-					{ name: "Boring", value: headerValue("Borehole", false) },
-					{ name: "Locatie", value: headerValue("Job Location", false)  },
-					{ name: "Monstertype", value: headerValue("Specimen Type", false) },
-					{ name: "Grondsoort", value: headerValue("Description of Sample", false) },
-					{ name: "Diepte (m-NAP)", value: headerValue("Depth", false) },
-					// { name: "Opstelling nr", value: "" },
-					// { name: "Laborant", value: "" },
-					// { name: "Uitwerking", value: "" },
-					// { name: "Proefmethode", value: "" },
-					// { name: "Proefomstandigheden", value: "" },
-					// { name: "Monsterpreparatie", value: "" },
-					// { name: "Opmerking monster", value: "" }
-				]
-			}, {
-				name: "Initiële waarden",
-				items: [
-					{ symbol: "Hi", name: "Hoogte", unit: "mm", value: vars.Hi },
-					{ symbol: "D", name: "Diameter", unit: "mm", value: vars.D },
-					{ symbol: "ps", name: "Volumegewicht vaste delen", unit: "Mg/m3", value: vars.ps },
-					{ symbol: "Vi", name: "Volume", unit: "mm3", value: vars.Vi },
-					{ symbol: "Sri", name: "Verzadigingsgraad", unit: "%", value: vars.Sri },
-					{ symbol: "w0", name: "Watergehalte", unit: "%", value: vars.w0 },
-					{ symbol: "yi", name: "Volumegewicht nat", unit: "kN/m3", value: vars.yi },
-					{ symbol: "ydi", name: "Volumegewicht droog", unit: "kN/m3", value: vars.ydi },
-					{ symbol: "ei", name: "Poriëngetal", unit: "-", value: vars.ei }
-				]
-			}, {
-				name: "Uiteindelijke waarden", report: "debug: true;",
-				items: [
-					{ symbol: "Hf", name: "Hoogte (na)", unit: "mm", value: vars.Hf },
-					{ symbol: "Vf", name: "Volume (na)", unit: "mm3", value: vars.Vf },
-					{ symbol: "Srf", name: "Verzadigingsgraad (na)", unit: "%", value: vars.Srf },
-					{ symbol: "wf", name: "Watergehalte (na)", unit: "%", value: vars.wf },
-					{ symbol: "yf", name: "Volumegewicht nat (na)", unit: "kN/m3", value: vars.yf },
-					{ symbol: "ydf", name: "Volumegewicht droog (na)", unit: "kN/m3", value: vars.ydf },
-					{ symbol: "ef", name: "Poriëngetal (na)", unit: "-", value: vars.ef }
-				]
-			}, {
-				name: "Belastingschema", report: "symbol: false;",
-				items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), symbol: "load(" + stage + ")", unit: "kPa", value: load_(stage) })),
-			}, {
-				name: "Belastingschema (werkelijk)", report: "symbol: false;",
-				items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), symbol: "load(" + stage + ", 'effective')", unit: "kPa", value: load_(stage, "effective") })),
-			}, {
-				name: "Grensspanning",
-				items: [
-					{ name: "Bjerrum/NEN", unit: "kPa", symbol: "o'p", value: js.get("nen.sN1N2.x", vars.grenswaarden) },
-					{ name: "Isotachen", unit: "kPa", value: js.get("iso.sN1N2.x", vars.grenswaarden) },
-					{ name: "Koppejan", unit: "kPa", value: js.get("kop.variant1.LLi_1.sN1N2.x", vars.grenswaarden) + 0},
-					{ name: "Rek bij Bjerrum/NEN", symbol: "ECv", unit: "%", value: js.get("nen.sN1N2.y", vars.grenswaarden) * 100 },
-					{ name: "Rek bij Isotachen", unit: "%", value: js.get("iso.sN1N2.y", vars.grenswaarden) * 100},
-					{ name: "Rek bij Koppejan", unit: "%", value: js.get("kop.variant1.LLi_1.sN1N2.y", vars.grenswaarden) / vars.Hi * 100 },
-				]
-			}, {
-				name: "Poriëngetal", report: "symbol: true;",
-				items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), symbol: "e(" + stage + ")", unit: "-", value: e_(stage) })),
-			}, {
-				name: "Consolidatiecoëfficiënt - Casagrande", //report: "debug: true;",
-				items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), unit: "m2/s", symbol: js.sf("Cv%s(%s)", vars.temperature, stage), value: CvT_(stage) }))
-			}, {
-				name: "Consolidatiecoëfficiënt - Taylor", //report: "debug: true;",
-				items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), unit: "m2/s", symbol: js.sf("Cv%s(%s)", vars.temperature, stage), value: CvT_(stage, "Taylor") }))
-			}, {
-				name: "Volumesamendrukkingscoëfficiënt - Casagrande", //report: "debug: true;",
-				items: stages.slice(1).map(stage => ({ name: js.sf("Casagrande-Trap [%d]", stage), unit: "1/Mpa", symbol: "Mv(" + stage +")", value: Mv_(stage) }))
-			}, {
-				name: "Volumesamendrukkingscoëfficiënt - Taylor", //report: "debug: true;",
-				items: stages.slice(1).map(stage => ({ name: js.sf("Taylor-Trap [%d]", stage), unit: "1/Mpa", symbol: "Mv(" + stage + ")", value: Mv_(stage) }))
-			}, {
-				name: "Waterdoorlatendheid - Casagrande", report: "debug: true;",
-				items: stages.slice(1).map(stage => ({ name: js.sf("Casagrande-Trap [%d]", stage), unit: "m/s", symbol: js.sf("k%s(%s)", vars.temperature, stage), value: kT_(stage) }))
-			}, {
-				name: "Waterdoorlatendheid - Taylor", report: "debug: true;",
-				items: stages.slice(1).map(stage => ({ name: js.sf("Taylor-Trap [%d]", stage), unit: "m/s", symbol: js.sf("k%s(%s)", vars.temperature, stage), value: kT_(stage, "Taylor") }))
-			}, {
-				name: "Samendrukkingsindices - NEN/Bjerrum", //report: "debug: true;",
-				items: [
-					{ name: "Primair (1-2)", symbol: "Cc", value: Cc_(1) },
-					{ name: "Primair (2-3)", symbol: "Cc", value: Cc_(2) },
-					{ name: "Primair (3-4)", symbol: "Cc", value: Cc_(3) },
-					{ name: "Ontlasting (4-5)", symbol: "Csw", value: Csw_(4) },
-					{ name: "Herbelasting (5-6)", symbol: "Cr", value: Cr_(5) },
-					{ name: "Primair (6-7)", symbol: "Cc", value: Cc_(6) }
-				]
-			}, {
-				name: "Samendrukkingsgetallen - NEN/Bjerrum", //report: "debug: true;",
-				items: [
-					{ name: "Primair (1-2)", symbol: "CR", value: CR_(1) },
-					{ name: "Primair (2-3)", symbol: "CR", value: CR_(2) },
-					{ name: "Primair (3-4)", symbol: "CR", value: CR_(3) },
-					{ name: "Ontlasting (4-5)", symbol: "SR", value: CR_(4) },
-					{ name: "Herbelasting (5-6)", symbol: "RR", value: CR_(5) },
-					{ name: "Primair (6-7)", symbol: "CR", value: CR_(6) }
-				]
-			}, {
-				name: "Samendrukkingsparameters - a,b,c-Isotachen", //report: "debug: true;",
-				items: [
-					{ name: "onder Pg (1-2)", symbol: "a", value: iso_a_(1, context, vars) },
-					{ name: "boven Pg (2-3)", symbol: "b", value: iso_a_(2, context, vars) },
-					{ name: "ontlasten (4-5)", symbol: "asw", value: iso_asw_(4, context, vars) },
-					{ name: "herbelasten (5-6)", symbol: "ar", value: iso_a_(5, context, vars) }
-				]
-			}, {
-				name: "Lineaire rek", report: "debug: true;",
-				items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), symbol: "Ecv(" + stage + ")", unit: "(-)", value: kPa_[stage - 1].y_rek })),
-			}, {
-				name: "Natuurlijke rek", report: "debug: true;",
-				items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), symbol: "EvH(" + stage + ")", unit: "(-)", value: kPa_[stage - 1].iso.y })),
-			}, {
-				name: "Consolidatie 50% - Casagrande", report: "debug: true;",
-				items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), unit: "seconds", symbol: "t50(" + stage +")", value: casagrande_t50_(stage) })),
-			}, {
-				name: "Consolidatie 100% - Casagrande", report: "debug: true;",
-				items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), unit: "seconds", symbol: "t90(" + stage +")", value: casagrande_t100_(stage) })),
-			}, {
-				name: "Consolidatie 50% - Taylor", report: "debug: true;",
-				items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), unit: "seconds", symbol: "t50(" + stage +")", value: taylor_t50_(stage) })),
-			}, {
-				name: "Consolidatie 90% - Taylor", report: "debug: true;",
-				items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), unit: "seconds", symbol: "t90(" + stage +")", value: taylor_t90_(stage) })),
-			}, {
-				name: "Koppejan - zetting (variant 1)", report: "debug: true;",
-				items: [
-					{ name: "1 dag", unit: "mm", symbol: "vz1", value: vars.grenswaarden.kop.variant1.serie2.map(o => o.vz1).join(" ") },
-					{ name: "10 dagen", unit: "mm", symbol: "vz10", value: vars.grenswaarden.kop.variant1.serie2.map(o => o.vz10).join(" ") },
-					{ name: "100 dagen", unit: "mm", symbol: "vz100", value: vars.grenswaarden.kop.variant1.serie2.map(o => o.vz100).join(" ") },
-					{ name: "1000 dagen", unit: "mm", symbol: "vz1000", value: vars.grenswaarden.kop.variant1.serie2.map(o => o.vz1000).join(" ") },
-					{ name: "10000 dagen", unit: "mm", symbol: "vz10000", value: vars.grenswaarden.kop.variant1.serie2.map(o => o.vz10000).join(" ") },
-				]
-			}, {
-				name: "Koppejan - zetting (variant 2)", report: "debug: true;",
-				items: [
-					{ name: "1 dag", unit: "mm", symbol: "vz1", value: vars.grenswaarden.kop.variant2.serie2.map(o => o.vz1).join(" ") },
-					{ name: "10 dagen", unit: "mm", symbol: "vz10", value: vars.grenswaarden.kop.variant2.serie2.map(o => o.vz10).join(" ") },
-					{ name: "100 dagen", unit: "mm", symbol: "vz100", value: vars.grenswaarden.kop.variant2.serie2.map(o => o.vz100).join(" ") },
-					{ name: "1000 dagen", unit: "mm", symbol: "vz1000", value: vars.grenswaarden.kop.variant2.serie2.map(o => o.vz1000).join(" ") },
-					{ name: "10000 dagen", unit: "mm", symbol: "vz10000", value: vars.grenswaarden.kop.variant2.serie2.map(o => o.vz10000).join(" ") },
-				]
-			}, {
-				name: "Koppejan - Compression Constants - variant 2",
-				items: (() => { 
-					var Pg = vars.grenswaarden.kop.variant2.LLi_1.sN1N2.x;
-					var slopes = vars.grenswaarden.kop.variant2.slopes;
-					var serie2 = vars.grenswaarden.kop.variant2.serie2;
-					var sig = "Stress Target (kPa)";
-					
-					var unloaded = 0, pre, post, reload = 0;
-					return slopes.map((o, index) => { 
-						if(index === slopes.length - 1) return [];
-						if(index && !unloaded) {
-							if((unloaded = serie2[index - 1][sig] > serie2[index][sig] ? 1 : 0)) {
-								pre = "A";
-							} else {
-								pre = "C";
-							}
-						} else {
-							if(unloaded) {
-								reload++;
-							}
-							pre = "C";
-						}
+/*- read variables from header information */
+		vars.ps = headerValue("Specific Gravity");
+		vars.H = headerValue("Initial Height (mm)");
+		vars.D = headerValue("Initial Diameter (mm)");
+		vars.m = headerValue("Initial mass (g)");
+		vars.md = headerValue("Initial dry mass (g)");
+		vars.mf = headerValue("Final Mass");
+		vars.mdf = headerValue("Final Dry Mass");
+		vars.temperature = headerValue("Temperatuur") || 10;
+		vars.stages = nofStages();
+		vars.casagrande___ = casagrande___;
+		vars.taylor___ = taylor___;
+		vars.Hi_ = Hi_;
 
-						post = serie2[index][sig] < Pg ? "" : "'";
-						post += (reload === 1 ? "(r)" : "");
+/*- initialize and calculate some more variables (see documentation `#VA-20201218-3`) */
+		vars.V = Math.PI * (vars.D/2) * (vars.D/2) * vars.H;
+		vars.y = vars.m / (Math.PI / 4 * vars.D * vars.D * vars.H) * vars.G;
+		vars.yd = vars.md / (Math.PI / 4 * vars.D * vars.D * vars.H) * vars.G;
+		vars.w0 = (vars.m - vars.md) / vars.md * 100;
+		vars.pd = vars.yd / (vars.G/1000);
+		vars.e0 = (vars.ps / vars.pd) - 1;
+		vars.Sr = (vars.w0 * vars.ps) / (vars.e0 * vars.pw);
+		vars.dH = deltaH_();
 
-						return [
-							{ name: js.sf("%s%s [%d-%d]", pre, post, index + 1, index + 2), unit: "", symbol: js.sf("%s%s", pre, post), value: o.C },
-							{ name: js.sf("%s10%s [%d-%d]", pre, post, index + 1, index + 2), unit: "", symbol: js.sf("%s10%s", pre, post), value: o.C10 },
-							{ name: js.sf("%sp%s [%d-%d]", pre, post, index + 1, index + 2), unit: "", symbol: js.sf("%sp%s", pre, post), value: o.Cp },
-							{ name: js.sf("%ss%s [%d-%d]", pre, post, index + 1, index + 2), unit: "", symbol: js.sf("%ss%s", pre, post), value: o.Cs }
-						];
-					}).flat();
-				})()
-			}, {
-				name: "Koppejan - variant 1", report: "debug: true;",
-				items:	stages.map(stage => ({ name: js.sf("Richtingscoëfficiënt regressielijn %d", stage), symbol: "rc" + stage, value: js.get("kop.variant1.slopes", vars.grenswaarden)[stage - 1].rc })).concat(
-						stages.map(stage => ({ name: js.sf("Nulpunt regressielijn %d", stage), symbol: "np" + stage, value: js.get("kop.variant1.slopes", vars.grenswaarden)[stage - 1].np}))),
-			}, {
-				name: "Koppejan - variant 2", report: "debug: true;",
-				items:	stages.map(stage => ({ name: js.sf("Richtingscoëfficiënt regressielijn %d", stage), symbol: "rc" + stage, value: js.get("kop.variant2.slopes", vars.grenswaarden)[stage - 1].rc })).concat(
-						stages.map(stage => ({ name: js.sf("Nulpunt regressielijn %d", stage), symbol: "np" + stage, value: js.get("kop.variant2.slopes", vars.grenswaarden)[stage - 1].np}))),
-			}, {
-				name: "deltaH", report: "debug: true;",
-				items: stages.map(_ => ({ name: "Trap " + _, symbol: "dH" + _, unit: "mm", value: deltaH_(_) }))
-			// }, {
-			// 	name: "Overige parameters", report: "debug: true;",
-			// 	items: [
-			// 		{ symbol: "m", name: "Initial Mass", unit: "-", value: vars.m },
-			// 		{ symbol: "md", name: "Initial Dry Mass", unit: "-", value: vars.md },
-			// 		{ symbol: "mf", name: "Final Mass", unit: "-", value: vars.mf },
-			// 		{ symbol: "mdf", name: "Final Dry Mass", unit: "-", value: vars.mdf },
-				// ]
-			}];
-			vars.parameters = vars.categories.map(_ => _.items.map(kvp => mixin({ category: _ }, kvp))).flat();
+	/*- initial vars */
+		vars.Hi = vars.H;
+		vars.Vi = vars.V;
+		vars.yi = vars.y;
+		vars.ydi = vars.yd;
+		vars.pdi = vars.pd;
+		vars.ei = vars.e0;
+		vars.Sri = vars.Sr;
+		
+	/*- final vars */
+		vars.Hf = vars.H - vars.dH;
+		vars.Vf = Math.PI * (vars.D/2) * (vars.D/2) * vars.Hf;
+		vars.yf = vars.mf / (Math.PI / 4 * vars.D * vars.D * vars.Hf) * vars.G;
+		vars.ydf = vars.mdf / (Math.PI / 4 * vars.D * vars.D * vars.Hf) * vars.G;
+		vars.pdf = vars.ydf / (vars.G/1000);
+		vars.ef = (vars.ps / vars.pdf) - 1;
+		vars.wf = (vars.mf - vars.mdf) / vars.mdf * 100;
+		vars.Srf = (vars.wf * vars.ps) / (vars.ef * vars.pw);
+
+		var nofs = nofStages(), kPa_ = [], casagrande = [], taylor = [];
+		for(var stage = 1; stage <= nofs; ++stage)	{
+			// this.vars(js.sf("taylor___(%s)", stage), taylor___(stage));
+			// this.vars(js.sf("casagrande___(%s)", stage), casagrande___(stage));
+			// this.vars(js.sf("variables.stages(%s).data", stage), values_(stage));
+			kPa_.push(stage);
+			casagrande.push(casagrande___(stage));
+			taylor.push(taylor___(stage));
+		}
+
+		var dH = 0, prev; kPa_ = kPa_.map(stage => { 
+			var current = {
+				x: load_(stage),  // kPa target
+				x_ef: load_(stage, true),  // kPa effective
+				y_rek: (dH += deltaH_(stage)) / Hi_(),
+				y_e: e_(stage),
+				y_z: z_(stage)
+			};
+			if(prev) {
+				current.dx = current.x - prev.x;
+				current.dx_ef = Math.abs(current.x_ef - prev.x_ef);
+				current.dy_rek = Math.abs(current.y_rek - prev.y_rek);
+				current.dy_e = Math.abs(current.y_e - prev.y_e);
+				current.dy_z = Math.abs(current.y_z - prev.y_z);
+				current.slope_rek = current.dy_rek / current.dx;
+				current.slope_e = current.dy_e / current.dx;
+				current.slope_z = current.dy_z / current.dx;
+			}
 			
-			this.scope("array-headers").setArray(headers.concat(vars.parameters));
+			return (prev = current);
+		});
+
+		vars.kPa_ = kPa_;
+		vars.Hi_ = Hi_;
+
+		this.vars("values_", values_);
+
+	/*- Grenswaarden NEN (Bjerrum) */
+		vars.grenswaarden = {
+			nen: log_line_intersect(
+					kPa_[0].x, kPa_[0].y_rek, kPa_[1].x, kPa_[1].y_rek, 
+					kPa_[2].x, kPa_[2].y_rek, kPa_[3].x, kPa_[3].y_rek),
+			iso: grenswaarden_Isotachen(context, vars),
+			kop: grenswaarden_Koppejan(context, vars)
 		};
 		
-		if(this.up("devtools/Editor<vcl>")) {
-			/*- DEBUG: hook into the 1st Editor<gds> we can find (if any) in order to tweak/fiddle code */
-			if((editor = this.app().down("devtools/Editor<gds>:root"))) {
-				var previous_owner = this._owner;
-				this.setOwner(editor);
-				this.on("destroy", () => this.setOwner(previous_owner));
-		
-				// ["valueField", "valueField_kPa", "categoryField"].forEach(name => {
-				// 	var source = this.ud("devtools/Editor<>", "#" + name);
-				// 	var dest = this.scope()[name];
-				// 	dest.setOptions(source._options);
-				// 	dest.setValue(source.getValue());
-				// });
-				
-				initialize();
-			}
-	 	} else if((editor = this.up("devtools/Editor<gds>:root"))) {
-			editor.up("vcl/ui/Tab").on("resource-rendered", () => { 
-				initialize(); 
-				var tab = this.down("#tabs-graphs").getSelectedControl(1);
-				if(tab) {
-					var control = tab.getControl();
-					if(control) {
-						control.setState("invalidated", true);
-						// control.render();
-					}
-				}
-				
-			});
+		var stages = [];
+		for(var i = 1; i <= vars.stages; ++i) {
+			kPa_[i - 1].iso = vars.grenswaarden.iso.kPa_[i - 1];
+			stages.push(i);
 		}
-	}
-};
 
-["", {  handlers: handlers }, [
+/*- Parameters */
+		vars.categories = [{
+			name: "Projectgegevens",
+			items: [
+				{ name: "Projectnummer", value: headerValue("Job reference", false) },
+				{ name: "Omschrijving", value: "" },
+				{ name: "Aantal trappen", value: nofStages() },
+				{ name: "Proef periode", value: js.sf("%s - %s", headerValue("Date Test Started", false), headerValue("Date Test Finished", false)) },
+				{ name: "Beproevingstemperatuur", value: headerValue("Temperatuur") },
+				{ name: "Opmerking proef", value: "" },
+				// { name: "Opdrachtgever", value: "" },
+				// { name: "Opdrachtnemer", value: "" },
+				// { name: "Coördinaten", value: "" }
+			]
+		}, {
+			name: "Monstergegevens",
+			items: [
+				{ name: "Monster", value: headerValue("Sample Name", false) },
+				{ name: "Boring", value: headerValue("Borehole", false) },
+				{ name: "Locatie", value: headerValue("Job Location", false)  },
+				{ name: "Monstertype", value: headerValue("Specimen Type", false) },
+				{ name: "Grondsoort", value: headerValue("Description of Sample", false) },
+				{ name: "Diepte (m-NAP)", value: headerValue("Depth", false) },
+				// { name: "Opstelling nr", value: "" },
+				// { name: "Laborant", value: "" },
+				// { name: "Uitwerking", value: "" },
+				// { name: "Proefmethode", value: "" },
+				// { name: "Proefomstandigheden", value: "" },
+				// { name: "Monsterpreparatie", value: "" },
+				// { name: "Opmerking monster", value: "" }
+			]
+		}, {
+			name: "Initiële waarden",
+			items: [
+				{ symbol: "Hi", name: "Hoogte", unit: "mm", value: vars.Hi },
+				{ symbol: "D", name: "Diameter", unit: "mm", value: vars.D },
+				{ symbol: "ps", name: "Volumegewicht vaste delen", unit: "Mg/m3", value: vars.ps },
+				{ symbol: "Vi", name: "Volume", unit: "mm3", value: vars.Vi },
+				{ symbol: "Sri", name: "Verzadigingsgraad", unit: "%", value: vars.Sri },
+				{ symbol: "w0", name: "Watergehalte", unit: "%", value: vars.w0 },
+				{ symbol: "yi", name: "Volumegewicht nat", unit: "kN/m3", value: vars.yi },
+				{ symbol: "ydi", name: "Volumegewicht droog", unit: "kN/m3", value: vars.ydi },
+				{ symbol: "ei", name: "Poriëngetal", unit: "-", value: vars.ei }
+			]
+		}, {
+			name: "Uiteindelijke waarden", report: "debug: true;",
+			items: [
+				{ symbol: "Hf", name: "Hoogte (na)", unit: "mm", value: vars.Hf },
+				{ symbol: "Vf", name: "Volume (na)", unit: "mm3", value: vars.Vf },
+				{ symbol: "Srf", name: "Verzadigingsgraad (na)", unit: "%", value: vars.Srf },
+				{ symbol: "wf", name: "Watergehalte (na)", unit: "%", value: vars.wf },
+				{ symbol: "yf", name: "Volumegewicht nat (na)", unit: "kN/m3", value: vars.yf },
+				{ symbol: "ydf", name: "Volumegewicht droog (na)", unit: "kN/m3", value: vars.ydf },
+				{ symbol: "ef", name: "Poriëngetal (na)", unit: "-", value: vars.ef }
+			]
+		}, {
+			name: "Belastingschema", report: "symbol: false;",
+			items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), symbol: "load(" + stage + ")", unit: "kPa", value: load_(stage) })),
+		}, {
+			name: "Belastingschema (werkelijk)", report: "symbol: false;",
+			items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), symbol: "load(" + stage + ", 'effective')", unit: "kPa", value: load_(stage, "effective") })),
+		}, {
+			name: "Grensspanning",
+			items: [
+				{ name: "Bjerrum/NEN", unit: "kPa", symbol: "o'p", value: js.get("nen.sN1N2.x", vars.grenswaarden) },
+				{ name: "Isotachen", unit: "kPa", value: js.get("iso.sN1N2.x", vars.grenswaarden) },
+				{ name: "Koppejan", unit: "kPa", value: js.get("kop.variant1.LLi_1.sN1N2.x", vars.grenswaarden) + 0},
+				{ name: "Rek bij Bjerrum/NEN", symbol: "ECv", unit: "%", value: js.get("nen.sN1N2.y", vars.grenswaarden) * 100 },
+				{ name: "Rek bij Isotachen", unit: "%", value: js.get("iso.sN1N2.y", vars.grenswaarden) * 100},
+				{ name: "Rek bij Koppejan", unit: "%", value: js.get("kop.variant1.LLi_1.sN1N2.y", vars.grenswaarden) / vars.Hi * 100 },
+			]
+		}, {
+			name: "Poriëngetal", report: "symbol: true;",
+			items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), symbol: "e(" + stage + ")", unit: "-", value: e_(stage) })),
+		}, {
+			name: "Consolidatiecoëfficiënt - Casagrande", //report: "debug: true;",
+			items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), unit: "m2/s", symbol: js.sf("Cv%s(%s)", vars.temperature, stage), value: CvT_(stage) }))
+		}, {
+			name: "Consolidatiecoëfficiënt - Taylor", //report: "debug: true;",
+			items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), unit: "m2/s", symbol: js.sf("Cv%s(%s)", vars.temperature, stage), value: CvT_(stage, "Taylor") }))
+		}, {
+			name: "Volumesamendrukkingscoëfficiënt - Casagrande", //report: "debug: true;",
+			items: stages.slice(1).map(stage => ({ name: js.sf("Trap [%d-%d]", stage - 1, stage), unit: "1/Mpa", symbol: "Mv(" + stage +")", value: Mv_(stage) }))
+		}, {
+			name: "Volumesamendrukkingscoëfficiënt - Taylor", //report: "debug: true;",
+			items: stages.slice(1).map(stage => ({ name: js.sf("Trap [%d-%d]", stage - 1, stage), unit: "1/Mpa", symbol: "Mv(" + stage + ")", value: Mv_(stage) }))
+		}, {
+			name: "Waterdoorlatendheid - Casagrande", report: "debug: true;",
+			items: stages.slice(1).map(stage => ({ name: js.sf("Trap [%d-%d]", stage - 1, stage), unit: "m/s", symbol: js.sf("k%s(%s)", vars.temperature, stage), value: kT_(stage) }))
+		}, {
+			name: "Waterdoorlatendheid - Taylor", report: "debug: true;",
+			items: stages.slice(1).map(stage => ({ name: js.sf("Trap [%d-%d]", stage - 1, stage), unit: "m/s", symbol: js.sf("k%s(%s)", vars.temperature, stage), value: kT_(stage, "Taylor") }))
+		}, {
+			name: "Samendrukkingsindices - NEN/Bjerrum", //report: "debug: true;",
+			items: [
+				{ name: "Primair (1-2)", symbol: "Cc", value: Cc_(1) },
+				{ name: "Primair (2-3)", symbol: "Cc", value: Cc_(2) },
+				{ name: "Primair (3-4)", symbol: "Cc", value: Cc_(3) },
+				{ name: "Ontlasting (4-5)", symbol: "Csw", value: Csw_(4) },
+				{ name: "Herbelasting (5-6)", symbol: "Cr", value: Cr_(5) },
+				{ name: "Primair (6-7)", symbol: "Cc", value: Cc_(6) }
+			]
+		}, {
+			name: "Samendrukkingsgetallen - NEN/Bjerrum", //report: "debug: true;",
+			items: [
+				{ name: "Primair (1-2)", symbol: "CR", value: CR_(1) },
+				{ name: "Primair (2-3)", symbol: "CR", value: CR_(2) },
+				{ name: "Primair (3-4)", symbol: "CR", value: CR_(3) },
+				{ name: "Ontlasting (4-5)", symbol: "SR", value: CR_(4) },
+				{ name: "Herbelasting (5-6)", symbol: "RR", value: CR_(5) },
+				{ name: "Primair (6-7)", symbol: "CR", value: CR_(6) }
+			]
+		}, {
+			name: "Samendrukkingscoefficienten - a,b,c-Isotachen", //report: "debug: true;",
+			items: [
+				{ name: "onder Pg (1-2)", symbol: "a", value: iso_a_(1, context, vars) },
+				{ name: "boven Pg (2-3)", symbol: "b", value: iso_a_(2, context, vars) },
+				{ name: "ontlasten (4-5)", symbol: "asw", value: iso_asw_(4, context, vars) },
+				{ name: "herbelasten (5-6)", symbol: "ar", value: iso_a_(5, context, vars) }
+			].concat(stages.slice(2).map(stage => ({
+				name: js.sf("b-waarde Trap [%d]", stage - 1), 
+				symbol: js.sf("b(%d-%d)", stage - 1, stage), 
+				value: iso_a_(stage - 1, context, vars, casagrande[stage - 1])
+			}))).concat(stages.slice(1).map(stage => ({
+				name: js.sf("c-waarde Trap [%d]", stage - 1), 
+				symbol: js.sf("c(%d-%d)", stage - 1, stage), 
+				value: iso_c_(stage - 1, context, vars, casagrande[stage - 1])
+			})))
+		}, {
+			name: "Lineaire rek", report: "debug: true;",
+			items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), symbol: "Ecv(" + stage + ")", unit: "(-)", value: kPa_[stage - 1].y_rek })),
+		}, {
+			name: "Natuurlijke rek", report: "debug: true;",
+			items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), symbol: "EvH(" + stage + ")", unit: "(-)", value: kPa_[stage - 1].iso.y })),
+		}, {
+			name: "Consolidatie 50% - Casagrande", report: "debug: true;",
+			items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), unit: "seconds", symbol: "t50(" + stage +")", value: casagrande_t50_(stage) })),
+		}, {
+			name: "Consolidatie 100% - Casagrande", report: "debug: true;",
+			items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), unit: "seconds", symbol: "t90(" + stage +")", value: casagrande_t100_(stage) })),
+		}, {
+			name: "Consolidatie 50% - Taylor", report: "debug: true;",
+			items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), unit: "seconds", symbol: "t50(" + stage +")", value: taylor_t50_(stage) })),
+		}, {
+			name: "Consolidatie 90% - Taylor", report: "debug: true;",
+			items: stages.map(stage => ({ name: js.sf("Trap [%d]", stage), unit: "seconds", symbol: "t90(" + stage +")", value: taylor_t90_(stage) })),
+		}, {
+			name: "Koppejan - zetting (variant 1)", report: "debug: true;",
+			items: [
+				{ name: "1 dag", unit: "mm", symbol: "vz1", value: vars.grenswaarden.kop.variant1.serie2.map(o => o.vz1).join(" ") },
+				{ name: "10 dagen", unit: "mm", symbol: "vz10", value: vars.grenswaarden.kop.variant1.serie2.map(o => o.vz10).join(" ") },
+				{ name: "100 dagen", unit: "mm", symbol: "vz100", value: vars.grenswaarden.kop.variant1.serie2.map(o => o.vz100).join(" ") },
+				{ name: "1000 dagen", unit: "mm", symbol: "vz1000", value: vars.grenswaarden.kop.variant1.serie2.map(o => o.vz1000).join(" ") },
+				{ name: "10000 dagen", unit: "mm", symbol: "vz10000", value: vars.grenswaarden.kop.variant1.serie2.map(o => o.vz10000).join(" ") },
+			]
+		}, {
+			name: "Koppejan - zetting (variant 2)", report: "debug: true;",
+			items: [
+				{ name: "1 dag", unit: "mm", symbol: "vz1", value: vars.grenswaarden.kop.variant2.serie2.map(o => o.vz1).join(" ") },
+				{ name: "10 dagen", unit: "mm", symbol: "vz10", value: vars.grenswaarden.kop.variant2.serie2.map(o => o.vz10).join(" ") },
+				{ name: "100 dagen", unit: "mm", symbol: "vz100", value: vars.grenswaarden.kop.variant2.serie2.map(o => o.vz100).join(" ") },
+				{ name: "1000 dagen", unit: "mm", symbol: "vz1000", value: vars.grenswaarden.kop.variant2.serie2.map(o => o.vz1000).join(" ") },
+				{ name: "10000 dagen", unit: "mm", symbol: "vz10000", value: vars.grenswaarden.kop.variant2.serie2.map(o => o.vz10000).join(" ") },
+			]
+		}, {
+			name: "Koppejan - Compression Constants - variant 2",
+			items: (() => { 
+				var Pg = vars.grenswaarden.kop.variant2.LLi_1.sN1N2.x;
+				var slopes = vars.grenswaarden.kop.variant2.slopes;
+				var serie2 = vars.grenswaarden.kop.variant2.serie2;
+				var sig = "Stress Target (kPa)";
+				
+				var unload = 0, pre, post, reload = 0;
+				return slopes.map((o, index) => { 
+					if(index === slopes.length - 1) return [];
+					if(index && !unload) {
+						if((unload = serie2[index - 1][sig] > serie2[index][sig] ? 1 : 0)) {
+							pre = "A";
+						} else {
+							pre = "C";
+						}
+					} else {
+						if(unload) {
+							reload++;
+						}
+						pre = "C";
+					}
+
+					post = serie2[index][sig] < Pg ? "" : "'";
+					post += (reload === 1 ? "(r)" : "");
+
+					return [
+						{ name: js.sf("%s%s [%d-%d]", pre, post, index + 1, index + 2), unit: "", symbol: js.sf("%s%s", pre, post), value: o.C },
+						{ name: js.sf("%s10%s [%d-%d]", pre, post, index + 1, index + 2), unit: "", symbol: js.sf("%s10%s", pre, post), value: o.C10 },
+						{ name: js.sf("%sp%s [%d-%d]", pre, post, index + 1, index + 2), unit: "", symbol: js.sf("%sp%s", pre, post), value: o.Cp },
+						{ name: js.sf("%ss%s [%d-%d]", pre, post, index + 1, index + 2), unit: "", symbol: js.sf("%ss%s", pre, post), value: o.Cs }
+					];
+				}).flat();
+			})()
+		}, {
+			name: "Koppejan - variant 1", report: "debug: true;",
+			items:	stages.map(stage => ({ name: js.sf("Richtingscoëfficiënt regressielijn %d", stage), symbol: "rc" + stage, value: js.get("kop.variant1.slopes", vars.grenswaarden)[stage - 1].rc })).concat(
+					stages.map(stage => ({ name: js.sf("Nulpunt regressielijn %d", stage), symbol: "np" + stage, value: js.get("kop.variant1.slopes", vars.grenswaarden)[stage - 1].np}))),
+		}, {
+			name: "Koppejan - variant 2", report: "debug: true;",
+			items:	stages.map(stage => ({ name: js.sf("Richtingscoëfficiënt regressielijn %d", stage), symbol: "rc" + stage, value: js.get("kop.variant2.slopes", vars.grenswaarden)[stage - 1].rc })).concat(
+					stages.map(stage => ({ name: js.sf("Nulpunt regressielijn %d", stage), symbol: "np" + stage, value: js.get("kop.variant2.slopes", vars.grenswaarden)[stage - 1].np}))),
+		}, {
+			name: "Secundaire Consolidatie", report: "debug: true;",
+			items: stages.map(_ => ({ name: "Trap [" + _ + "]", symbol: "Cα [" + _ + "]", unit: "", value: casagrande[_ - 1].ips.Calpha }))
+		}, {
+			name: "deltaH", report: "debug: true;",
+			items: stages.map(_ => ({ name: "Trap " + _, symbol: "dH" + _, unit: "mm", value: deltaH_(_) }))
+		// }, {
+		// 	name: "Overige parameters", report: "debug: true;",
+		// 	items: [
+		// 		{ symbol: "m", name: "Initial Mass", unit: "-", value: vars.m },
+		// 		{ symbol: "md", name: "Initial Dry Mass", unit: "-", value: vars.md },
+		// 		{ symbol: "mf", name: "Final Mass", unit: "-", value: vars.mf },
+		// 		{ symbol: "mdf", name: "Final Dry Mass", unit: "-", value: vars.mdf },
+			// ]
+		}];
+		vars.parameters = vars.categories.map(_ => _.items.map(kvp => mixin({ category: _ }, kvp))).flat();
+		
+		this.print("parameters", vars.parameters);
+		this.scope("array-variables").setArray(headers.concat(vars.parameters));
+	};
 	
-	["vcl/data/Array", ("array-headers"), {}],
+	if(this.up("devtools/Editor<vcl>")) {
+		/*- DEBUG: hook into the 1st Editor<gds> we can find (if any) in order to tweak/fiddle code */
+		if((editor = this.app().down("devtools/Editor<gds>:root"))) {
+			var previous_owner = this._owner;
+			this.setOwner(editor);
+			this.on("destroy", () => this.setOwner(previous_owner));
+	
+			// ["valueField", "valueField_kPa", "categoryField"].forEach(name => {
+			// 	var source = this.ud("devtools/Editor<>", "#" + name);
+			// 	var dest = this.scope()[name];
+			// 	dest.setOptions(source._options);
+			// 	dest.setValue(source.getValue());
+			// });
+			
+			initialize();
+		}
+ 	} else if((editor = this.up("devtools/Editor<gds>:root"))) {
+		editor.up("vcl/ui/Tab").on("resource-rendered", () => { 
+			initialize(); 
+			var tab = this.down("#tabs-graphs").getSelectedControl(1);
+			if(tab) {
+				var control = tab.getControl();
+				if(control) {
+					control.setState("invalidated", true);
+					// control.render();
+				}
+			}
+			
+		});
+	}
+}
+
+["", {  handlers: { loaded: onLoad } }, [
+	
+	["vcl/data/Array", ("array-variables"), {
+		onFilterObject(obj) {
+			var q = this.vars("q");
+			if(!q) return false;
+			return q.split(/\s/).filter(q => q.length > 0).some(q => !match(obj, q));
+		}
+	}],
 
 	Tabs,
 
