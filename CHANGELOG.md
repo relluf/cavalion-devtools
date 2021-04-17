@@ -1,3 +1,7 @@
+### 2021/04/17 - 1.1.42
+
+* Developing Renderer<gds> in favor of `#VA-20201218-3`
+
 ### 2021/04/05 - 1.1.41
 
 * Developing Renderer<gds> in favor of `#VA-20201218-3`
