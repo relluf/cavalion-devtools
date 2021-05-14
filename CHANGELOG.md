@@ -1,12 +1,19 @@
-### 2021/04/17 - 1.1.42
+### 2021/05/14 - 1.0.43
+
+* Better and more intuitive link handling (Editor<md>)
+* Cleaning up, refactoring, SPN-feedback integrations `#VA-20201218-3`
+* Even more lazy rendering (Renderer<gds>)
+
+
+### 2021/04/17 - 1.0.42
 
 * Developing Renderer<gds> in favor of `#VA-20201218-3`
 
-### 2021/04/05 - 1.1.41
+### 2021/04/05 - 1.0.41
 
 * Developing Renderer<gds> in favor of `#VA-20201218-3`
 
-### 2021/03/18 - 1.1.40
+### 2021/03/18 - 1.0.40
 
 * Persisting serialized SVG and calculated parameters as JSON document
 * Finetuning chart generation
@@ -19,14 +26,14 @@
 * Corrected/updated Isotachen graph
 * Serializing SVG to JSON
 
-### 2021/03/11 - 1.1.39
+### 2021/03/11 - 1.0.39
 
 `#VA-20201218-3`
 
 * Fixes Taylor to work with a non-30-second interval data stream
 * Finetuning some guidelines 
 
-### 2021/03/10 - 1.1.38
+### 2021/03/10 - 1.0.38
 - Developing `#VA-20201218-3`
 - veldoffice-rapportage-vcl@v147
 
