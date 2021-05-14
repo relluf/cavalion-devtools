@@ -66,6 +66,13 @@ document.addEventListener("click", (evt) => {
 			href = href.replace(":", anchor.textContent);
 		}
 
+		if(href === "") {
+			href = anchor.textContent;
+		} else if(href === ":") {
+			blocks = true;
+			href = "/" + anchor.textContent;
+		}
+		
 		// so the rules apply these anchors as well
 		if(href.startsWith("https://") || 
 			href.startsWith("http://") || 
@@ -73,13 +80,6 @@ document.addEventListener("click", (evt) => {
 			href.startsWith("ftp://")
 		) {
 			return window.open(href, "_blank");
-		}
-		
-		if(href === "") {
-			href = anchor.textContent;
-		} else if(href === ":") {
-			blocks = true;
-			href = "/" + anchor.textContent;
 		}
 		
 		// links are relative to the resource
@@ -102,12 +102,12 @@ document.addEventListener("click", (evt) => {
 				selected: true
 			});
 		} else {
-			uri = js.normalize(base, href.charAt(0) === "/" ? href : ("./" + href));
+			uri = js.normalize(base, href.charAt(0) === "/" ? href.substring(1) : ("./" + href));
 			tab = editorNeeded(control, evt).execute({
 				resource:{ 
-					uri: uri, 
+					uri: uri.endsWith("/") ? uri.substring(0, uri.length - 1) : uri,
 					type: uri.endsWith("/") ? "Folder" : "File",
-					title: href.substring(href.charAt(0) === "/" ? 1 : 0)
+					title: anchor.textContent//href.substring(href.charAt(0) === "/" ? 1 : 0)
 				},
 				bringToFront: evt.shiftKey === true,
 				selected: true
