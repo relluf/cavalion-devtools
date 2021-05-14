@@ -36,7 +36,7 @@ var getKeyName = (key) => {
 ["Console", {
 	css: "background:#f0f0f0;",
 	onLoad() {
-		var app = this.app();
+		var app = require("vcl/Application").instances[0];//this.app();
 		this.vars("li", HKM.register({
 			keyCode: "*", 
 			callback: (e) => { 
@@ -51,7 +51,7 @@ var getKeyName = (key) => {
 					name = "";
 				}
 				
-				if(e.type !== "keydown" || !name) return;
+				if(e.type !== "keydown") return;// || !name) return;
 
 				name = String.format("%s%s", modifiers, name || "");
 				this.print(e.type, {event: e, name: name, code: e.code, key: e.key, keyCode: e.keyCode});
@@ -61,7 +61,7 @@ var getKeyName = (key) => {
 				app.toast({ classes: "fade glassy big", content: name });
 			}
 		}));
-		this.print("just hit some keystrokes");
+		this.print("just casually tracking keystrokes");
 	},
 	onDestroy() {
 		var li = this.vars("li");

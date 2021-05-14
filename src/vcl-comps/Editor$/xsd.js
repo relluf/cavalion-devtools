@@ -1,4 +1,4 @@
-// "use strict"; var locale = window.locale, $ = window.$, $i = window.$i, js = window.js;
+//var locale = window.locale, $ = window.$, $i = window.$i, js = window.js;
 
 var XSD_NS = "http://www.w3.org/2001/XMLSchema";
 var XS_NAMESPACE_PREFIXES = ['', 'xs:', 'xsd:'];
@@ -76,7 +76,7 @@ var xsTypes = {};
 "string","time","xs:anyURI","xs:boolean","xs:dateTime","xs:decimal","xs:double",
 "xs:duration","xs:integer","xs:string"].map(_ => (xsTypes[_] = {xstype: _}));
 
-$(["devtools/Editor<xml>"], { 
+[["devtools/Editor<xml>"], { 
 	handlers: {
 		"loaded": function() {
 	        var tab = this.up("vcl/ui/Tab"), scope = this.scope();
@@ -138,7 +138,7 @@ $(["devtools/Editor<xml>"], {
 	}
 }, [
 
-	$i(("render"), {
+	[("#render"), {
 		onExecute() {
 
 	// Setup vars
@@ -187,6 +187,7 @@ $(["devtools/Editor<xml>"], {
 					}
 				},
 				
+				stars: [],
 				imps: xsArray("import", schema).concat(
 					xsArray("schema.include", root)
 						.map(function(include) {
@@ -195,7 +196,6 @@ $(["devtools/Editor<xml>"], {
 							return include;
 						})
 				),
-				stars: [],
 				attrs: xsArray("attribute", schema),
 				elems: xsArray("element", schema),
 				ctypes: xsArray("complexType", schema),
@@ -234,34 +234,36 @@ $(["devtools/Editor<xml>"], {
 					this.elems.forEach(function(elem) {
 						var at = elem[at__];
 						for(var k in at.features) {
-							var attribute = at.features[k];
+							var feature = at.features[k];
 							this.stars.push({
 								xmlns: at.xmlns,
-								namespace: attribute.namespace,
-								namespace_type: attribute.namespace_type,
+								namespace: feature.namespace,
+								namespace_type: feature.namespace_type,
 								name: k,
 								element: elem['@_name'],
-								kind: attribute.kind,
-								type: attribute.type,
+								kind: feature.kind,
+								type: feature.type,
 								schema: at.schema,
-								attribute: attribute
+								feature: feature,
+								attribute: feature // legacy? check whether it is still needed
 							});
 						}
 					}, this);
 					this.ctypes.forEach(function(ctype) {
 						var at = ctype[at__];
 						for(var k in at.features) {
-							var attribute = at.features[k];
+							var feature = at.features[k];
 							this.stars.push({
 								xmlns: at.xmlns,
-								namespace: attribute.namespace,
-								namespace_type: attribute.namespace_type,
+								namespace: feature.namespace,
+								namespace_type: feature.namespace_type,
 								name: k,
 								complexType: ctype['@_name'],
-								kind: attribute.kind,
-								type: attribute.type,
+								kind: feature.kind,
+								type: feature.type,
 								schema: at.schema,
-								attribute: attribute
+								feature: feature,
+								attribute: feature // legacy? check whether it is still needed
 							});
 						}
 					}, this);
@@ -315,6 +317,7 @@ $(["devtools/Editor<xml>"], {
 					this.inheritGroup(xselem, xselem, "root");
 				},
 				parseComplexType: function(xselem, i) {
+					if(xselem['@_name'] === undefined) debugger;
 					this.ctypes_map[xmlns[''] + ":" + xselem['@_name']] = xselem;
 					// js.set(at__ + ".source", "complexType", xselem);
 					// if(xselem[at__] === undefined) {
@@ -329,11 +332,12 @@ $(["devtools/Editor<xml>"], {
 						// js.set(at__ + ".source", "element", xselem);
 						
 						var base, type, ref;
-						
+// me.print("parseElement", xselem['@_name']);
+// if(xselem['@_name'] === "MeasurementTimeseries") debugger;
 						// this.inheritElement for symmetry?
 						// this.inheritElement(xselem, xselem, xselem['@_name'])
 						if(xselem['@_base']) {
-me.print("parseElement.@_base", xselem);
+							// me.print("parseElement.@_base", xselem);
 							throw new Error("Unexpected");
 						} else if(xselem['@_type']) {
 							if((type = this.findType(xselem['@_type']))) {
@@ -345,7 +349,7 @@ me.print("parseElement.@_base", xselem);
 						} else if(xselem[sf("%scomplexType", ns_prefix)]) {
 							this.inheritType(xselem, xselem[sf("%scomplexType", ns_prefix)], "inline?");	
 						} else {
-me.print("parseElement.notHandled", xselem);
+							me.print("parseElement.notHandled", xselem);
 						}
 					// }
 				},
@@ -370,7 +374,7 @@ me.print("parseElement.notHandled", xselem);
 					}
 				},			
 				inheritType: function(xselem, xstype, xstype_name, as_base) {
-					var base;
+					var base, ref;
 					if(xstype['@_base']) {
 						if((base = this.findType(xstype['@_base']))) {
 							js.set(at__ + ".base-resolved", base, xstype);
@@ -411,7 +415,7 @@ me.print("parseElement.notHandled", xselem);
 					}, this);
 					xsArray("sequence.element", xstype).map(function(xsel, i) {
 						this.stamp(xsel);
-						this.inheritElement(xselem, xsel, xsel['@_type']);
+						this.inheritElement(xselem, xsel, xsel['@_type'] || xsel['@_name']);
 					}, this);
 					xsArray("choice.element", xstype).map(function(xsel, i) {
 						this.stamp(xsel);
@@ -439,7 +443,6 @@ me.print("parseElement.notHandled", xselem);
 					} else {
 						// this.log(xselem, "!!! xsattribute.xs")
 						if(!(type = this.findType(xsattribute['@_type'] || xsattribute_name))) {
-							
 							this.log(xselem, sf("@_type .%s. not found (380)", xsattribute['@_type'] || xsattribute_name));
 						}
 					}
@@ -471,8 +474,8 @@ me.print("parseElement.notHandled", xselem);
 						kind: "element", 
 						type: xsel_name,
 						cardinality: [
-							typeof (x=xsel['@_minOccurs']) === "number" ? x : x || 1, 
-							typeof (x=xsel['@_maxOccurs']) === "number" ? x : x || 1
+							typeof (x = xsel['@_minOccurs']) === "number" ? x : x || 1, 
+							typeof (x = xsel['@_maxOccurs']) === "number" ? x : x || 1
 						].join("-"),
 						xs: xsel
 					};
@@ -485,10 +488,19 @@ me.print("parseElement.notHandled", xselem);
 						}
 					} else if((type = js_getXs("%scomplexType", xsel))) {
 						// %scomplexType.%ssimpleContent.%srestriction.@_base
+
+						// this.log(xselem, sf("TODO complexType not handled", xsel));
+						// me.print("TODO complexType not handled", xsel);
+						
+						if((ref = js_getXs("%scomplexType.%ssequence.%selement.@_ref", xsel))) {
+							// debugger;
+							if(!type['@_name']) type['@_name'] = js.sf("autogen_%s", xsel_name);
+							this.log(xselem, info['type-resolved'] = this.parseComplexType(type, -1) || type);
+							// info.type = ref;
+						}
 						
 							// this.log(xselem, "LOOKIE-LOOKIE-1");
 							// this.log(xselem, ["not understood-1", xsel, xsel_name]);
-							// this.log(xselem, info['type-resolved'] = this.parseComplexType(type, -1));
 							
 					} else if(!(info['type-resolved'] = this.findType(info.type))) {
 						this.log(xselem, sf("type %s not found (415)", info.type || name));
@@ -577,40 +589,40 @@ me.print("parseElement.notHandled", xselem);
 
 			return r;
 		}
-	}),
+	}],
 	
-	$(("vcl/data/Array"), "imps"),
-	$(("vcl/data/Array"), "stars"),
-	$(("vcl/data/Array"), "attrs"),
-	$(("vcl/data/Array"), "groups"),
-	$(("vcl/data/Array"), "agroups"),
-	$(("vcl/data/Array"), "elems"),
-	$(("vcl/data/Array"), "ctypes"),
-	$(("vcl/data/Array"), "stypes"),
+	[("vcl/data/Array"), "imps"],
+	[("vcl/data/Array"), "stars"],
+	[("vcl/data/Array"), "attrs"],
+	[("vcl/data/Array"), "groups"],
+	[("vcl/data/Array"), "agroups"],
+	[("vcl/data/Array"), "elems"],
+	[("vcl/data/Array"), "ctypes"],
+	[("vcl/data/Array"), "stypes"],
    
-    $i(("output"), [
-    	$(("vcl/ui/Bar"), [
-    		$("vcl/ui/Input", "search-input", { classes: "search-top" }),
-    	]),
-	    $i(("details-tabs"), [
-	    	$("vcl/ui/Tab", { text: locale("-/Import.plural"), control: "imports"  }),
-	    	$("vcl/ui/Tab", { text: "*" || locale("-/Star.symbol"), control: "allstars"}),
-	    	$("vcl/ui/Tab", { text: locale("-/Attribute.plural"), control: "attributes"}),
-	    	$("vcl/ui/Tab", { text: locale("-/Element.plural"), control: "elements" }),
-	    	$("vcl/ui/Tab", { text: locale("-/ComplexType.plural"), control: "complexTypes" }),
-	    	$("vcl/ui/Tab", { text: locale("-/Group.plural"), control: "groupsl" }),
-	    	$("vcl/ui/Tab", { text: locale("-/SimpleType.plural"), control: "simpleTypes" }),
-	    	$("vcl/ui/Tab", { text: locale("-/AttributeGroup.plural"), control: "attributeGroups" })
-	    ]),
-	    $i(("console"), { visible: false }),
-	    $("vcl/ui/List", "imports", { autoColumns: true, source: "imps", visible: false, onDblClick: onDblClick }),
-	    $("vcl/ui/List", "allstars", { autoColumns: true, source: "stars", visible: false, onDblClick: onDblClick }),
-	    $("vcl/ui/List", "attributes", { autoColumns: true, source: "attrs", visible: false, onDblClick: onDblClick }),
-	    $("vcl/ui/List", "elements", { autoColumns: true, source: "elems", visible: false, onDblClick: onDblClick }),
-	    $("vcl/ui/List", "complexTypes", { autoColumns: true, source: "ctypes", visible: false, onDblClick: onDblClick }),
-	    $("vcl/ui/List", "groupsl", { autoColumns: true, source: "groups", visible: false, onDblClick: onDblClick }),
-	    $("vcl/ui/List", "attributeGroups", { autoColumns: true, source: "agroups", visible: false, onDblClick: onDblClick }),
-	    $("vcl/ui/List", "simpleTypes", { autoColumns: true, source: "stypes", visible: false, onDblClick: onDblClick })
-    ])
+    [("#output"), [
+    	[("vcl/ui/Bar"), [
+    		["vcl/ui/Input", "search-input", { classes: "search-top" }]
+    	]],
+	    [("#details-tabs"), [
+	    	["vcl/ui/Tab", { text: locale("-/Import.plural"), control: "imports"  }],
+	    	["vcl/ui/Tab", { text: "*" || locale("-/Star.symbol"), control: "allstars"}],
+	    	["vcl/ui/Tab", { text: locale("-/Attribute.plural"), control: "attributes"}],
+	    	["vcl/ui/Tab", { text: locale("-/Element.plural"), control: "elements" }],
+	    	["vcl/ui/Tab", { text: locale("-/ComplexType.plural"), control: "complexTypes" }],
+	    	["vcl/ui/Tab", { text: locale("-/Group.plural"), control: "groupsl" }],
+	    	["vcl/ui/Tab", { text: locale("-/SimpleType.plural"), control: "simpleTypes" }],
+	    	["vcl/ui/Tab", { text: locale("-/AttributeGroup.plural"), control: "attributeGroups" }]
+	    ]],
+	    [("#console"), { visible: false }],
+	    ["vcl/ui/List", ("imports"), { autoColumns: true, source: "imps", visible: false, onDblClick: onDblClick }],
+	    ["vcl/ui/List", ("allstars"), { autoColumns: true, source: "stars", visible: false, onDblClick: onDblClick }],
+	    ["vcl/ui/List", ("attributes"), { autoColumns: true, source: "attrs", visible: false, onDblClick: onDblClick }],
+	    ["vcl/ui/List", ("elements"), { autoColumns: true, source: "elems", visible: false, onDblClick: onDblClick }],
+	    ["vcl/ui/List", ("complexTypes"), { autoColumns: true, source: "ctypes", visible: false, onDblClick: onDblClick }],
+	    ["vcl/ui/List", ("groupsl"), { autoColumns: true, source: "groups", visible: false, onDblClick: onDblClick }],
+	    ["vcl/ui/List", ("attributeGroups"), { autoColumns: true, source: "agroups", visible: false, onDblClick: onDblClick }],
+	    ["vcl/ui/List", ("simpleTypes"), { autoColumns: true, source: "stypes", visible: false, onDblClick: onDblClick }]
+    ]]
 
-]);
+]];
