@@ -19,18 +19,18 @@ function onChange() {
 	// 971
 	// 1027
 	
-	["#toggle_filters", { state: true }],
+	// ["#toggle_filters", { state: true }],
 	
 	["#q", { onChange: onChange }],
 	
-	[("#filters"), [
-		["Input", ("filter"), { 
-			classes: "important",
-			css: { "&.important.important": "width: 100%; padding: 4px 6px; margin-top: 2px; margin-bottom: 2px;" },
-			placeholder: "(⌥+F)",
-			onChange: onChange
-		}]
-	]],
+	// [("#filters"), [
+	// 	["Input", ("filter"), { 
+	// 		classes: "important",
+	// 		css: { "&.important.important": "width: 100%; padding: 4px 6px; margin-top: 2px; margin-bottom: 2px;" },
+	// 		placeholder: "(⌥+F)",
+	// 		onChange: onChange
+	// 	}]
+	// ]],
 
 	["Array", "array", {
 		onLoad() {

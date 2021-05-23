@@ -1,6 +1,7 @@
 "use js, vcl/Component, blocks/Blocks";
 
 var instantiate = require("blocks/Blocks").instantiate;
+var dbName = req("vcl/Component").storageDB.name;
 
 ["Container", {}, [
 	
@@ -24,10 +25,8 @@ var instantiate = require("blocks/Blocks").instantiate;
 	
 	["Tabs", { _align: "bottom", _classes: "bottom" }, [
 
-		
-
-		["Tab<devtools/pouchdb/AllDocs>", (req("vcl/Component").storageDB.name), {
-			text: req("vcl/Component").storageDB.name,
+		["Tab<devtools/pouchdb/AllDocs>", (dbName), {
+			text: dbName,
 			selected: true
 		}],
 		
@@ -35,7 +34,6 @@ var instantiate = require("blocks/Blocks").instantiate;
 		// 	text: "Apps-va_objects",
 		// 	selected: true
 		// }],
-		
 		// ["Tab<devtools/pouchdb/AllDocs>", ("code-va_objects"), {
 		// 	text: "code-va_objects",
 		// 	// selected: true,

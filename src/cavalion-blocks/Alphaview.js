@@ -32,7 +32,7 @@ var css = {
 	"background": "#f0f0f0",
 	"#bar": "text-align: center;",
 	"#bar > *": "margin-right:5px;",
-	"#bar input": "font-size:12pt;width:300px;max-width:50%; border-radius: 5px; border-width: 1px; padding: 2px 4px; border-color: #f0f0f0;",
+	"#bar input": "font-size:12pt;width:50%; border-radius: 5px; border-width: 1px; padding: 2px 4px; border-color: #f0f0f0;",
 	"#bar #left": "float:left;", "#bar #right": "float:right;"
 };
 
@@ -540,10 +540,7 @@ var nameOf = (_) => _ instanceof Array ? js.sf("%d items", _.length) : js.nameOf
 						this.nextTick(() => this.ud("#array").setArray(value));
 					}
 				}
-			}],
-			["Button", { action: "map" }],
-			["Button", { action: "map-xy" }],
-			["Button", { action: "csv" }]
+			}]
 		]],
 		["Input", ("q"), { 
 			placeholder: "Filter", 
@@ -563,6 +560,11 @@ var nameOf = (_) => _ instanceof Array ? js.sf("%d items", _.length) : js.nameOf
 		}],
 		["Group", ("right"), [
 			// ["Button", { action: "view-source" }]
+			["Group", "export", [
+				["Button", { action: "map" }],
+				["Button", { action: "map-xy" }],
+				["Button", { action: "csv" }]
+			]],
 			["Element", ("list-status"), { 
 				content: "-",
 				onRender() {

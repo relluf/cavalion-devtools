@@ -4,11 +4,14 @@ var PouchDB = require("pouchdb");
 var Source = require("data/Source");
 
 ["veldapps/ListOf", { 
-	onLoad() {
-		this.vars("db", new PouchDB(this.getSpecializer() || "va_objects"));
-		this.scope().refresh.execute();
-	},
 	handlers: {
+		onLoad() {
+			this.scope().refresh.setEnabled(false);
+			this.vars("db", new PouchDB(this.getSpecializer() || "va_objects"));
+			this.scope().refresh.setEnabled(true);
+			this.scope().refresh.execute();
+		},
+	
 		"#status onRender": function() {
 	    	var scope = this.scope();
 	    	var active = scope.docs.isActive();
