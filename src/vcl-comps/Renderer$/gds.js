@@ -1706,7 +1706,8 @@ var handlers = {
 		// this.up().print("stages", vars.stages);
 		// this.up().print("vars", vars);
 		
-		this.up().print("document", { stages: vars.stages, variables: vars });
+		this.print("parsed", { stages: vars.stages, variables: vars });
+		// this.up().print("gds", { stages: vars.stages, variables: vars });
 
 		this.ud("#array-measurements").setArray(vars.measurements);
 		this.ud("#array-variables").setArray(vars.headers.concat(vars.parameters));
