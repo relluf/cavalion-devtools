@@ -64,6 +64,7 @@ var getKey = (tab) => {
         var tab = this.up("vcl/ui/Tab");
         var scope = this.getScope();
         
+/*- refactor this somehow into the specific Editors */
         var ExtensionToMode = {
             "html": "html",
             "css": "css",
@@ -83,7 +84,8 @@ var getKey = (tab) => {
             "xsd": "xml",
             "xml": "xml",
             "xsl": "xml",
-            "jsp": "jsp"
+            "jsp": "jsp",
+            "openapi": "yaml"
         };
 
         var ed = scope.ace.getEditor();
@@ -438,7 +440,7 @@ var getKey = (tab) => {
         				value.controls = root._controls;
         				value = Object.create(value, { name: { value: hash } });
             		} else {
-	                	value = eval_ ? eval_(text) : eval(text);
+	                	value = eval_ ? eval_(text, this) : this.vars(["root"]) || eval(text);
             		}
             		if(value !== undefined) printer.print(name, value);
             	}.apply(this, [thisRequire]));
