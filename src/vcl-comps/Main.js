@@ -15,7 +15,7 @@ var FormContainer = require("vcl/ui/FormContainer");
 // FIXME move to a better place
 function title() {
 	var url = app.vars("url");
-	return js.sf("%s", url.getParamValue("title") || url.getParamValue("") || "cavalion-code");
+	return js.sf("%s", url.getParamValue("title") || url.getParamValue("") || url.getPath().split("/")[0] || "cavalion-code");
 }
 function title_css() {
 	var url = app.vars("url");
@@ -680,6 +680,14 @@ function focusSidebar(ws, sidebar) {
     [("vcl/ui/Tabs"), "workspaces-tabs", {
         align: "bottom",
         classes: "bottom",
+        onMouseDown(evt) {
+        	this.vars("mousedown", Date.now());
+        },
+        onMouseUp(evt) {
+        	if(Date.now() - this.removeVar("mousedown") > 400) {
+        		this.getSelectedControl(1).setSelected(false);
+        	}
+        },
         onDblClick: function(evt) { 
         	this.udown("#workspace-prompt-new").execute(evt);
         },
