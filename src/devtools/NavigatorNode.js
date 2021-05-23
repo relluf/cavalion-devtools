@@ -39,7 +39,7 @@ define(function(require) {
                 var item = this.getVar("resource") || {
                     type: ""
                 };
-                r.push(item.type.indexOf("Folder") === -1 ? "file" : "folder");
+                r.push((item.type||"").indexOf("Folder") === -1 ? "file" : "folder");
                 return r;
             },
             render: function () {
@@ -76,6 +76,12 @@ define(function(require) {
             	get: Function,
             	set: Function
             }
+        },
+        statics: {
+        	icons: {
+        		file: "https://image.flaticon.com/icons/svg/660/660720.svg",
+        		folder: "https://image.flaticon.com/icons/svg/148/148953.svg"
+        	}
         }
     }));
 });
