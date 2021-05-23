@@ -3,6 +3,9 @@
 var Method = require("js/Method");
 var Resources = require("devtools/Resources");
 var NavigatorNode = require("devtools/NavigatorNode");
+var Component = require("vcl/Component");
+
+var Storage_uri = (uri) => js.sf("pouchdb://%s/%s", Component.storageDB.name, uri);
 
 var needsParent = ["src", "build", "vcl-comps", "css", "images", "img", "lib", "pages", "cavalion-blocks"];
 function getNodeText(uri, usedNames) {
@@ -160,6 +163,8 @@ function onNodesNeeded(parent) {
 
                     if (list.isVisible()) {
                         list.dispatch(name, evt);
+                    } else {
+                    	scope.tree.dispatch(name, evt);
                     }
                     evt.preventDefault();
                 }
@@ -223,9 +228,14 @@ function onNodesNeeded(parent) {
 
         scope.tree.override({
         	refresh: function() {
-        		this._controls.forEach(function(node) {
-        			node.reloadChildNodes();
+        		var cascade = (arr) => arr.forEach(function(node) {
+        			if(node.hasClass("cascade-refresh")) {
+        				cascade(node._controls || []);
+        			} else {
+        				node.reloadChildNodes();
+        			}
         		});
+        		cascade(this._selection.length ? this._selection : this._controls || []);
         	}
         });
 
@@ -408,8 +418,10 @@ function onNodesNeeded(parent) {
 //             }
         }]
     ]],
+    // [("vcl/ui/Bar"), "shortcut-bar", { content: "shortcuts go here" }],
     [("vcl/ui/Tree"), "tree", {
         css: {
+        	// TODO move this to app scope
 			".{Node}.root-invisible": {
 				"> *:not(ol)": "display:none;",
 				"> ol": "padding-left: 0;"
@@ -445,11 +457,13 @@ function onNodesNeeded(parent) {
                 },
                 "&.folder >.icon": {
                     // "background-image": "url(https://www.svgrepo.com/show/122150/folder.svg)",
-                    "background-image": "url(https://image.flaticon.com/icons/svg/148/148953.svg)"
+                    // "background-image": "url(https://image.flaticon.com/icons/svg/148/148953.svg)"
+                    "background-image": `url(${NavigatorNode.icons.folder})`
                 },
                 "&.file >.icon": {
                 	// "background-image": "url(https://image.flaticon.com/icons/svg/148/148964.svg)",
-                    "background-image": "url(https://image.flaticon.com/icons/svg/660/660720.svg)",
+                    // "background-image": "url(https://image.flaticon.com/icons/svg/660/660720.svg)",
+                    "background-image": `url(${NavigatorNode.icons.file})`
                 },
                 // ">.icon": {
                 //     width: "30px",
@@ -585,6 +599,24 @@ function onNodesNeeded(parent) {
                 }, 2000);
             }
         },
+		onNodesNeeded: function(parent) { 
+			var node = parent, pname = "_onChildNodesNeeded";
+			while(node && !node.hasOwnProperty(pname)) {
+				node = node._parent;
+			}
+			
+			if(node === parent) return;
+			
+			if(node && node.hasOwnProperty(pname)) {
+				return node.fire(pname.substring(1), [parent]);
+			}
+		},
+		onNodeRender(evt) {
+			var v;
+			if((v = evt.target.vars("resource.uri"))) {
+				this.print("rendering resource", v)
+			}
+		},
         _onNodesNeeded: function (parent) {
             var owner = this._owner;
             var root = parent === null;
@@ -677,34 +709,143 @@ console.log(node, js.sf("expandable: %s", item.expandable));
 	                return res;
 	            });
             return r;
-        },
-		onNodesNeeded: function(parent) { 
-			var node = parent, pname = "_onChildNodesNeeded";
-			while(node && !node.hasOwnProperty(pname)) {
-				node = node._parent;
-			}
-			
-			if(node === parent) return;
-			
-			if(node && node.hasOwnProperty(pname)) {
-				return node.fire(pname.substring(1), [parent]);
-			}
-		}
+        }
     }, [
     	// $(("devtools/NavigatorNode"), "fs", {
 	   	// 	vars: { resource: { type: "Folder", uri: "", name: js.sf("%s/fs", window.location.host) } },
     	// },
-    	[("devtools/NavigatorNode"), "Component_storage", {
+    	// [("devtools/NavigatorNode"), "Tools", {
+	   	// 	vars: { 
+	   	// 		resource: { 
+	   	// 			type: "Folder", 
+	   	// 			uri: "Library/cavalion-blocks/tools", 
+	   	// 			name: "Tools"
+	   	// 		}
+	   	// 	},
+	    //     onNodesNeeded: onNodesNeeded
+    	// }],
+    	[("devtools/NavigatorNode"), "Tools_devtools", {
+	        onNodesNeeded: onNodesNeeded,
+    		// classes: "seperator top",
+	   		vars: { 
+	   			resource: { 
+	   				name: "Tools", type: "Folder", 
+	   				uri: "Library/cavalion-blocks/tools/devtools", 
+	   			}
+	   		},
+    	}],
+    	[("vcl/ui/Node"), "Overrides", { 
+    		classes: "seperator top cascade-refresh",
+    		text: "Overrides",
+    		icon: NavigatorNode.icons.folder
+    	}, [
+	    	[("devtools/NavigatorNode"), "devtools_Workspaces", {
+	    		expandable: true,
+		   		vars: { 
+		   			resource: { 
+		   				type: "Folder", expandable: true,
+		   				uri: Storage_uri("vcl-comps/devtools/Workspace$"),
+		   				name: "Workspaces"
+		   			}
+		   		},
+		        onNodesNeeded: onNodesNeeded
+	    	}],
+	    	[("devtools/NavigatorNode"), "devtools_Editors", {
+	    		expandable: true,
+		   		vars: { 
+		   			resource: { 
+		   				type: "Folder", expandable: true,
+		   				uri: Storage_uri("vcl-comps/devtools/Editor$"),
+		   				name: "Editors"
+		   			}
+		   		},
+		        onNodesNeeded: onNodesNeeded
+	    	}],
+	    	[("devtools/NavigatorNode"), "devtools_Main", {
+	    		expandable: true,
+		   		vars: { 
+		   			resource: { 
+		   				type: "Folder", expandable: true,
+		   				uri: Storage_uri("vcl-comps/devtools/Main$"),
+		   				name: "Main"
+		   			}
+		   		},
+		        onNodesNeeded: onNodesNeeded
+	    	}],
+	    	[("devtools/NavigatorNode"), "cavalion-blocks", {
+	    		classes: "seperator top",
+		   		vars: { 
+		   			resource: { 
+		   				type: "Folder", expandable: true,
+		   				uri: Storage_uri("cavalion-blocks"),
+		   				name: "cavalion-blocks"
+		   			}
+		   		},
+		        onNodesNeeded: onNodesNeeded
+	    	}],
+	    	[("devtools/NavigatorNode"), "vcl-comps", {
+		   		vars: { 
+		   			resource: { 
+		   				type: "Folder", expandable: true,
+		   				uri: Storage_uri("vcl-comps"),
+		   				name: "vcl-comps"
+		   			}
+		   		},
+		        onNodesNeeded: onNodesNeeded
+	    	}],
+    		
+    	]],
+    	[("vcl/ui/Node"), "Prototypes", {
+    		classes: "cascade-refresh",
+    		text: "Prototypes",
+    		icon: NavigatorNode.icons.folder,
+    		onLoad() {
+    			this.vars("static-nodes", [].concat(this._controls));
+    		}
+    	}, [
+	    	[("devtools/NavigatorNode"), "cavalion-blocks", {
+		   		vars: { 
+		   			resource: { 
+		   				type: "Folder", expandable: true,
+		   				uri: "Library/cavalion-blocks/prototypes",
+		   				name: "cavalion-blocks/prototypes"
+		   			}
+		   		},
+		        onNodesNeeded: onNodesNeeded
+	    	}],
+	    	[("devtools/NavigatorNode"), "vcl-comps", {
+		   		vars: { 
+		   			resource: { 
+		   				type: "Folder", expandable: true,
+		   				uri: "Library/vcl-comps/prototypes",
+		   				name: "vcl-comps"
+		   			}
+		   		},
+		        onNodesNeeded: onNodesNeeded
+	    	}]
+    	]],
+    	[("devtools/NavigatorNode"), "Library", {
 	   		vars: { 
 	   			resource: { 
 	   				type: "Folder", 
-	   				uri: js.sf("pouchdb://%s/", require("vcl/Component").storageDB.name), 
-	   				name: js.sf("Resources", require("vcl/Component").storageDB.name), 
+	   				uri: "Library", 
+	   				name: "Library"
+	   			}
+	   		},
+	        onNodesNeeded: onNodesNeeded
+    	}],
+    	[("devtools/NavigatorNode"), "Component_storage", {
+    		// classes: "seperator",
+	        onNodesNeeded: onNodesNeeded,
+	   		vars: { 
+	   			resource: { 
+	   				name: "Storage",
+	   				uri: Storage_uri(""), 
+	   				type: "Folder"
 	   			}
 	   		},
 	   		// classes: "root-invisible seperator top",
     		// expanded: true,
-	        onNodesNeeded: onNodesNeeded,
 	        // onNodeCreated() {
 	        // 	// var fs = this.ud("#fs"), rname = this.vars("resource.name");
 	        // 	// this.setParent(fs);
@@ -719,42 +860,20 @@ console.log(node, js.sf("expandable: %s", item.expandable));
 	        // 	// }, 2000);
         	// 	this.removeClass("root-invisible");
 	        // }
-    	}],
-    	[("devtools/NavigatorNode"), "Tools", {
-	   		vars: { 
-	   			resource: { 
-	   				type: "Folder", 
-	   				uri: "Library/cavalion-blocks/tools", 
-	   				name: "Tools"
-	   			}
-	   		},
-	        onNodesNeeded: onNodesNeeded
-    	}],
-    	[("devtools/NavigatorNode"), "Tools_devtools", {
-    		classes: "seperator top",
-	   		vars: { 
-	   			resource: { 
-	   				type: "Folder", 
-	   				uri: "Library/cavalion-blocks/tools/devtools", 
-	   				name: "Tools-devtools"
-	   			}
-	   		},
-	   		visible: false,
-	        onNodesNeeded: onNodesNeeded
-    	}],
+    	}], 
     	[("devtools/NavigatorNode"), "fs", {
+	        onNodesNeeded: onNodesNeeded,
 	   		vars: { 
 	   			resource: { 
-	   				type: "Folder", uri: "/", 
-	   				name: js.sf("Server Resources") 
-	   			} 
+	   				name: js.sf("Server Resources"),
+	   				type: "Folder", uri: "/"
+	   			}
 	   		},
     		classes: "root-invisible", // classes: "root",
     		expanded: true,
     		onLoad: function() {
     			this.vars("static-nodes", [].concat(this._controls));
-    		},
-	        onNodesNeeded: onNodesNeeded
+    		}
     	}],
     	[("devtools/NavigatorNode"), "DragDropHandler_files", {
 	   		vars: { 
