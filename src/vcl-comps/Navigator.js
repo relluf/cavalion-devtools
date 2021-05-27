@@ -818,7 +818,7 @@ console.log(node, js.sf("expandable: %s", item.expandable));
 		   			resource: { 
 		   				type: "Folder", expandable: true,
 		   				uri: "Library/vcl-comps/prototypes",
-		   				name: "vcl-comps"
+		   				name: "vcl-comps/prototypes"
 		   			}
 		   		},
 		        onNodesNeeded: onNodesNeeded
