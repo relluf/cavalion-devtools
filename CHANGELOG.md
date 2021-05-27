@@ -1,9 +1,18 @@
+### 2021/05/26 - 1.0.45
+* 
+
+### 2021/05/23 - 1.0.44
+
+* Navigator: Adding `cascade-refresh` feature
+* Allow for workspaces-tabs to have no tab selected (lonpress/click)
+* Updating YAML editor & some cosmetic changes were commmited
+* NavigatorNode: Defining/centralizing folder and file icon
+
 ### 2021/05/14 - 1.0.43
 
 * Better and more intuitive link handling (Editor<md>)
 * Cleaning up, refactoring, SPN-feedback integrations `#VA-20201218-3`
 * Even more lazy rendering (Renderer<gds>)
-
 
 ### 2021/04/17 - 1.0.42
 
