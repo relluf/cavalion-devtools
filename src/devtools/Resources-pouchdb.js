@@ -23,6 +23,9 @@ define(function(require) {
 		}
 		return dbs[name];
 	}
+	function now() {
+		return (new Date()).toISOString();
+	}
 
 	return {
 		dbs: dbs,
@@ -67,6 +70,9 @@ define(function(require) {
 		},
 		create: function(uri, resource) {
 			uri = uri.split("/");
+			if(!resource.created) {
+				resource.created = now();
+			}
 			return getDb(uri.shift()).put({ 
 				_id: uri.join("/"), 
 				'devtools:resource': resource
@@ -118,7 +124,7 @@ define(function(require) {
 			return getDb(dbName).put({ 
 				_id: uri.join("/"), 
 				_rev: resource.revision,
-				'devtools:resource': { text: resource.text }
+				'devtools:resource': { text: resource.text, modified: now() }
 			}).then(function(res) {
 				// console.log("updated", res);
 				resource.revision = res.rev;
