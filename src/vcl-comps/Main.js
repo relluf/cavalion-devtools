@@ -65,6 +65,9 @@ function focusSidebar(ws, sidebar) {
 		}
 	}
 }
+
+var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c.hashCode();
+
 (function (styles) {
 	/* make sure styles.less overrides libs */
 	var node = styles[0];
@@ -340,6 +343,25 @@ function focusSidebar(ws, sidebar) {
             return tab;
         }
     }],
+    
+    
+	["vcl/Action", ("⌘."), {
+		hotkey: "Meta+190",
+		on() {
+			var editor, ws;
+			if(Control.focused) {
+				// this.print(Control.focused);
+				editor = Control.focused.up("devtools/Editor<>");
+				ws = Control.focused.up("devtools/Workspace<>");
+				
+				if(editor && ws) {
+					ws.print(nameOf(this), editor.vars(["resource.uri"]));
+				}
+			}
+			(ws || this.app()).print(nameOf(this), Control.focused);
+		}
+	}],
+	
     
     [("vcl/Action"), "hide-workspace-tabs", {
     	onExecute() { 
