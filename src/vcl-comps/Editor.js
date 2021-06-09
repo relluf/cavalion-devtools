@@ -1,10 +1,32 @@
-"devtools/Resources, util/Xml, vcl/ui/Tab, ace/range, util/Event";
+"devtools/Resources, util/Xml, vcl/ui/Tab, ace/range, util/Event, ace/ext/modelist";
 
 /*- 
 	#evaluate.vars
 		.label
 		.eval(expr)
 */
+var ExtensionToMode = {
+            "html": "html",
+            "css": "css",
+            "scss": "scss",
+            "json": "json",
+            "geojson": "json",
+            "js": "javascript",
+            "jso": "javascript",
+            "blocks": "javascript",
+            "vcl": "javascript",
+            "ts": "typescript",
+            "md": "markdown",
+            "java": "java",
+            "jsx": "jsx",
+            "rdf": "xml",
+            "wsdl": "xml",
+            "xsd": "xml",
+            "xml": "xml",
+            "xsl": "xml",
+            "jsp": "jsp",
+            "openapi": "yaml"
+        };
 
 var Event_ = require("util/Event");
 var Resources = require("devtools/Resources");
@@ -65,28 +87,6 @@ var getKey = (tab) => {
         var scope = this.getScope();
         
 /*- refactor this somehow into the specific Editors */
-        var ExtensionToMode = {
-            "html": "html",
-            "css": "css",
-            "scss": "scss",
-            "json": "json",
-            "geojson": "json",
-            "js": "javascript",
-            "jso": "javascript",
-            "blocks": "javascript",
-            "vcl": "javascript",
-            "ts": "typescript",
-            "md": "markdown",
-            "java": "java",
-            "jsx": "jsx",
-            "rdf": "xml",
-            "wsdl": "xml",
-            "xsd": "xml",
-            "xml": "xml",
-            "xsl": "xml",
-            "jsp": "jsp",
-            "openapi": "yaml"
-        };
 
         var ed = scope.ace.getEditor();
         ed.setTheme("ace/theme/eclipse");
@@ -99,7 +99,8 @@ var getKey = (tab) => {
         var ext = name.split(".").pop();
         var session = ed.getSession();
 
-        var mode = "ace/mode/" + (ExtensionToMode[type || ext || this.getSpecializer()] || (type || ext || this.getSpecializer() || "js"));
+		var ace_mode = require("ace/ext/modelist").getModeForPath(resource.uri);
+        var mode = "ace/mode/" + (ace_mode ? ace_mode.name : ExtensionToMode[type || ext || this.getSpecializer()] || (type || ext || this.getSpecializer() || "js"));
         
         require([mode], 
         	function() { session.setMode(mode); }, 
