@@ -1,10 +1,16 @@
-### 2021/05/26 - 1.0.45
-* 
+### 2021/06/09 - 1.0.48
+
+* Publishing current version in favor af veldoffice.nl (`#VA-20201218-3`)
+
+
+### 2021/05/26 - 1.0.47
+* Introducing `devtools/Revisions` - hooking the Navigator
+* Introducing **⌘.** (Cmd+<dot>)
 
 ### 2021/05/23 - 1.0.44
 
 * Navigator: Adding `cascade-refresh` feature
-* Allow for workspaces-tabs to have no tab selected (lonpress/click)
+* Allow for workspaces-tabs to have no tab selected (longpress/click)
 * Updating YAML editor & some cosmetic changes were commmited
 * NavigatorNode: Defining/centralizing folder and file icon
 
