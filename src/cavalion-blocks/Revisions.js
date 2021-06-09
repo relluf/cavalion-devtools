@@ -40,4 +40,16 @@ var Resources = require("devtools/Resources-pouchdb");
 	}
 	
 	
-}, []];
+}, [
+
+	["#list", {
+		onColumnRenderCell(cell, value, column, row, source, orgValue) {
+			if(column._attribute === "savedAt_") {
+				cell.textContent = (new Date(value)).toISOString();
+				column.autoWidth(cell.textContent, cell);
+				return false;
+			}
+		}
+	}]	
+	
+]];
