@@ -1,3 +1,7 @@
+### 2021/06/13 - 1.0.49
+
+* Developing Renderer<gds> in favor of `#VA-20201218-3`
+
 ### 2021/06/09 - 1.0.48
 
 * Publishing current version in favor af veldoffice.nl (`#VA-20201218-3`)
