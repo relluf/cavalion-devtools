@@ -1,12 +1,75 @@
 "use js, vcl/ui/Button, vcl/ui/Tab, papaparse/papaparse, amcharts, amcharts.serial, amcharts.xy, lib/node_modules/regression/dist/regression";
 "use strict";
 
-/*- #VA-20201218-3 */
+/*------- #VA-20201218-3 ---------
+
+### 2021/06/14 
+- stage.update() situation needs some attention 
+- koppejan should be made lazy / on-demand for better UX
+*/
+	
+function bjerrum_e_variables(vars) {
+	var onder = js.get("overrides.bjerrum_e.label-onder", vars) || "1-2";
+	var boven = js.get("overrides.bjerrum_e.label-boven", vars) || "3-4";
+	
+	var o = js.get("overrides.bjerrum_e.onder", vars) || "nog te bepalen";
+	var b = js.get("overrides.bjerrum_e.boven", vars) || "nog te bepalen";
+
+	return [
+		{ name: js.sf("Trap %s", onder), unit: "", symbol: js.sf("Cc(%s)", onder), value: o },
+		{ name: js.sf("Trap %s", boven), unit: "", symbol: js.sf("Cr(%s)", boven), value: o },
+	];
+	
+}
+function bjerrum_r_variables(vars) {
+	var onder = js.get("overrides.bjerrum_r.label-onder", vars) || "1-2";
+	var boven = js.get("overrides.bjerrum_r.label-boven", vars) || "3-4";
+	
+	var o = js.get("overrides.bjerrum_r.onder", vars) || "nog te bepalen";
+	var b = js.get("overrides.bjerrum_r.boven", vars) || "nog te bepalen";
+
+	return [
+		{ name: js.sf("Trap %s", onder), unit: "", symbol: js.sf("CR(%s)", onder), value: o },
+		{ name: js.sf("Trap %s", boven), unit: "", symbol: js.sf("RR(%s)", boven), value: o },
+	];
+	
+}
+function isotachen_variables(vars) {
+	var onder = js.get("overrides.isotachen.label-onder", vars) || "1-2";
+	var boven = js.get("overrides.isotachen.label-boven", vars) || "3-4";
+	
+	var o = js.get("overrides.isotachen.onder", vars) || "nog te bepalen";
+	var b = js.get("overrides.isotachen.boven", vars) || "nog te bepalen";
+
+	return [
+		{ name: "a onder pg", unit: "", symbol: js.sf("a(%s)", onder), value: o },
+		{ name: "b boven pg", unit: "", symbol: js.sf("b(%s)", boven), value: o }
+	];
+}
+function koppejan_variables(vars) {
+	var onder = js.get("overrides.koppejan.label-onder", vars) || "1-2";
+	var boven = js.get("overrides.koppejan.label-boven", vars) || "3-4";
+	
+	var o = js.get("overrides.koppejan.onder", vars) || "nog te bepalen";
+	var b = js.get("overrides.koppejan.boven", vars) || "nog te bepalen";
+
+	return [
+		{ name: js.sf("C Trap %s", onder), unit: "", symbol: onder, value: o.C },
+		{ name: js.sf("C10 Trap %s", onder), unit: "", symbol: onder, value: o.C10 },
+		{ name: js.sf("Cp Trap %s", onder), unit: "", symbol: onder, value: o.Cp },
+		{ name: js.sf("Cs Trap %s", onder), unit: "", symbol: onder, value: o.Cs },
+		{ name: js.sf("C' Trap %s", boven), unit: "", symbol: boven, value: o.C },
+		{ name: js.sf("C10' Trap %s", boven), unit: "", symbol: boven, value: o.C10 },
+		{ name: js.sf("Cp' Trap %s", boven), unit: "", symbol: boven, value: o.Cp },
+		{ name: js.sf("Cs' Trap %s", boven), unit: "", symbol: boven, value: o.Cs }
+	];
+}
 
 var regression = require("lib/node_modules/regression/dist/regression");
 var js = require("js");
 var Button = require("vcl/ui/Button");
 var Tab = require("vcl/ui/Tab");
+var Control = require("vcl/Control");
 
 var key_s = "Stage Number";
 var key_t = "Time since start of stage (s)";
@@ -239,9 +302,11 @@ var handlers = {
 					if(current !== undefined) {
 						this.ud("#modified").setState(true);
 					}	
+				} else {
+					this.print("ignore onChange");
 				}
 			}
-		}, 200);
+		}, 750);
 	},
 
 	"#graph_Casagrande cursor-moved": cursorMoved,
@@ -250,6 +315,7 @@ var handlers = {
 	"#graph_Bjerrum_r cursor-moved": cursorMoved,
 	"#graph_Isotachen cursor-moved": cursorMoved,
 	"#graph_Isotachen_c cursor-moved": cursorMoved,
+	"#graph_Koppejan cursor-moved": cursorMoved,
 
 	"#graph_Casagrande onRender"() {
 		this.setTimeout("render", () => {
@@ -404,7 +470,6 @@ var handlers = {
 			var points = vars.bjerrum.points_e;
 			var LLi_e = vars.bjerrum.LLi_e;
 			var trendLines = [{
-			}, {
 				initialXValue: LLi_e.sN1N2.x, initialValue: LLi_e.sN1N2.y,
 				finalXValue: LLi_e.sN1N2.x, finalValue: 100,
 				lineColor: "red", lineAlpha: 0.25,
@@ -601,7 +666,7 @@ var handlers = {
 			var vars = this.vars(["variables"]);
 			var series = [{ 
 				title: "Zetting [mm]", xAxis: "x1", yAxis: "y1",
-				xField: "daysT", yField: "y"
+				xField: "daysT", yField: "y_koppejan"
 			}, {
 				title: "Zetting 1dags [mm]", xAxis: "x2", yAxis: "y1",
 				xField: "x2", yField: "ez1"
@@ -631,10 +696,10 @@ var handlers = {
 				}, {
 			        id: "y2", position: "right", reversed: true, minimum: 0,
 			        synchronizeWith: "y1", synchronizationMultiplier: 1,
-					// guides: [{
-					// 	value: LLi_1.sN1N2.y, inside: true, lineAlpha: 0,
-					// 	label: js.sf("%.3f %%", LLi_1.sN1N2.y / vars.Hi * 100),
-					// }],
+					guides: [{
+						value: LLi_1.sN1N2.y, inside: true, lineAlpha: 0,
+						label: js.sf("%.3f %%", LLi_1.sN1N2.y / vars.Hi * 100),
+					}],
 				}, {
 					id: "x1", title: "Duur [dagen] → ", position: "bottom", 
 					logarithmic: true, minimum: 0.01, maximum: 1000
@@ -642,10 +707,10 @@ var handlers = {
 					id: "x2", _title: "Belasting [kPa] → ", position: "top",
 					synchronizeWith: "x1", synchronizationMultiplier: 1,
 					logarithmic: true, minimum: 0.01,
-					// guides: [{
-					// 	value: LLi_1.sN1N2.x, inside: true, lineAlpha: 0,
-					// 	label: js.sf("%.3f kPa", LLi_1.sN1N2.x)
-					// }]
+					guides: [{
+						value: LLi_1.sN1N2.x, inside: true, lineAlpha: 0,
+						label: js.sf("%.3f kPa", LLi_1.sN1N2.x)
+					}]
 				}],
 				trendLines: trendLines
 			});
@@ -787,7 +852,7 @@ function setup_variables_1(vars, headerValue) {
 	vars.G = 9.81 * 1000;
 	vars.pw = 1.00; //(assumed value; note that water density may vary due to temperature)
 /*- read variables from header information */
-	vars.ps = headerValue("Specific Gravity");
+	vars.ps = headerValue("Specific Gravity (kN");
 	vars.H = headerValue("Initial Height (mm)");
 	vars.D = headerValue("Initial Diameter (mm)");
 	vars.m = headerValue("Initial mass (g)");
@@ -909,7 +974,6 @@ function setup_stages_1(vars) {
 		stage.EvH = stage.measurements[stage.measurements.length - 1].EvH;
 	});
 }
-
 function setup_casagrande(vars) {
 	var x = "minutes", y = "y_casagrande";
 /*- setup for minutes and recalculate derivatives */
@@ -1458,7 +1522,7 @@ function setup_koppejan(vars) {
 	/*- initialize y attribute */
 	vars.measurements.forEach(m => {
 		m.x2 = m[key_as];
-		m.y = m[key_d]; // reset because of Taylor/CG
+		m.y = (m.y_koppejan = m[key_d]); // reset because of Taylor/CG
 		m.trap = "Trap-" + m.stage;
 	});
 	
@@ -1548,98 +1612,146 @@ function setup_koppejan(vars) {
 	});
 
 	// calculate "geëxtrapoleerde zetting"
-	var trendLines = slopes.map((S, i, slopes) => {
 
-		function extrp(n, days) {
-			/* 2021/04/27 SPN:
-			    - extrp4(t-3) 
-				    = np4	+ rc1 log((t-0) / (t-1)) 
-				    		+ rc2 log((t-1) / (t-2)) 
-				    		+ rc3 log((t-2) / (t-3)) 
-				    		+ rc4 log((t-3))
-				- extrp3(t-2) 
-					= np3	+ rc1 log((t-0) / (t-1)) 
-							+ rc2 log((t-1) / (t-2))
-							+ rc3 log((t-2))
-				- extrp2(t-1)
-					= np2	+ rc1 log((t-0) / (t-1)) 
-							+ rc2 log((t-1))
-				- extrp1(t-0)
-					= np1	+ rc1 log((t-0))
-			 * CUR pagina 41 
-				= npn	+ rc1 * [log (t) - log (t-t1)]
-						+ rc2 * [log (t-t1) - log (t-t2)]
-						+ .... 
-						+ rc(n-1) * [log (t-t(n-2)) - log (t-t(n-1))]
-						+ rc(n) *    log (t-t(n-1))
-			*/
-			var ez = S.np; // S is the current slope
-			if(n >= 1) {
-				if(n) days += (n - 1); // TODO avoids dividing by 0
-				slopes.slice(0, n - 1).forEach((slope, i) =>  // loops through previous slopes/stages
-					ez += slope.rc * (Math.log10( ((days - i) / (days - (i + 1)) )))
-				);
+	function calc_KJ() {
+		var LLi_1, points;	
+		var trendLines = slopes.map((S, i, slopes) => {
+	
+			function extrp(n, days) {
+				/* 2021/04/27 SPN:
+				    - extrp4(t-3) 
+					    = np4	+ rc1 log((t-0) / (t-1)) 
+					    		+ rc2 log((t-1) / (t-2)) 
+					    		+ rc3 log((t-2) / (t-3)) 
+					    		+ rc4 log((t-3))
+					- extrp3(t-2) 
+						= np3	+ rc1 log((t-0) / (t-1)) 
+								+ rc2 log((t-1) / (t-2))
+								+ rc3 log((t-2))
+					- extrp2(t-1)
+						= np2	+ rc1 log((t-0) / (t-1)) 
+								+ rc2 log((t-1))
+					- extrp1(t-0)
+						= np1	+ rc1 log((t-0))
+				 * CUR pagina 41 
+					= npn	+ rc1 * [log (t) - log (t-t1)]
+							+ rc2 * [log (t-t1) - log (t-t2)]
+							+ .... 
+							+ rc(n-1) * [log (t-t(n-2)) - log (t-t(n-1))]
+							+ rc(n) *    log (t-t(n-1))
+				*/
+				var ez = S.np; // S is the current slope
+				if(n >= 1) {
+					if(n) days += (n - 1); // TODO avoids dividing by 0
+					slopes.slice(0, n - 1).forEach((slope, i) =>  // loops through previous slopes/stages
+						ez += slope.rc * (Math.log10( ((days - i) / (days - (i + 1)) )))
+					);
+				}
+				return (ez += S.rc * Math.log10(days));
 			}
-			return (ez += S.rc * Math.log10(days));
-		}
-
-		serie2[i].ez1 = extrp(i, 1);
-		serie2[i].ez10 = extrp(i, 10);
-		serie2[i].ez100 = extrp(i, 100);
-		serie2[i].ez1000 = extrp(i, 1000);
-		serie2[i].ez10000 = extrp(i, 10000);
-		
-		// serie2[i].vz1 = S.np + S.rc * Math.log10(1);
-		// serie2[i].vz10 = S.np + S.rc * Math.log10(10);
-		// serie2[i].vz100 = S.np + S.rc * Math.log10(100);
-		// serie2[i].vz1000 = S.np + S.rc * Math.log10(1000);
-		// serie2[i].vz10000 = S.np + S.rc * Math.log10(10000);
-		
-		return [{
-			initialXValue: 1, initialValue: S.np,
-			finalXValue: 20, finalValue: S.np + S.rc * Math.log10(20),
-			lineAlpha: 1, lineColor: "black", dashLength: 3
-		}];
-	});
 	
-	var LLi_1 = log_line_intersect(
-			serie2[0].x2, serie2[0].y, 
-			serie2[1].x2, serie2[1].y, 
-			serie2[2].x2, serie2[2].y, 
-			serie2[3].x2, serie2[3].y);
+			serie2[i].ez1 = extrp(i, 1);
+			serie2[i].ez10 = extrp(i, 10);
+			serie2[i].ez100 = extrp(i, 100);
+			serie2[i].ez1000 = extrp(i, 1000);
+			serie2[i].ez10000 = extrp(i, 10000);
 			
-	vars.koppejan = {
-		serie2: serie2,
-		slopes: slopes,
-		LLi_1: LLi_1,
-		trendLines: trendLines.flat(),
-		regression: regression
-	};
+			// serie2[i].vz1 = S.np + S.rc * Math.log10(1);
+			// serie2[i].vz10 = S.np + S.rc * Math.log10(10);
+			// serie2[i].vz100 = S.np + S.rc * Math.log10(100);
+			// serie2[i].vz1000 = S.np + S.rc * Math.log10(1000);
+			// serie2[i].vz10000 = S.np + S.rc * Math.log10(10000);
+			
+			return [{
+				initialXValue: 1, initialValue: S.np,
+				finalXValue: 20, finalValue: S.np + S.rc * Math.log10(20),
+				lineAlpha: 1, lineColor: "black", dashLength: 3
+			}];
+		});
+		if((points = js.get("overrides.koppejan.points_pg", vars))) {
+			points.forEach(m => { m.y_koppejan = m.y; });
+			LLi_1 = log_line_intersect(
+					points[0].x, points[0].y_koppejan, points[1].x, points[1].y_koppejan, 
+					points[2].x, points[2].y_koppejan, points[3].x, points[3].y_koppejan);
+		} else {
+			serie2.forEach(m => m.y = (m.y_koppejan = m[key_d])); // reset
+			LLi_1 = log_line_intersect(
+					serie2[0].x2, serie2[0].y_koppejan, serie2[1].x2, serie2[1].y_koppejan, 
+					serie2[2].x2, serie2[2].y_koppejan, serie2[3].x2, serie2[3].y_koppejan);
+		}
+		
+		if(points) {
+			trendLines.push({
+				initialXValue: points[0].x, initialValue: points[0].y,
+				finalXValue: points[1].x, finalValue: points[1].y,
+				lineColor: "red", editable: true
+			}, {
+				initialXValue: points[2].x, initialValue: points[2].y,
+				finalXValue: points[3].x, finalValue: points[3].y,
+				lineColor: "red", editable: true
+			});
+		} else {
+			trendLines.push({
+				initialXValue: serie2[1].x2,  initialValue: serie2[1].y,
+				finalXValue: LLi_1.b1 * Math.pow(LLi_1.g1, serie2[2].y),
+				finalValue: serie2[2].y,
+				lineColor: "red", editable: true
+			}, {
+				initialXValue: LLi_1.b2 * Math.pow(LLi_1.g2, serie2[0].y),
+				initialValue: serie2[0].y,	
+				finalXValue: serie2[2].x2, finalValue: serie2[2].y,
+				lineColor: "red", editable: true
+			});
+		}
 	
-	/*- calculate Cp, Cs, C, C10, ...  */
-
-	var cp, Pg = LLi_1.sN1N2.x, sig = key_as;
-	vars.stages.forEach((stage, st) => {
-		/* 1. 1/Cp = d Ev / ln( ov + dov / ov )	*/
-		stage.koppejan = slopes[st];
-
-		if(st === vars.stages.length - 1) return;
+		trendLines.push({
+			initialXValue: LLi_1.sN1N2.x, initialValue: LLi_1.sN1N2.y,
+			finalXValue: LLi_1.sN1N2.x, finalValue: 0,
+			lineColor: "red", lineAlpha: 0.25,
+			dashLength: 2
+		}, {
+			initialXValue: LLi_1.sN1N2.x, initialValue: LLi_1.sN1N2.y,
+			finalXValue: 1000, finalValue: LLi_1.sN1N2.y,
+			lineColor: "red", lineAlpha: 0.25,
+			dashLength: 2
+		});
+	
+		vars.koppejan = {
+			serie2: serie2,
+			slopes: slopes,
+			LLi_1: LLi_1,
+			trendLines: trendLines.flat(),
+			point_pg: points,
+			regression: regression,
+			update() { calc_KJ(); }
+		};
 		
-		var d = Math.log(serie2[st + 1][sig] / serie2[st + 0][sig]);
-		var d10 = Math.log10(serie2[st + 1][sig] / serie2[st + 0][sig]);
-		var H = vars.Hi;
-
-		var Cp = 1 / (((serie2[st + 1].ez1 - serie2[st + 0].ez1) / H) / d);
-		var Cs = 1 / (((serie2[st + 1].ez10 - serie2[st + 0].ez10) / H) / d - (1 / Cp));
-		var C = (1 / ((serie2[st + 1].y - serie2[st + 0].y) / H)) * d;
-		var C10 = (1 / ((serie2[st + 1].y - serie2[st + 0].y) / H)) * d10;
-
-		slopes[st].Cp = Cp;
-		slopes[st].Cs = Cs;
-		slopes[st].C = C;
-		slopes[st].C10 = C10;
-		
-	});
+		/*- calculate Cp, Cs, C, C10, ...  */
+	
+		var cp, Pg = LLi_1.sN1N2.x, sig = key_as;
+		vars.stages.forEach((stage, st) => {
+			/* 1. 1/Cp = d Ev / ln( ov + dov / ov )	*/
+			stage.koppejan = slopes[st];
+	
+			if(st === vars.stages.length - 1) return;
+			
+			var d = Math.log(serie2[st + 1][sig] / serie2[st + 0][sig]);
+			var d10 = Math.log10(serie2[st + 1][sig] / serie2[st + 0][sig]);
+			var H = vars.Hi;
+	
+			var Cp = 1 / (((serie2[st + 1].ez1 - serie2[st + 0].ez1) / H) / d);
+			var Cs = 1 / (((serie2[st + 1].ez10 - serie2[st + 0].ez10) / H) / d - (1 / Cp));
+			var C = (1 / ((serie2[st + 1].y - serie2[st + 0].y) / H)) * d;
+			var C10 = (1 / ((serie2[st + 1].y - serie2[st + 0].y) / H)) * d10;
+	
+			slopes[st].Cp = Cp;
+			slopes[st].Cs = Cs;
+			slopes[st].C = C;
+			slopes[st].C10 = C10;
+		});
+	}
+	
+	calc_KJ();
 }
 function setup_stages_2(vars, only_this_stage) {
 
@@ -1714,8 +1826,24 @@ function setup_stages_2(vars, only_this_stage) {
 		*/
 		
 		var index = vars.stages.indexOf(stage);
-		if(index === vars.stages.length - 1) return NaN;
+		var points = js.get("overrides.bjerrum_e.points_pg", vars);
 		
+		if(index === -1) {//typeof stage === "string") {
+			if(points) {
+				if(stage === "onder") {
+					return -(points[1].y - points[0].y) / Math.log10(points[1].x / points[0].x);
+				} else if(stage === "boven") {
+					return -(points[3].y - points[2].y) / Math.log10(points[3].x / points[2].x);
+				}	
+			} else if(stage === "onder") { 
+				stage = vars.stages[0]; 
+			} else if(stage === "boven") {
+				stage = vars.stages[2];
+			}
+		}
+
+		if(index === vars.stages.length - 1) return NaN;
+
 		var e1 = stage.e0, e2 = vars.stages[index + 1].e0;
 		var sv1 = stage.effective, sv2 = vars.stages[index + 1].effective;
 
@@ -1762,6 +1890,22 @@ function setup_stages_2(vars, only_this_stage) {
 		*/
 
 		var index = vars.stages.indexOf(stage);
+		var points = js.get("overrides.bjerrum_r.points_pg", vars);
+		
+		if(index === -1) {//typeof stage === "string") {
+			if(points) {
+				if(stage === "onder") {
+					return -(points[1].y - points[0].y) / Math.log10(points[1].x / points[0].x);
+				} else if(stage === "boven") {
+					return -(points[3].y - points[2].y) / Math.log10(points[3].x / points[2].x);
+				}	
+			} else if(stage === "onder") { 
+				stage = vars.stages[0]; 
+			} else if(stage === "boven") {
+				stage = vars.stages[2];
+			}
+		}
+
 		if(index === vars.stages.length - 1) return NaN;
 		
 		var Hi = stage.Hi, Hf = stage.Hf;
@@ -1792,6 +1936,22 @@ function setup_stages_2(vars, only_this_stage) {
 		*/
 
 		var index = vars.stages.indexOf(stage);
+		var points = js.get("overrides.isotachen.points_pg", vars);
+		
+		if(index === -1) {//typeof stage === "string") {
+			if(points) {
+				if(stage === "onder") {
+					return -(points[1].y - points[0].y) / Math.log10(points[1].x / points[0].x);
+				} else if(stage === "boven") {
+					return -(points[3].y - points[2].y) / Math.log10(points[3].x / points[2].x);
+				}	
+			} else if(stage === "onder") { 
+				stage = vars.stages[0]; 
+			} else if(stage === "boven") {
+				stage = vars.stages[2];
+			}
+		}
+
 		if(index === vars.stages.length - 1) return NaN;
 
 		var EvH1 = stage.EvH * 100;
@@ -1849,6 +2009,38 @@ function setup_stages_2(vars, only_this_stage) {
 		return (EvH2 - EvH1) / 100 / (Math.log(t2 / t1));
 	}
 	
+	function koppejan(stage) {
+
+		var points = js.get("overrides.koppejan.points_pg", vars);
+		if(!points) return NaN;
+		
+		var serie2 = js.get("koppejan.serie2", vars);
+		if(!serie2) return NaN;
+
+		var onder = (js.get("overrides.koppejan.label-onder", vars) || "1-2").split("-").map(_ => parseInt(_, 10) - 1);
+		var boven = (js.get("overrides.koppejan.label-boven", vars) || "3-4").split("-").map(_ => parseInt(_, 10) - 1);
+		
+		var st = stage === "onder" ? onder : boven;
+		var ob = stage === "onder" ? [0, 1] : [2, 3];
+
+		var d = Math.log(points[ob[1]].x / points[ob[0]].x);
+		var d10 = Math.log10(points[ob[1]].x / points[ob[0]].x);
+		var H = vars.Hi;
+		
+		var Cp = 1 / (((serie2[st[1]].ez1 - serie2[st[0]].ez1) / H) / d);
+		var Cs = 1 / (((serie2[st[1]].ez10 - serie2[st[0]].ez10) / H) / d - (1 / Cp));
+		var C = (1 / ((points[ob[1]].y - points[ob[0]].y) / H)) * d;
+		var C10 = (1 / ((points[ob[1]].y - points[ob[0]].y) / H)) * d10;
+
+		return {	
+			Cp: Cp,
+			Cs: Cs,
+			C: C,
+			C10: C10
+		};
+		
+	}
+	
 	var Cc_name = "Cc", CR_name = "CR";
 	vars.stages.forEach((stage, i) => {
 		if(only_this_stage !== undefined && i !== only_this_stage) return;
@@ -1888,7 +2080,9 @@ function setup_stages_2(vars, only_this_stage) {
 				stage.Cc = Cc_(stage);
 				stage.CR_ = CR_name;
 				stage.CR = CR_(stage);
-			} else if(method === "all" || method === "isotachen") {
+			}
+			
+			if(method === "all" || method === "isotachen") {
 				setup_isotachen(vars);
 				stage.isotachen.a = iso_a_(stage);
 				stage.isotachen.b = iso_b_(stage);
@@ -1896,16 +2090,36 @@ function setup_stages_2(vars, only_this_stage) {
 			}
 		};
 	});
+	
+	vars.overrides = vars.overrides || {};
+	["bjerrum_e", "bjerrum_r", "isotachen", "koppejan"].forEach(k => vars.overrides[k] = vars.overrides[k] || {});
+	
+	mixin(vars.overrides.bjerrum_e, {
+		onder: Cc_("onder"),
+		boven: Cc_("boven")
+	});
+	mixin(vars.overrides.bjerrum_r, {
+		onder: CR_("onder"),
+		boven: CR_("boven")
+	});
+	mixin(vars.overrides.isotachen, {
+		onder: iso_a_("onder"),
+		boven: iso_b_("boven")
+	});
+	mixin(vars.overrides.koppejan, {
+		onder: koppejan("onder"),
+		boven: koppejan("boven")
+	});
 }
 function setup_variables_2(vars, headerValue) {
 	vars.categories = [{
 		name: "Project",
 		items: [
 			{ name: "Projectnummer", value: headerValue("Job reference", false) },
-			{ name: "Omschrijving", value: "" },
+			{ name: "Locatie", value: headerValue("Job Location", false)  },
 			{ name: "Aantal trappen", value: vars.stages.length },
 			{ name: "Proef periode", value: js.sf("%s - %s", headerValue("Date Test Started", false), headerValue("Date Test Finished", false)) },
-			{ name: "Beproevingstemperatuur", value: headerValue("Temperatuur") },
+			{ name: "Beproevingstemperatuur", value: headerValue("Sample Date") || ""},
 			{ name: "Opmerking van de proef", value: "" },
 			// { name: "Opdrachtgever", value: "" },
 			// { name: "Opdrachtnemer", value: "" },
@@ -1914,12 +2128,12 @@ function setup_variables_2(vars, headerValue) {
 	}, {
 		name: "Monster",
 		items: [
-			{ name: "Monster", value: headerValue("Sample Name", false) },
 			{ name: "Boring", value: headerValue("Borehole", false) },
-			{ name: "Locatie", value: headerValue("Job Location", false)  },
+			{ name: "Monster", value: headerValue("Sample Name", false) },
 			{ name: "Monstertype", value: headerValue("Specimen Type", false) },
 			{ name: "Grondsoort", value: headerValue("Description of Sample", false) },
 			{ name: "Diepte", unit: "m-NAP", value: headerValue("Depth", false) },
+
 			// { name: "Opstelling nr", value: "" },
 			// { name: "Laborant", value: "" },
 			// { name: "Uitwerking", value: "" },
@@ -1934,30 +2148,31 @@ function setup_variables_2(vars, headerValue) {
 			{ symbol: "Hi", name: "Hoogte", unit: "mm", value: vars.Hi },
 			{ symbol: "D", name: "Diameter", unit: "mm", value: vars.D },
 			{ symbol: "ρs", name: "Dichtheid vaste delen", unit: "Mg/m3", value: vars.ps },
+			{				name: "Bepaling dichtheid", value: headerValue("Specific Gravity (ass", false).replace("Ingeschaat", "Ingeschat") },
 			{ symbol: "Vi", name: "Volume", unit: "mm3", value: vars.Vi },
 			{ symbol: "Sri", name: "Verzadigingsgraad", unit: "%", value: vars.Sri },
 			{ symbol: "w0", name: "Watergehalte", unit: "%", value: vars.w0 },
 			{ symbol: "yi", name: "Volumegewicht nat", unit: "kN/m3", value: vars.yi },
 			{ symbol: "ydi", name: "Volumegewicht droog", unit: "kN/m3", value: vars.ydi },
-			{ symbol: "ei", name: "Poriëngetal", value: vars.ei }
+			{ symbol: "ei", name: "Poriëngetal", unit: "-", value: vars.ei }
 		]
 	}, {
 		name: "Uiteindelijke waarden",
 		items: [
-			{ symbol: "Hf", name: "Hoogte (na)", unit: "mm", value: vars.Hf },
-			{ symbol: "Vf", name: "Volume (na)", unit: "mm3", value: vars.Vf },
-			{ symbol: "Srf", name: "Verzadigingsgraad (na)", unit: "%", value: vars.Srf },
-			{ symbol: "wf", name: "Watergehalte (na)", unit: "%", value: vars.wf },
-			{ symbol: "yf", name: "Volumegewicht nat (na)", unit: "kN/m3", value: vars.yf },
-			{ symbol: "ydf", name: "Volumegewicht droog (na)", unit: "kN/m3", value: vars.ydf },
-			{ symbol: "ef", name: "Poriëngetal (na)", value: vars.ef }
+			{ symbol: "Hf", name: "Hoogte", unit: "mm", value: vars.Hf },
+			{ symbol: "Vf", name: "Volume", unit: "mm3", value: vars.Vf },
+			{ symbol: "Srf", name: "Verzadigingsgraad", unit: "%", value: vars.Srf },
+			{ symbol: "wf", name: "Watergehalte", unit: "%", value: vars.wf },
+			{ symbol: "yf", name: "Volumegewicht nat", unit: "kN/m3", value: vars.yf },
+			{ symbol: "ydf", name: "Volumegewicht droog", unit: "kN/m3", value: vars.ydf },
+			{ symbol: "ef", name: "Poriëngetal", unit: "-", value: vars.ef }
 		]
 	}, {
 		name: "Belastingschema",
-		items: vars.stages.map((stage, i) => ({ name: js.sf("Trap %d", i + 1), symbol: "σ'p", unit: "kPa", value: stage.target })),
+		items: vars.stages.map((stage, i) => ({ name: js.sf("Trap %d", i + 1), symbol: "σ'v", unit: "kPa", value: stage.target })),
 	}, {
 		name: "Belastingschema (effectief)",
-		items: vars.stages.map((stage, i) => ({ name: js.sf("Trap %d", i + 1), symbol: "σ'p", unit: "kPa", value: stage.effective })),
+		items: vars.stages.map((stage, i) => ({ name: js.sf("Trap %d", i + 1), symbol: "σ'v", unit: "kPa", value: stage.effective })),
 	}, {
 		name: "Grensspanning",
 		items: [
@@ -1998,7 +2213,7 @@ function setup_variables_2(vars, headerValue) {
 			})).filter((o, i, a) => i < a.length - 1)
 	}, {
 		name: "Casagrande - Secundaire consolidatie (Calpha)",
-		items: vars.stages.map((stage, i) => ({ name: js.sf("Trap %d", i + 1), symbol: "Cα(" + (i+1) + ")", unit: "", value: stage.casagrande.Calpha }))
+		items: vars.stages.map((stage, i) => ({ name: js.sf("Trap %d", i + 1), symbol: "Cα(" + (i+1) + ")", unit: "-", value: stage.casagrande.Calpha }))
 	}, {
 		name: "Taylor - Consolidatie 50%",
 		items: vars.stages.map((stage, i) => ({ name: js.sf("Trap %d", i + 1), unit: "s", symbol: "t50(" + (i+1) +")", value: stage.taylor.t50[0] })),
@@ -2019,15 +2234,15 @@ function setup_variables_2(vars, headerValue) {
 		name: "NEN/Bjerrum - Samendrukkingsindices",
 		items: vars.stages.map((stage, i) => ({ 
 			name: js.sf("Trap %d-%d", i + 1, i + 2), 
-			symbol: js.sf("%s(%d-%d)",  stage.Cc_, i + 1, i + 2), 
-			value: stage.Cc })).filter((o, i, a) => i < a.length - 1)
+			symbol: js.sf("%s(%d-%d)", stage.Cc_, i + 1, i + 2), 
+			value: stage.Cc })).filter((o, i, a) => i < a.length - 1).concat(bjerrum_e_variables(vars))
 	}, {
 		name: "NEN/Bjerrum - Samendrukkingsgetallen",
 		items: vars.stages.map((stage, i) => ({ 
 			name: js.sf("Trap %d-%d", i + 1, i + 2), 
 			symbol: js.sf("%s(%d-%d)",  stage.CR_, i + 1, i + 2), 
 			// symbol: js.sf("CR(%s)",  i), 
-			value: stage.CR })).filter((o, i, a) => i < a.length - 1)
+			value: stage.CR })).filter((o, i, a) => i < a.length - 1).concat(bjerrum_r_variables(vars))
 	}, {
 		name: "Isotachen - Samendrukkingscoëfficiënten",
 		items: (() => {
@@ -2053,7 +2268,7 @@ function setup_variables_2(vars, headerValue) {
 					symbol: js.sf("%s(%d-%d)", name, i + 1, i + 2),
 					value: value
 				};
-			});
+			}).concat(isotachen_variables(vars));
 		})()
 	}, {
 		name: "Isotachen - c-waarde",
@@ -2105,7 +2320,7 @@ function setup_variables_2(vars, headerValue) {
 					{ name: js.sf("%sp%s Trap %d-%d", pre, post, index + 1, index + 2), unit: "", symbol: js.sf("%sp%s", pre, post), value: o.Cp },
 					{ name: js.sf("%ss%s Trap %d-%d", pre, post, index + 1, index + 2), unit: "", symbol: js.sf("%ss%s", pre, post), value: o.Cs }
 				];
-			}).flat();
+			}).flat().concat(koppejan_variables(vars));
 		})()
 	}, {
 		name: "Koppejan - Regressielijnen",
@@ -2131,7 +2346,6 @@ function setup_variables_2(vars, headerValue) {
 		]
 	}];
 	vars.parameters = vars.categories.map(_ => (_.items||[]).map(kvp => mixin({ category: _ }, kvp))).flat();
-
 /*-
 	Effectieve belasting - σ'
 	Belastingschema - σ'
@@ -2327,7 +2541,7 @@ function TrendLineEditor(vars, stage, chart, owner) {
 	this.stage = stage;
 	this.owner = owner;
 	this.stop = function(persist) {
-		var modified = false;
+		var modified = false, points = [];
 		if(persist) {
 			if(owner._name === "graph_Isotachen_c") {
 				chart.trendLines.forEach((tl, index) => {
@@ -2392,10 +2606,22 @@ function TrendLineEditor(vars, stage, chart, owner) {
 				if(modified) {
 					stage.taylor.update();
 				}
+			} else if(owner._name === "graph_Koppejan") {
+				chart.trendLines.filter(tl => tl.editable).forEach((tl, index) => {
+					if(tl) {
+						modified = true;
+						tl.lineThickness = 1;
+						tl.draw();
+						points.push(
+							{ x: tl.initialXValue, y: tl.initialValue },
+							{ x: tl.finalXValue, y: tl.finalValue });
+					}
+				});
+				js.set("overrides.koppejan.points_pg", points, vars);
+				vars.koppejan.update();
 			} else {
 				var name = owner._name.substring("graph_".length).toLowerCase();
 				if(["bjerrum_e", "bjerrum_r", "isotachen"].indexOf(name) !== -1) {
-					var points = [];
 					chart.trendLines.filter(tl => tl.editable).forEach((tl, index) => {
 						if(tl) {
 							modified = true;
@@ -2493,6 +2719,7 @@ function handleTrendLineEvent(graph, trendLine, evt) {
 
 	return r;
 }
+// function cursorMoved(evt) { Control.findByNode(evt.chart.node).vars("last-cursor-moved", evt); }
 function cursorMoved(evt) { this.vars("last-cursor-moved", evt); }
 function isEditableTrendLine(tl) {
 	return tl.editable;
@@ -2621,7 +2848,7 @@ function isEditableTrendLine(tl) {
 			var headerValue = (key, parse/*default true*/) => {
 				key = key.toLowerCase();
 				key = (vars.headers.filter(_ => _.name.toLowerCase().startsWith(key))[0] || {});
-				return key.value;
+				return parse === false ? key.raw : key.value;
 			};
 		
 		/*- parse lines => headers, columns and measurements */		
@@ -2636,8 +2863,11 @@ function isEditableTrendLine(tl) {
 		/*- parse headers */	
 			vars.headers = headers.map(_ => _.split("\",\"")).filter(_ => _.length === 2)
 				.map(_ => [removeTrailingColon(_[0].substring(1)), _[1].substring(0, _[1].length - 2)])
-				.map(_ => ({category: "Header", name: _[0], value: parseValue(_[1])}));
-				
+				.map(_ => ({category: "Header", name: _[0], value: parseValue(_[1]), raw: _[1]}));
+			
+		/*- use overrides immediately (if any) */	
+			vars.overrides = this.vars(["overrides"]);
+			
 		/*- setup dataset and variables */
 			setup_measurements_1(vars, Parser.parse(measurements.join("\n"), options).data);
 			setup_variables_1(vars, headerValue);
@@ -2707,6 +2937,7 @@ function isEditableTrendLine(tl) {
     			delete vars.overrides;
     		}
 			vars.stages.forEach(stage => stage.update("all"));
+			vars.koppejan.update();
 			vars.parameters.update();
 			this.ud("#graphs").getControls().map(c => c.render());
     	}
