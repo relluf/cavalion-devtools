@@ -3,13 +3,12 @@
 var Resources = require("devtools/Resources-pouchdb");
 
 ["./Alphaview", {
-	
 	onLoad() {
-		
 		var me = this, tree = this.udr("#navigator #tree");
+		var list = this.udr("#navigator #search-list");
 		var reflect = (sel) => {
 			if(sel.length) {
-				if((uri = sel[0].vars("resource.uri"))) {
+				if((uri = sel[0].uri)) {
 					uri = uri.split("/");
 					var db = Resources.dbs[uri[2]];
 					if(db) {
@@ -30,10 +29,15 @@ var Resources = require("devtools/Resources-pouchdb");
 		};
 		
 		tree.on("selectionchange", (sel) => {
-			this.setTimeout("reflect", () => reflect(tree.getSelection()), 250);
+			this.setTimeout("reflect", () => reflect(tree.getSelection().map(_ => _.vars("resource"))), 250);
+		});
+		
+		list.on("selectionchange", (sel) => {
+			this.setTimeout("reflect", () => reflect(list.getSelection(true)), 250);
 		});
 
 		this.vars("console", { sel: []});
+
 		reflect(tree.getSelection());
 		
 		return this.inherited(arguments);

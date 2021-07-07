@@ -319,7 +319,7 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
     }
 }, [
     [["devtools/DragDropHandler<dropbox>"]],
-    // [["devtools/CtrlCtrl<>"], "ctrlctrl", { visible: false}],
+    [["devtools/CtrlCtrl<>"], "ctrlctrl", { visible: false}],
     [["devtools/TabFactory"], "workspaces-new", {
         vars: {
             parents: {
@@ -344,21 +344,21 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
         }
     }],
     
-    
+    /*- Command <dot> */
 	["vcl/Action", ("⌘."), {
 		hotkey: "Meta+190",
 		on() {
 			var editor, ws;
 			if(Control.focused) {
-				// this.print(Control.focused);
 				editor = Control.focused.up("devtools/Editor<>");
 				ws = Control.focused.up("devtools/Workspace<>");
-				
-				if(editor && ws) {
-					ws.print(nameOf(this), editor.vars(["resource.uri"]));
-				}
 			}
+
 			(ws || this.app()).print(nameOf(this), Control.focused);
+
+			if(editor && ws) {
+				ws.print(nameOf(this), editor.vars(["resource.uri"]));
+			}
 		}
 	}],
 	
