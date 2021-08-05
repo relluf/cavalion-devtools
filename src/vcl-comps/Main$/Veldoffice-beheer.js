@@ -2,12 +2,8 @@
 
 window.VO = require("vo/VO");
 
-$(["devtools/Main<Veldoffice>"], {
+[["devtools/Main<Veldoffice>"], {
 	onLoad() {
-		this.print("VO", VO);
-		this.print("VO.li()", VO.li());
-		
-		this.qs("#session-bar").getNode().style.backgroundColor = "#f0f0f0";
 		this.nextTick(() => this.qs("#session-bar").hide());
 		return this.inherited(arguments);
 	},
@@ -159,13 +155,13 @@ $(["devtools/Main<Veldoffice>"], {
 		".vcl-ui-Tabs.bottom": "background-color: transparent;"
 	}
 }, [
-	$i("session-bar", [
+	["#session-bar", [
 	
-		$i("title", { 
+		["#title", { 
 			content: "Veldoffice<span style='font-weight:normal;'> - beheer</span>" 
-		})
+		}]
 		
-	])
-]);
+	]]
+]];
 
 

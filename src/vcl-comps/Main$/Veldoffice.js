@@ -1,12 +1,17 @@
-"use blocks/Blocks";
+"use blocks/Blocks, vo/VO";
 
+window.VO = require("vo/VO");
 var B = require("blocks/Blocks");
 
-$([], {
+["", {
 	handlers: {
 		loaded() {
-			this.down("#session-bar").setIndex(0);
-			this.down("#session-bar").show();
+			this.qs("#session-bar").getNode().style.backgroundColor = "#f0f0f0";
+			this.qs("#session-bar").setIndex(0);
+			this.qs("#session-bar").show();
+			
+			this.app().print("VO", VO);
+			this.app().print("VO.li()", VO.li());
 		},
 		activate() {
 			var ms = this.vars("ms") || 0;
@@ -22,16 +27,16 @@ $([], {
 		}
 	}
 }, [
-	$(["veldoffice/Session"], "session-bar", { visible: false }, [
+	[["veldoffice/Session"], "session-bar", {}, [
 	
-		$i("title", { 
+		["#title", { 
 			content: "Veldoffice<span style='font-weight:normal;'> - code</span>" 
-		})
+		}]
 		
-	]),
-	$i("workspaces-tabs", { //align: "top", index: 1, classes: "", _zoom: 1.5,
+	]],
+	["#workspaces-tabs", { //align: "top", index: 1, classes: "", _zoom: 1.5,
 		onNodeCreated() { 
 			// this.setTimeout("zoom", () => this.setZoom(1.45), 750); 
 		}
-	})	
-]);
+	}]	
+]];
