@@ -1,6 +1,29 @@
+"use vo/VO";
+
+window.VO = require("vo/VO");
+
 $(["devtools/Main<Veldoffice>"], {
+	onLoad() {
+		this.print("VO", VO);
+		this.print("VO.li()", VO.li());
+		
+		this.qs("#session-bar").getNode().style.backgroundColor = "#f0f0f0";
+		this.nextTick(() => this.qs("#session-bar").hide());
+		return this.inherited(arguments);
+	},
 	vars: {
 		"default-workspaces": [{
+			name: "VO",
+	        "state": {
+	            "left-sidebar.visible": true,
+	            "editors": [{
+	                "selected": true,
+	                "resource": {
+	                    "uri": "Projects/Veldoffice-beheer/.md"
+	                }
+	            }]
+	        }
+		}, {
 			name: "Test",
 	        "state": {
 	            "left-sidebar.visible": true,
