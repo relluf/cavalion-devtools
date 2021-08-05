@@ -128,10 +128,10 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
         
         /*- nested devtools/Main<> will initialize at their default worksapces*/
         if(this.up("devtools/Main<>") === null && workspaces) {
-        	this.print("creating workspaces based upon url", workspaces);
+        	this.app().print("workspaces", workspaces);
         	createWorkspaces(workspaces.split(",").map(_ => ({name: _})));
         } else {
-        	this.print("creating workspaces based upon vars", this.vars("default-workspaces"));
+        	this.app().print("workspaces", this.vars("default-workspaces"));
             createWorkspaces(this.vars("default-workspaces") || []);
         }
         this.readStorage("state", function(state) {
@@ -154,7 +154,7 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
         console_scope.size_handle && console_scope.size_handle.setParent(scope['workspaces-tabs']);
         
         var version = document.qs("html head script").text.split("\n")[1].split("\"")[3] || "from source";
-        this.app().print("running " + version, this);
+        this.app().print("running version", version);
 
         return this.inherited(arguments);
     },
@@ -540,7 +540,7 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
     		}
     			
     		if(focused && (uri = focused.vars(["resource.uri"]))) {
-    			this.print("copy", uri);
+    			this.app().print("copy", uri);
     		}
     	}
     }],
