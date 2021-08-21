@@ -1,11 +1,9 @@
 "use js, vcl/ui/Button, vcl/ui/Tab, papaparse/papaparse, amcharts, amcharts.serial, amcharts.xy, lib/node_modules/regression/dist/regression";
 "use strict";
 
-/*------- #VA-20201218-3 ---------
-
-### 2021/06/14 
-- stage.update() situation needs some attention 
-- koppejan should be made lazy / on-demand for better UX
+/*-
+	* `#VA-20201218-3` Main issue
+	* `#VA-20210816-1` Deduce/copy Axial Stress from Stress Target
 */
 	
 function bjerrum_e_variables(vars) {
@@ -846,7 +844,12 @@ function setup_measurements_1(vars, measurements) {
 
 		return obj;
 	});
-
+	
+	if(measurements.length && !vars.measurements[0].hasOwnProperty(key_as)) {
+		if(confirm(js.sf("NB: De data is niet compleet.\n\nWilt u het missende gegeven '%s' afleiden van '%s'?", key_as, key_st))) {
+			vars.measurements.forEach(m => (m[key_as] = m[key_st]));
+		}
+	}
 }
 function setup_variables_1(vars, headerValue) {
 	vars.G = 9.81 * 1000;
@@ -1803,7 +1806,7 @@ function setup_stages_2(vars, only_this_stage) {
 		return t !== undefined ? cf * (L*L / (1000*1000)) * fT / t : t;
 	}
 	function kT_(stage, wantsTaylor) {
-		var r = CvT_(stage, wantsTaylor) * stage.mv * vars.pw * vars.G;
+		var r = CvT_(stage, wantsTaylor) * stage.mv * vars.pw * vars.G * 0.00000981;
 		return isNaN(r) ? undefined : r;
 	}
 	
@@ -2148,7 +2151,7 @@ function setup_variables_2(vars, headerValue) {
 			{ symbol: "Hi", name: "Hoogte", unit: "mm", value: vars.Hi },
 			{ symbol: "D", name: "Diameter", unit: "mm", value: vars.D },
 			{ symbol: "ρs", name: "Dichtheid vaste delen", unit: "Mg/m3", value: vars.ps },
-			{				name: "Bepaling dichtheid", value: headerValue("Specific Gravity (ass", false).replace("Ingeschaat", "Ingeschat") },
+			{				name: "Bepaling dichtheid", value: headerValue("Specific Gravity (ass", false).replace("Ingeschaat", "Ingeschat").replace("Hoobs", "Hobbs") },
 			{ symbol: "Vi", name: "Volume", unit: "mm3", value: vars.Vi },
 			{ symbol: "Sri", name: "Verzadigingsgraad", unit: "%", value: vars.Sri },
 			{ symbol: "w0", name: "Watergehalte", unit: "%", value: vars.w0 },

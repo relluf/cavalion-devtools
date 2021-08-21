@@ -1,5 +1,20 @@
 "use pages/Controller, Framework7";
 
+/*- 
+
+	The Editor<html> should maintain a persistent register of classes being applied 
+	to the `preview`.
+	
+	#CVLN-20210728-1 Editor<html>
+		- ability to register classes per resource for the `preview`
+		- use the menu button of the tab of the editor
+		- potentially, there are many resources
+			- would it be nice to collect a list of all resources?
+			- would it be performant?
+			- maybe a local document, without *any revisions?
+	
+*/
+
 var q$ = require("jquery");
 
 ["", {
@@ -139,6 +154,9 @@ var q$ = require("jquery");
         onLoad() {
         	this.override("setContent", function(value) {
         		var args = [js.sf("%s%s%s", this.vars("wrapper-start"), value, this.vars("wrapper-end"))];
+        		
+        		// this.addClasses(classes);
+        		
         		args.callee = arguments.callee;
         		return this.inherited(args);
         	});

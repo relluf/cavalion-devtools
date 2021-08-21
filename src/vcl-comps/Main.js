@@ -361,8 +361,7 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
 			}
 		}
 	}],
-	
-    
+
     [("vcl/Action"), "hide-workspace-tabs", {
     	onExecute() { 
     		var twt = this.ud("#toggle-workspace-tabs"); 

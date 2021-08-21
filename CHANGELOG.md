@@ -1,3 +1,8 @@
+### 2021/08/16 - 1.0.50
+
+* Developing Renderer<gds> in favor of `#VA-20201218-3`
+* `#VA-20210816-1` Deduce/copy Axial Stress from Stress Target
+
 ### 2021/06/13 - 1.0.49
 
 * Developing Renderer<gds> in favor of `#VA-20201218-3`
