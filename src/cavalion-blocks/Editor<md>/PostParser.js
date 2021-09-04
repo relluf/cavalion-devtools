@@ -18,26 +18,26 @@ function isDateMarker(arr) {
 	} else {
 		content = "" + arr;
 	}
-	var date = content.match(/\d+-|\d\d/g);
+	var date = content.replace(/`/g, "").match(/\d\d\d\d.\d\d.\d\d/g);
 	date = date && date.splice(0, 3).join("");
-	if(date && date.length === 10 && date.split("-").length === 3) {
+	if(date && date.length === 10 && date.split(/\/|-/).length === 3) {
 		return date;
 	}
 	return false;
 }
 function getContent(arr) {
 	var content = [];
-	if(isContentItem(arr[0])) {
+	// if(isContentItem(arr[0])) {
 		// j$[6].print(arr);
 		for(var i = 1; i < arr.length; ++i) {
 			if(arr[i] instanceof Array) {
 				content.push(getContent(arr[i]));
-			} else {//if(typeof arr[i] === "string") {
+			} else if(typeof arr[i] === "string") {
 				content.push(arr[i]);
 			}
 		}
 		return content.join("");
-	}
+	// }
 	return "";
 }
 function getPosts(arr, posts) {
@@ -81,7 +81,7 @@ function getPosts(arr, posts) {
 	return posts;
 }
 
-["Container", { 
+[("Container"), { 
 	css: {
 		"": "background-color: white;",
 		".vcl-ui-Tree li": "list-style-type: none;",
