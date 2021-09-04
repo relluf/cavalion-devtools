@@ -224,7 +224,7 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
                 try {
                 	if((tab = tab._control.qs("#left-sidebar-tabs < vcl/ui/Tab:selected"))) {
                 		var input = tab._control.qs("vcl/ui/Input");
-                		if(!input.isFocused()) {
+                		if(input && !input.isFocused()) {
                 			// console.log("focus sidebar");
                 			input.setFocus();
                 		} else {

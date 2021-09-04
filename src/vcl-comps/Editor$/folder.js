@@ -4,7 +4,7 @@
 
 ### Notes
 
-* `#editor`-needed has a param parents
+* `#editor-needed` has a param parents
 
 ### 2021/01/13
 * Fix for double backslash while prompting for new uri
@@ -46,7 +46,7 @@ function common(tab) {
 	}
 }
 
-["", {
+[(""), {
 	css: {
 		"[id$=-editors-tabs]": "border-top-color: transparent;"
 	},
@@ -82,10 +82,14 @@ function common(tab) {
     	
     	// if this a not a local folder, request its contents from Resources/cavalion-server
     	if(typeof uri === "string" && !uri.startsWith("local:")) {
-	    	Resources.list(uri).then(res =>
-				res.filter(allowResource).sort(sortResource).forEach(
-					(resource, i) => editor_needed.execute({resource: resource, selected: i === 0})
-				));
+	    	Resources.list(uri)
+	    		.then(res =>
+					res.filter(allowResource).sort(sortResource).forEach((resource, i) => 
+						editor_needed.execute({resource: resource, selected: i === 0})
+					))
+				.then(res => {
+					this.emit("editors-loaded", [this, res]);
+				});
     	}
 		
 		scope.save._onExecute = null;
@@ -98,7 +102,7 @@ function common(tab) {
 		scope['add-resources'].execute(this.vars("resources") || []);
 	
 		// NOTE do not call inherited, because we are not editing a file? didn't seem to work with jpg/png.js - better override refresh?
-    },
+    }
 }, [
 	[("#menu-open"), {
 		// onExecute: function() {

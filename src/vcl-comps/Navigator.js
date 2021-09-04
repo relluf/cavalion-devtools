@@ -736,7 +736,8 @@ console.log(node, js.sf("expandable: %s", item.expandable));
     	}],
     	[("vcl/ui/Node"), "Overrides", { 
     		classes: "seperator top cascade-refresh",
-    		text: "Overrides",
+    		text: "Local Overrides",
+    		// visible: false,
     		icon: NavigatorNode.icons.folder
     	}, [
 	    	[("devtools/NavigatorNode"), "devtools_Workspaces", {
@@ -762,12 +763,12 @@ console.log(node, js.sf("expandable: %s", item.expandable));
 		        onNodesNeeded: onNodesNeeded
 	    	}],
 	    	[("devtools/NavigatorNode"), "devtools_Main", {
-	    		expandable: true,
+	    		// expandable: true,
 		   		vars: { 
 		   			resource: { 
-		   				type: "Folder", expandable: true,
-		   				uri: Storage_uri("vcl-comps/devtools/Main$"),
-		   				name: "Main"
+		   				// type: "Folder", expandable: true,
+		   				uri: Storage_uri(js.sf("vcl-comps/devtools/Main$/%s.js", app.getSpecializer())),
+		   				name: js.sf("Main<%s>", app.getSpecializer())
 		   			}
 		   		},
 		        onNodesNeeded: onNodesNeeded
@@ -793,8 +794,34 @@ console.log(node, js.sf("expandable: %s", item.expandable));
 		   		},
 		        onNodesNeeded: onNodesNeeded
 	    	}],
-    		
     	]],
+    	[("devtools/NavigatorNode"), "Component_storage", {
+    		classes: "seperator top",
+	        onNodesNeeded: onNodesNeeded,
+	   		vars: { 
+	   			resource: { 
+	   				name: "Local Storage",
+	   				uri: Storage_uri(""), 
+	   				type: "Folder"
+	   			}
+	   		},
+	   		// classes: "root-invisible seperator top",
+    		// expanded: true,
+	        // onNodeCreated() {
+	        // 	// var fs = this.ud("#fs"), rname = this.vars("resource.name");
+	        // 	// this.setParent(fs);
+	        // 	// this.setIndex(this.ud("#fs").);
+	        // 	// this.setTimeout("foo", () => {
+		       // // 	this.setIndex(fs._controls.filter(c => c.vars("resource.type") === "Folder")
+		       // // 		.map(c => c.vars("resource.name"))
+		       // // 		.reduce((a, n, i) => { return n < rname ? i : a }, 0)
+		       // // 	);
+	        // 	// 	// this.setExpanded(false);
+	        // 	// 	this.removeClass("root-invisible");
+	        // 	// }, 2000);
+        	// 	this.removeClass("root-invisible");
+	        // }
+    	}], 
     	[("vcl/ui/Node"), "Prototypes", {
     		classes: "cascade-refresh",
     		text: "Prototypes",
@@ -834,33 +861,6 @@ console.log(node, js.sf("expandable: %s", item.expandable));
 	   		},
 	        onNodesNeeded: onNodesNeeded
     	}],
-    	[("devtools/NavigatorNode"), "Component_storage", {
-    		// classes: "seperator",
-	        onNodesNeeded: onNodesNeeded,
-	   		vars: { 
-	   			resource: { 
-	   				name: "Storage",
-	   				uri: Storage_uri(""), 
-	   				type: "Folder"
-	   			}
-	   		},
-	   		// classes: "root-invisible seperator top",
-    		// expanded: true,
-	        // onNodeCreated() {
-	        // 	// var fs = this.ud("#fs"), rname = this.vars("resource.name");
-	        // 	// this.setParent(fs);
-	        // 	// this.setIndex(this.ud("#fs").);
-	        // 	// this.setTimeout("foo", () => {
-		       // // 	this.setIndex(fs._controls.filter(c => c.vars("resource.type") === "Folder")
-		       // // 		.map(c => c.vars("resource.name"))
-		       // // 		.reduce((a, n, i) => { return n < rname ? i : a }, 0)
-		       // // 	);
-	        // 	// 	// this.setExpanded(false);
-	        // 	// 	this.removeClass("root-invisible");
-	        // 	// }, 2000);
-        	// 	this.removeClass("root-invisible");
-	        // }
-    	}], 
     	[("devtools/NavigatorNode"), "fs", {
 	        onNodesNeeded: onNodesNeeded,
 	   		vars: { 

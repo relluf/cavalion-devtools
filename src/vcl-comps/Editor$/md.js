@@ -88,7 +88,12 @@ document.addEventListener("click", (evt) => {
 
         if(href.endsWith("::")) {
         	// TODO allow pre/suffix?
-        	return control.udr(href.split(":")[0]).execute(js.normalize(anchor.textContent));
+        	var hs = href.split(":"), action = control.udr(hs[0]);
+        	if(action instanceof require("vcl/Action")) {
+        		return action.execute(js.normalize(base, hs[1] || anchor.textContent), evt);
+        	}
+        	alert(js.sf("%s not found", href.split(":")[0]));
+        	throw new Error(js.sf("%s not found", href.split(":")[0]));
         }
 
 		if(blocks) {

@@ -100,7 +100,8 @@ var getKey = (tab) => {
         var session = ed.getSession();
 
 		var ace_mode = require("ace/ext/modelist").getModeForPath(resource.uri);
-        var mode = "ace/mode/" + (ace_mode ? ace_mode.name : ExtensionToMode[type || ext || this.getSpecializer()] || (type || ext || this.getSpecializer() || "js"));
+		var ext_mode = ExtensionToMode[type || ext || this.getSpecializer()];
+        var mode = "ace/mode/" + (ext_mode ? ext_mode : ace_mode ? ace_mode.name : (type || ext || this.getSpecializer() || "js"));
         
         require([mode], 
         	function() { session.setMode(mode); }, 
