@@ -110,7 +110,8 @@ var Utils = {
         this.on("state-dirty", function() {
             var workspace = scope['@owner'];
             workspace.setTimeout("saveState", function() {
-                 workspace.writeStorage("state",Utils.getState(workspace.getScope()));
+                 //workspace.writeStorage("state",Utils.getState(workspace.getScope()));
+                 workspace.writeStorage("state", Utils.getState(scope));
             }, 200);
         });
         
@@ -215,7 +216,7 @@ var Utils = {
             		selected: true,
             		resource: { 
             			uri: evt, 
-            			type: evt.startsWith("folder:") ? "Folder" : "File" 
+            			type: (evt.startsWith("folder:") || evt.endsWith("/")) ? "Folder" : "File" 
             		}
             	};
             }
