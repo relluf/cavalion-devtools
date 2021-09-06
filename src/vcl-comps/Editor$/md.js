@@ -189,7 +189,7 @@ var Handlers = {
     	}
     }],
     [("#ace"), { 
-    	align: "left", width: 475, action: "toggle-source",
+    	align: "left", width: 600, action: "toggle-source",
     	executesAction: "none",
         onChange() { 
         	this.setTimeout("render", render.bind(this), 750);
@@ -217,7 +217,8 @@ var Handlers = {
     ["vcl/ui/Panel", ("output"), { 
     	align: "client", 
     	css: {
-/*- TODO should be centralized */    		
+/*- TODO should be centralized */
+			"": "margin-left:auto;margin-right:auto;width:900px;",
 		    "background-color": "#f0f0f0", 
 		    "border-left": "1px solid silver",
 		    "border-right": "1px solid silver",
