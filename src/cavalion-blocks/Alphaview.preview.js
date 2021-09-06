@@ -29,19 +29,15 @@
 	
 	[("Container"), "preview-overlay", { 
 		classes: "glassy-overlay",
-		css: "padding:60px;z-index: 9999;", // << ugly
+		css: "z-index: 9999;", // << ugly z-index
 		onLoad() { 
 			this.setParent(this.app().down("#window"));
 		}
 	}, [
 		[("Container"), "preview", {
-			align: "right", 
-			// visible: false,a
-			width: 300,
+			align: "right", width: 300,
 			classes: "glassy no-margin with-shadow",
-			css: {
-				"": "padding:32px;"
-			}
+			css: "padding: 32px;"
 		}]
 	]]
 	
