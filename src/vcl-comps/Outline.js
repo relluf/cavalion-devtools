@@ -1,6 +1,6 @@
 "vcl/ui/Node, vcl/Factory";
 
-$("vcl/ui/Tree", {
+["vcl/ui/Tree", {
     css: {
         ".{./Node}": {
             "&:not(.selected) > .text > .class": {
@@ -38,7 +38,7 @@ $("vcl/ui/Tree", {
                     uri += ".js";
                     
                     if(e.target.classList.contains("module")) {
-                        uri = "cavalion-vcl/lib/cavalion.org/" + uri;
+                        uri = "Library/node-modules/cavalion-vcl/src/" + uri;
                     } else if(e.target.classList.contains("vcl")) {
                         uri = js.sf("Library/vcl-comps/" + uri);
                     } else if(e.target.classList.contains("blocks")) {
@@ -105,4 +105,4 @@ $("vcl/ui/Tree", {
 	        node.setExpandable(comp._components);
         });
 	}
-}, []);
+}, []];
