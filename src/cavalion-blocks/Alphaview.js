@@ -1,4 +1,5 @@
 "use blocks";
+/*- ### 2021/09/11 Whatvar? console or sel */
 /*- ### 2021/01/09 Tired of not populating when console is invisible */
 /*- ### 2020-10-29 Alphaview - Arcadis-demo inspired */
 /*- ### 2020-10-02 Console hook - SIKB12 inspired */
@@ -230,7 +231,6 @@ var Factories = {
 
 ["Container", (""), { 
 	css: css, 
-	
     onDispatchChildEvent: function (component, name, evt, f, args) {
         if (name.startsWith("key")) {
             var scope = this.scope();
@@ -253,7 +253,6 @@ var Factories = {
         }
         return this.inherited(arguments);
     },
-	
 	onLoad() { 
 		this.qsa("#load").execute(); 
 		this.vars("history", []);
@@ -264,8 +263,9 @@ var Factories = {
 	["Executable", ("load"), {
 		on() {
 			var sel, cons = this.vars(["console"]);
+			sel = this.vars(["sel"]);
 			
-			if(!cons) {
+			if(!cons && !sel) {
 				var ws = this.up("devtools/Workspace<>");
 				cons = ws.down("#left-sidebar < #console #console");
 				// if(cons.isVisible()) {
@@ -274,7 +274,7 @@ var Factories = {
 					// sel = app.down("#console #console").sel || [];
 				// }
 			} else {
-				sel = cons.sel || [];
+				sel = sel || cons.sel || [];
 			}
 			
 			this.ud("#reflect").execute(sel);

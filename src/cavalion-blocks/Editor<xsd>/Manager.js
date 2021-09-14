@@ -18,8 +18,10 @@ var XS_NAMESPACE_PREFIXES = ['', 'xs:', 'xsd:'];
 
 ["Container", { 
 	css: {
-		"": "background-color: white; border-right: 1px solid silver;"
+		"": "background-color: white; border-right: 1px solid silver;",
+		".autowidth": "max-width: 320px;", ".ListCell": "max-width: 332px;"
 	},
+	
    	onDispatchChildEvent: function (component, name, evt, f, args) {
         if (name.indexOf("key") === 0) {
             var scope = this.scope();

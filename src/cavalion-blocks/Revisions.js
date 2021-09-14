@@ -2,7 +2,7 @@
 
 var Resources = require("devtools/Resources-pouchdb");
 
-["./Alphaview", {
+[("./Alphaview"), {
 	onLoad() {
 		var me = this, tree = this.udr("#navigator #tree");
 		var list = this.udr("#navigator #search-list");
@@ -42,11 +42,8 @@ var Resources = require("devtools/Resources-pouchdb");
 		
 		return this.inherited(arguments);
 	}
-	
-	
 }, [
-
-	["#list", {
+	[("#list"), {
 		onColumnRenderCell(cell, value, column, row, source, orgValue) {
 			if(column._attribute === "savedAt_") {
 				cell.textContent = (new Date(value)).toISOString();
@@ -54,6 +51,17 @@ var Resources = require("devtools/Resources-pouchdb");
 				return false;
 			}
 		}
-	}]	
+	}],
 	
+	// [("#left"), [
+	// 	[("Button"), { content: "test",
+		
+	// 		onTap() {
+	// 			var PouchDB = require("pouchdb");
+	// 			var db = new PouchDB("va_objects");
+				
+	// 		}
+			
+	// 	}]	
+	// ]]
 ]];
