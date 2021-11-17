@@ -49,6 +49,7 @@ function forceUpdate(control) {
 }
 function focusSidebar(ws, sidebar) {
 	var tab = ws.qs("#left-sidebar < vcl/ui/Tab:selected");
+	sidebar.vars("hadFocus", Control.focused);
 	if(tab && tab._control) {
 		var input = tab._control.qs("< vcl/ui/Input");
 		if(input) {
@@ -171,7 +172,7 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
 			
 			"Shift+Ctrl+186": "editors-next",
 			"Shift+Ctrl+189": "editors-previous",
-			// "Shift+Ctrl+222": "editors-next",
+			"Shift+Ctrl+222": "editors-next",
 			"Shift+Ctrl+221": "editor-next", 
 			"Shift+Ctrl+219": "editor-previous", 
 			
@@ -182,6 +183,7 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
 			"Shift+Ctrl+Meta+221": "editor-move-right",
 
 			"Ctrl+W": "editor-close",
+			"Shift+Ctrl+S": "editor-switch-favorite",
 			"Shift+Ctrl+W": "editors-close-all", //less-one ;-)
 			"Alt+Shift+Ctrl+W": "editors-close-all", //less-one ;-)
 			
@@ -238,6 +240,21 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
 				}
 			};
 		}
+		function toggleSidebar(evt) {
+			var ws = me.qs("devtools/Workspace<>:root:selected");
+			var sidebar = ws.qs("#left-sidebar"), f;
+			
+			if(sidebar.isVisible()) {
+				sidebar.hide();
+				f = sidebar.removeVar("hadFocus");
+				f && f.setFocus();
+			} else {
+				sidebar.show();
+				sidebar.update(function() {
+					focusSidebar(ws, sidebar);
+				});
+			}
+		}
 		
 		// general shortcuts, see def above
 		for(var k in shortcuts) {
@@ -247,29 +264,15 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
 			});
 		}
 		
-		function toggleSidebar(evt) {
-			var ws = me.qs("devtools/Workspace<>:root:selected");
-			var sidebar = ws.qs("#left-sidebar");
-// debugger
-			if(sidebar.isVisible()) {
-				sidebar.hide();
-			} else {
-				sidebar.show();
-				sidebar.update(function() {
-					focusSidebar(ws, sidebar);
-				});
-			}
-		}
-		
 		// #TOFR-20210102-0
 		me.vars("toggleSidebar", (evt) => toggleSidebar(evt));
 		
 		/*- Sidebar Shift+Cmd+E */
 		HotkeyManager.register("Shift+Meta+48", { type: "keydown",  callback: toggleSidebar });
 		HotkeyManager.register("Shift+Meta+E", { type: "keydown",  callback: toggleSidebar });
-		HotkeyManager.register("Shift+Ctrl+Z", { type: "keydown",  callback: function() {
-			me.updateChildren(true, true);
-		} });
+		// HotkeyManager.register("Shift+Ctrl+Z", { type: "keydown",  callback: function() {
+		// 	me.updateChildren(true, true);
+		// } });
 		
 		/* Workspaces and Sidebar */
 		for(var i = 1, hotkey; i <= 9; ++i) {
@@ -509,7 +512,12 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
     		return tab;
         }
     }],
-    [("vcl/Action"), "workspace-activate", {
+    [("vcl/Action"), "workspace-open", {
+        onExecute: function(evt) {
+        	this.ud("#workspace-needed").execute(evt).setSelected(true);
+        }
+    }],
+ [("vcl/Action"), "workspace-activate", {
     	// hotkey: [1, 2, 3, 4, 5, 6, 7, 8, 9].map(function(keyCode) { 
     	// 	return "Ctrl+" + (48 + keyCode); }).join("|"),
     	onExecute: function(evt) {
