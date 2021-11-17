@@ -1,3 +1,7 @@
+"use data/Source, amcharts, amcharts.serial, locale";
+
+// VO.em.query("FilterMeting", { orderBy: "tijdstip desc", where: ["equals", "meetpuntFilter.id", 29817808], pagesize: 10000 })
+
 ["Container", {
 	
 	css: "background-color:white;",
@@ -11,39 +15,42 @@
 	    
 	    var meta = {}, r = [];
 	    var filters = [], series = [];
+	    
+	    Promise.resolve(data).then(data => {
+			data.sort((i1,i2) => i1.tijdstip < i2.tijdstip ? -1 : 1).map(obj => {
+				var tuple = r[obj.tijdstip] || (r[obj.tijdstip] = {});
+				var filter = obj.meetpuntFilter.id;
+				tuple['filter' + filter] = obj.waterstand;
+				if(meta.min === undefined || meta.min > obj.waterstand) {
+					meta.min = obj.waterstand;
+				}
+				if(meta.max === undefined || meta.max < obj.waterstand) {
+					meta.max = obj.waterstand;
+				}
+				
+				if(filters[filter] === undefined) {
+					filters[filter] = 1;
+					series.push({
+				        "id": "g" + filter,
+				        "title": filter,
+				        "valueField": "filter" + filter
+				    });
+				}
+				
+				tuple.date = new Date(obj.tijdstip);
+				r.push(tuple);
+			});
+	
+			// this.vars("data", data);
+			this.vars("am", {
+				series: series,
+				filters: filters,
+				meta: meta,
+				data: r
+			});
+			this.print(this._vars);
+	    });
 		
-		data.sort((i1,i2) => i1.tijdstip < i2.tijdstip ? -1 : 1).map(obj => {
-			var tuple = r[obj.tijdstip] || (r[obj.tijdstip] = {});
-			var filter = obj.meetpuntFilter.id;
-			tuple['filter' + filter] = obj.waterstand;
-			if(meta.min === undefined || meta.min > obj.waterstand) {
-				meta.min = obj.waterstand;
-			}
-			if(meta.max === undefined || meta.max < obj.waterstand) {
-				meta.max = obj.waterstand;
-			}
-			
-			if(filters[filter] === undefined) {
-				filters[filter] = 1;
-				series.push({
-			        "id": "g" + filter,
-			        "title": filter,
-			        "valueField": "filter" + filter
-			    });
-			}
-			
-			tuple.date = new Date(obj.tijdstip);
-			r.push(tuple);
-		});
-
-		// this.vars("data", data);
-		this.vars("am", {
-			series: series,
-			filters: filters,
-			meta: meta,
-			data: r
-		});
-		this.print(this._vars);
 	},
 	onNodeCreated() {
 		this.nextTick(() => {

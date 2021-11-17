@@ -1,4 +1,5 @@
 "use blocks";
+/*- ### 2021/09/18 Hooking devtools/Editor<xml>'s console */
 /*- ### 2021/09/11 Whatvar? console or sel */
 /*- ### 2021/01/09 Tired of not populating when console is invisible */
 /*- ### 2020-10-29 Alphaview - Arcadis-demo inspired */
@@ -286,6 +287,9 @@ var Factories = {
 			var value = sel[sel.length - 1];
 			
 			Promise.resolve(value).then(value => {
+console.log("#reflect value", value);
+				this.vars("value", value);
+				
 				if(value instanceof Array) {
 					root.down("#list").show();
 					root.down("#array").setArray(value);
