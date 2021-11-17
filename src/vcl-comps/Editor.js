@@ -23,6 +23,7 @@ var ExtensionToMode = {
             "wsdl": "xml",
             "xsd": "xml",
             "xml": "xml",
+            "kml": "xml",
             "xsl": "xml",
             "jsp": "jsp",
             "openapi": "yaml"
