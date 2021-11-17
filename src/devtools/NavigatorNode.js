@@ -79,8 +79,12 @@ define(function(require) {
         },
         statics: {
         	icons: {
-        		file: "https://image.flaticon.com/icons/svg/660/660720.svg",
-        		folder: "https://image.flaticon.com/icons/svg/148/148953.svg"
+        		folder: "/shared/vcl/images/folder.svg",
+        		file: "/shared/vcl/images/file.svg",
+        		// folder: "/home/Library/assets/icons/./905767-business/svg/049-folder.svg",
+        		// file: "/home/Library/assets/icons/./2580511-files-and-folder-actions/svg/110-file.svg",
+        		// file: "https://image.flaticon.com/icons/svg/660/660720.svg",
+        		// folder: "https://image.flaticon.com/icons/svg/148/148953.svg"
         	}
         }
     }));
