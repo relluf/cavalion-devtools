@@ -266,13 +266,13 @@ function onNodesNeeded(parent) {
             	
             	// TODO some sort of registration ROUTING(!!!) needed...
             	if(resource.uri.startsWith(metadata.uri)) {
-            		ws.qsa("veldapps/OpenLayers<PDOK-v1> #layer-needed")
+            		ws.qsa("veldapps/OpenLayers<PDOK-v1> #ol-layer-needed")
             			.execute({layer: resource});
             	// } else if(resource.uri.startsWith(themes.uri)) {
-            	// 	ws.qsa("veldapps/OpenLayers<>:root #layer-needed")
+            	// 	ws.qsa("veldapps/OpenLayers<>:root #ol-layer-needed")
             	// 		.execute({layer: resource});
             	} else if(resource.uri.startsWith(themes.uri)) {
-            		ws.qsa("#layer-needed").execute({layer: resource});
+            		ws.qsa("#ol-layer-needed").execute({layer: resource});
             	} else {
 	            	a.execute({resource: resource, selected: true});
             	}
@@ -422,10 +422,6 @@ function onNodesNeeded(parent) {
     [("vcl/ui/Tree"), "tree", {
         css: {
         	// TODO move this to app scope
-			".{Node}.root-invisible": {
-				"> *:not(ol)": "display:none;",
-				"> ol": "padding-left: 0;"
-			},
             "padding-left": undefined,
             "overflow-x": undefined,
             ".{./Node}": {

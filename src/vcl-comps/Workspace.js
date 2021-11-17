@@ -121,14 +121,20 @@ var Utils = {
         });
         
         this.open = function(evt) {
-        	if(evt instanceof Array) {
-        		evt = {
+        	// if(evt instanceof Array) {
+        	// 	evt = {
         			
-        		}
-        	}
+        	// 	}
+        	// }
         	
         	if(typeof evt === "string") {
-        		evt = {resource:{uri: evt}, selected: true};
+        		evt = { 
+        			resource: { 
+	        			uri: evt, 
+	        			type: (evt.startsWith("folder:") || evt.endsWith("/")) ? "Folder" : "File" 
+	        		}, 
+	        		selected: true
+        		};
         	}
         	scope['editor-needed'].execute(evt);
         };
@@ -434,6 +440,38 @@ var Utils = {
             // app.qsa("devtools/Workspace<>:owner-of(.) #navigator #resource-focus", this)
             // 	.execute({resource: resource}, this);
         }
+    }],
+    
+    ["vcl/Action", ("editor-switch-favorite"), {
+    	on() {
+    		var ws = this.up("devtools/Workspace<>:root");
+    		var ed = ws.qsa("devtools/Editor<>:root:visible").map(_ => _.down("#ace"));
+    		if(!ed.length) return;
+    		
+    		ed = ed.pop().up();
+    		
+    		var favs = ws.vars("#navigator favorites") || [];
+    		var uri = ed.vars(["resource.uri"]);
+    		
+    		favs = favs.map(_ => _.split(";")).filter(_ => _[2] !== "Folder").map(_ => _[0]);
+    		
+    		if(!favs.length) return;
+    		
+    		var state = ws.vars(this._name) || {};
+    		var ago = Date.now() - (state.time || 0);
+    		var index = favs.indexOf(uri);
+
+    		if(ago < 1500 && index !== -1) {
+    			this.ud("#editor-needed").execute(favs[(index + 1) % favs.length]);
+    		} else if(index !== -1) {
+    			this.ud("#editor-needed").execute(favs[index]);
+    		} else {
+    			this.ud("#editor-needed").execute(favs[0]);
+    		}
+   
+    		state.time = Date.now();
+    		ws.vars(this._name, state);
+    	}
     }],
     
     ["vcl/ui/Panel", ("left-sidebar"), { align: "left", css: "border-right: 1px solid gray;", width: 375 }, [
