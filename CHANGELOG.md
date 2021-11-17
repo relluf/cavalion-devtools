@@ -1,5 +1,14 @@
 ### 2021/09/13 - 1.0.52
 
+- Shared components have been refactored, adjustments have been made
+- Alphaview/Graph-am: Updating and developing features
+- Pasteboard: First commit
+- Updating navigator images
+- Editor<csv>: Adjustment for handling VAERS datasets
+- Editor: Not opening files with extensions like zip.7z, Shapefiles
+
+### 2021/09/13 - 1.0.52
+
 * Updating
 
 ### 2021/08/16 - 1.0.50
