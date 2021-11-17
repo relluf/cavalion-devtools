@@ -32,7 +32,7 @@ document.addEventListener("click", (evt) => {
 	if(anchor) {
 
 		var control = require("vcl/Control").findByNode(anchor);
-		if(!control) {
+		if(!control || !control.up("devtools/Editor<md>")) {
 			return;
 		}
 
