@@ -114,11 +114,11 @@ var Parser = require("lib/bower_components/papaparse/papaparse");
 		onExecute: function() {
 			// see https://www.papaparse.com/docs#config
 			var options = this.getVar("options", true) || {
-				// delimiter: "",	// auto-detect
+				delimiter: ",",	// auto-detect
 				// newline: "",	// auto-detect
-				// quoteChar: '"',
+				quoteChar: '"',
 				// escapeChar: '"',
-				// header: false,
+				header: true,
 				// dynamicTyping: false,
 				// preview: 0,
 				// encoding: "",
@@ -128,7 +128,7 @@ var Parser = require("lib/bower_components/papaparse/papaparse");
 				// complete: undefined,
 				// error: undefined,
 				// download: false,
-				// skipEmptyLines: false,
+				skipEmptyLines: true,
 				// chunk: undefined,
 				// fastMode: undefined,
 				// beforeFirstChunk: undefined,
@@ -136,14 +136,17 @@ var Parser = require("lib/bower_components/papaparse/papaparse");
 			};
 			
 			var scope = this.scope();
-			var arr = Parser.parse(scope.ace.getValue(), options).data;
+			var parsed = Parser.parse(scope.ace.getValue(), options);
+			var arr = parsed.data;
 			var headers = arr.shift();
-			
-			arr = arr.map(function(values) {
-				var obj = {};
-				headers.forEach((key, index) => obj[key] = values[index]);
-				return obj;
-			});
+
+this.print("parsed", parsed);			
+
+			// arr = arr.map(function(values) {
+			// 	var obj = {};
+			// 	headers.forEach((key, index) => obj[key] = values[index]);
+			// 	return obj;
+			// });
 			
 			scope.array.setArray(arr);
 			
