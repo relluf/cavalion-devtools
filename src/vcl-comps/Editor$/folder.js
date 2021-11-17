@@ -14,7 +14,9 @@
 var Resources = require("devtools/Resources");
 
 function allowResource(resource) {
-	return [".git", ".svn", ".DS_Store"].indexOf(resource.uri.split("/").pop()) === -1;
+	return [".git", ".svn", ".DS_Store"].includes(resource.uri.split("/").pop()) === false
+		&& ["zip", "7z"].includes(resource.uri.split(".").pop()) === false
+		&& ["prj", "sbn", "dbf", "sbx", "shp", "shx"].includes(resource.uri.split(".").pop()) === false;
 }
 function sortResource(resource1, resource2) {
 	if(resource1.name === ".md") return -1;
