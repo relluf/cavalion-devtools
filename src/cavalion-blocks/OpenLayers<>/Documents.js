@@ -4,17 +4,19 @@ var Node = require("vcl/ui/Node");
 var Resources = require("devtools/Resources");
 
 function Document_onNodesNeeded(parent) {
-	var resource = this.vars("resource"), ln = this.ud("#layer-needed");
+	var resource = this.vars("resource"), ln = this.ud("#ol-layer-needed");
 	Promise.resolve(resource.text ? resource : Resources.get(resource.uri))
 		.then(resource => parent.app().qsa("#ol-sources-needed")
 			.execute({resource: resource}).flat()
-			.forEach(source => ln.execute({
-				parent: parent, 
-				layer: {
-					name: source.get("name") || resource.name || resource.uri, 
-					source: source
-				}
-			})));
+			.forEach(source => {
+				ln.execute({
+					parent: parent, 
+					layer: {
+						name: source.get("name") || resource.name || (resource.uri||"").split("/").pop(), 
+						source: source
+					}
+				});
+			}));
 }
 function isResourceSupported(resource) {
 	if(!resource) return false;
@@ -24,7 +26,7 @@ function isResourceSupported(resource) {
 			uri.endsWith(".topojson") || uri.endsWith("-itwbm.json");
 }
 
-["", {
+[(""), {
 	onActivate() {
 	// TODO hacker-the-hack-hack
 		this.down("#root-documents").update(true);
@@ -33,12 +35,12 @@ function isResourceSupported(resource) {
 }, [
 	[("#tree"), {}, [
 		[("Node"), "root-documents", {
-			text: "Documents",
+			text: locale("-documents"),
 			expandable: true,
 			index: 0,
 			onKeyDown(evt) {
 				if(evt.keyCode === evt.KEY_F5) {
-					this.reloadChildNodes();	
+					this.reloadChildNodes();
 				}
 			},
 			onNodesNeeded(parent) {
@@ -52,7 +54,7 @@ function isResourceSupported(resource) {
 				parent.beginLoading();
 				try {
 					resources.forEach(resource => new Node({
-							text: resource.name || resource.uri,
+							text: resource.name || (resource.uri||"").split("/").pop(),
 							// text: js.sf("<input type='checkbox'>%H", resource.name || resource.uri),
 							type: "File",
 							expandable: true,
