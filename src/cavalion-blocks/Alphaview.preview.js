@@ -3,8 +3,9 @@
 	handlers: {	
 		loaded() { 
 			var overlay = this.qs("#preview-overlay");
+			var list = this.qs("#list");
 			this.override("visibleChanged", function() {
-				overlay.setVisible(this.isVisible());
+				overlay.setVisible(list.getSelection().length && this.isVisible());
 				return this.inherited(arguments);	
 			});
 		}
@@ -14,15 +15,18 @@
 	
 	[("#list"), {
 		onSelectionChange() {
+			var selection = this.getSelection(true);
 			this.ud("#preview").setContent(
-				this.getSelection(true).map(obj => 
+				selection.map(obj => 
 					Object.entries(obj)
 						.filter(entry => entry[1] !== " ").filter(entry => entry[1] !== null)
 						.filter(entry => entry[1] !== undefined)
 						.map(entry => js.sf("<li>%H: %n</li>", entry[0], entry[1]))
 				.join(""))
 			);
-						
+			
+			this.ud("#preview-overlay").setVisible(selection.length > 0);
+
 			return this.inherited(arguments);
 		}
 	}],
@@ -31,7 +35,7 @@
 		classes: "glassy-overlay",
 		css: "z-index: 9999;", // << ugly z-index
 		onLoad() { 
-			this.setParent(this.app().down("#window"));
+			this.setParent(this.app().qs("#window")); // this suggests some defined environment
 		}
 	}, [
 		[("Container"), "preview", {
