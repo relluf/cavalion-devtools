@@ -673,12 +673,12 @@ var handlers = {
 				xField: "x2", yField: "ez10",
 				lineColor: "blue", dashLength: 3, lineThickness: 1
 			}]
-			.concat([1,2,3,4,5,6].map(_ => ({
-				title: js.sf("Verschoven zetting vz%d [mm]", _ + 1), 
-				xAxis: "x1", yAxis: "y2",
-				xField: "x" + (_ + 2), yField: "vz0",
-				lineColor: _ >= 4 ? "purple" : "red", lineThickness: 1
-			})));
+			// .concat([1,2,3,4,5,6].map(_ => ({
+			// 	title: js.sf("Verschoven zetting vz%d [mm]", _ + 1), 
+			// 	xAxis: "x1", yAxis: "y2",
+			// 	xField: "x" + (_ + 2), yField: "vz0",
+			// 	lineColor: _ >= 4 ? "purple" : "red", lineThickness: 1
+			// })));
 		
 			var serie2 = vars.koppejan.serie2;
 			var trendLines = cp(vars.koppejan.trendLines);
