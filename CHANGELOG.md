@@ -1,3 +1,8 @@
+### 2022/01/03 - 1.0.53
+
+* Developing [Alphaview.preview](./src/cavalion-blocks/:.js)
+* Introducing var "eval-context" for [Console](./src/vcl-comps/:.js)
+
 ### 2021/09/13 - 1.0.52
 
 - Shared components have been refactored, adjustments have been made
@@ -23,7 +28,6 @@
 ### 2021/06/09 - 1.0.48
 
 * Publishing current version in favor af veldoffice.nl (`#VA-20201218-3`)
-
 
 ### 2021/05/26 - 1.0.47
 * Introducing `devtools/Revisions` - hooking the Navigator
