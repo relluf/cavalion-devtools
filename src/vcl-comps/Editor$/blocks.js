@@ -105,7 +105,7 @@ function print(comp, msg, value) {
         	if(!scope.host.isVisible()) { return; } //TODO shouldn't be here
         	
             var factory = new Factory(require, uri, evt.sourceUri);
-            var root = scope.host.vars("root") /*scope.host.getControls()[0] ||*/;
+            var root = owner.vars("root") /*scope.host.getControls()[0] ||*/;
             
             while(root) {
             	try {
@@ -114,7 +114,7 @@ function print(comp, msg, value) {
             	} catch(e) {
             		alert(e.message);
             		console.error(e);
-            		scope.host.vars("root", (root = null));
+            		owner.vars("root", (root = null));
             	}
             }
             factory.load(scope.ace.getValue(), 
@@ -123,7 +123,7 @@ function print(comp, msg, value) {
                         root && root._owner === owner && root.destroy();
                         root = factory.newInstance(owner, uri);
                         // print(owner, uri.substring(uri.indexOf("cavalion-blocks/") + "cavalion-blocks/".length), root);
-                        scope.host.vars("root", root);
+                        owner.vars("root", root);
                         if(root instanceof require("vcl/Control")) {
                             root.setParent(scope.host);
                         } else {
