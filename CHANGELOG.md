@@ -1,9 +1,9 @@
-### 2022/01/03 - 1.0.53
+### 2022/01/03 - 1.0.55
 
 * Developing [Alphaview.preview](./src/cavalion-blocks/:.js)
 * Introducing var "eval-context" for [Console](./src/vcl-comps/:.js)
 
-### 2021/09/13 - 1.0.52
+### 2021/09/13 - 1.0.53
 
 - Shared components have been refactored, adjustments have been made
 - Alphaview/Graph-am: Updating and developing features
