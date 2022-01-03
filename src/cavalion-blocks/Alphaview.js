@@ -287,7 +287,7 @@ var Factories = {
 			var value = sel[sel.length - 1];
 			
 			Promise.resolve(value).then(value => {
-console.log("#reflect value", value);
+// console.log("#reflect value", value);
 				this.vars("value", value);
 				
 				if(value instanceof Array) {
@@ -352,7 +352,7 @@ console.log("#reflect value", value);
 				objs = [].concat(a.getObjects());
 			}
 			
-			(ws || q._owner).print(q.getValue() || selected || "<all>", objs);
+			(ws || q._owner).print(q.getValue() || selected || "*" , objs);
 		}
 	}],
 	
