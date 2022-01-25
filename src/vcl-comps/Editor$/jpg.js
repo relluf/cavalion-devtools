@@ -1,1 +1,3 @@
-$(["devtools/Editor<image>"]);
+"use js";
+
+[["devtools/Editor<image>"]];
