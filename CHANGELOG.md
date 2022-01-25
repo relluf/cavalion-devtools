@@ -1,3 +1,11 @@
+### 2022/01/25 - 1.0.56
+
+* Fix for `devtools/Editor<tsv>` delimiter detection
+* Now sorting numeric folders in reverse
+
+>> ![image](https://user-images.githubusercontent.com/686773/150946933-030a45ad-40b9-4764-ae1b-00727512257b.png?2x)
+
+
 ### 2022/01/03 - 1.0.55
 
 * Developing [Alphaview.preview](./src/cavalion-blocks/:.js)
