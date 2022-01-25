@@ -1,9 +1,12 @@
-"use blocks";
+"use vcl/ui/ListColumn, util/Event";
+
+/*- ### 2022/01/10 ... */
 /*- ### 2021/09/18 Hooking devtools/Editor<xml>'s console */
 /*- ### 2021/09/11 Whatvar? console or sel */
 /*- ### 2021/01/09 Tired of not populating when console is invisible */
 /*- ### 2020-10-29 Alphaview - Arcadis-demo inspired */
 /*- ### 2020-10-02 Console hook - SIKB12 inspired */
+
 var ListColumn = require("vcl/ui/ListColumn");
 var Event = require("util/Event");
 
@@ -258,6 +261,16 @@ var Factories = {
 		this.qsa("#load").execute(); 
 		this.vars("history", []);
 		
+		this.qs("#list").override("notifyEvent", (event, data) => {
+			// this.print("notifyEvent-" + event, data);
+			if(event === "columnsChanged") {
+				this.setTimeout("update", () => 
+					this.qsa("vcl/ui/ListColumn")
+						.filter(_ => _._attribute === "_")
+						.map(_ => _.set("index", 0)), 200);
+			}
+		});
+		
 		return this.inherited(arguments);
 	}
 }, [
@@ -268,12 +281,13 @@ var Factories = {
 			
 			if(!cons && !sel) {
 				var ws = this.up("devtools/Workspace<>");
-				cons = ws.down("#left-sidebar < #console #console");
-				// if(cons.isVisible()) {
+				if(ws) {
+					cons = ws.down("#left-sidebar < #console #console");
 					sel = cons.sel || [];
-				// } else {
-					// sel = app.down("#console #console").sel || [];
-				// }
+				} else {
+					// sel = [];
+					sel = this.app().down("vcl/ui/Console#console").sel || [];
+				}
 			} else {
 				sel = sel || cons.sel || [];
 			}
@@ -357,11 +371,61 @@ var Factories = {
 	}],
 	
 	["Array", ("array"), { 
-		onFilterObject(obj) {
+		// onFilterObject(obj) {
+		// 	var q = this.vars("q");
+		// 	if(!q) return false;
+		// 	return q.split(/\s/).filter(q => q.length > 0).some(q => !match(obj, q));
+		// },
+
+		onFilterObject(obj, row, context) {
 			var q = this.vars("q");
-			if(!q) return false;
-			return q.split(/\s/).filter(q => q.length > 0).some(q => !match(obj, q));
+			
+			if(!context.list) {
+				context.list = this.ud("#list");
+				context.columns = {};
+				context.q = q ? q.split(" ") : [""];
+			}
+			
+			function match(obj, q) {
+				q = q.toLowerCase();	
+				if(typeof obj ==="string") {
+					return obj.toLowerCase().includes(q);
+				}
+				for(var k in obj) {
+					if(js.sf("%n", obj[k]).toLowerCase().includes(q)) {
+						return true;
+					}
+				}
+				return false;
+			}
+			function match_columns(obj, q) {
+				var column, value;
+				if(q.indexOf(":") === -1) {
+					q = q.toLowerCase();
+					for(var i = 0, n = context.list.getColumnCount(); i < n; ++i) {
+						column = context.list.getColumn(i);
+						value = context.list.valueByColumnAndRow(column, row);
+						if(js.sf("%n", value).toLowerCase().includes(q)) {
+							return true;
+						}
+					}
+					return false;
+				} else {
+					q = q.split(":");
+					column = context.columns[q[0]] || (context.columns[q] = context.list.getColumnByName(q[0]));
+					if(column) {
+						value = context.list.valueByColumnAndRow(column, row);
+						if(js.sf("%n", value).toLowerCase().includes(q[1])) {
+							return true;
+						}
+					}
+					return false;
+				}
+			}
+			
+			return context.q.some(q => q ? !(match_columns(obj, q)) : false);// || match(obj, q)): false;
 		},
+		
 		onUpdate() {
 			this.ud("#list-status").render();
 		},
@@ -381,6 +445,7 @@ var Factories = {
 						this.ud("#array").setArray([]);
 						this.nextTick(() => this.ud("#array").setArray(value));
 					}
+					// this.setVisible(history.length);
 				}
 			}]
 		]],
@@ -441,7 +506,11 @@ var Factories = {
 		}]
 	]],
 	["List", ("list"), { 
-		css: "background-color:white;",
+		css: { 
+			'': "background-color:white;",
+			'.{ListColumn}': { ':active': "font-weight:bold;" },
+			'.{ListHeader}': { ':active': "background-color: gold;" }//rgb(56, 121, 217);" } 
+		},
 		autoColumns: true,
 		source: "array", 
 		visible: false, 
@@ -450,13 +519,31 @@ var Factories = {
 		},
 		onDispatchChildEvent(component, name, evt, f, ms) {
 			if(name === "dblclick" && component instanceof ListColumn) {
-				var arr = this._source._arr.map(_ => _[component._attribute]);
-				var old = this._source._arr;
-				var history = this.vars(["history"]);
-				history.push(this._source._array);
-				this.ud("#array").setArray(null);
-				this.ud("#array").setArray(arr.filter(_ => _ !== undefined));
-				this.ud("#back").show();
+				this.setTimeout("clicked", () => {
+					var arr = this._source._arr.map(_ => js.mixIn({'_' : _}, _[component._attribute]));
+					var old = this._source._arr;
+					var history = this.vars(["history"]);
+					history.push(this._source._array);
+					this.ud("#array").setArray(null);
+					this.ud("#array").setArray(arr.filter(_ => _ !== undefined));
+					this.ud("#back").show();
+				})
+			} else if(name === "click") {
+				this.setTimeout("clicked", () => {
+					if(this._columns && this._columns.includes(component)) {
+						if(this.vars("sorted-by") !== component) {
+							this.vars("sorted-by", component);
+							dir = this.vars("sorted-by-dir", "asc");
+						} else {
+							dir = this.vars("sorted-by-dir", this.vars("sorted-by-dir") === "asc" ? "desc" : "asc");
+						}
+						// Promise.resolve(this.ud("#query_load_all").execute())
+							// .then(res => 
+								this.sortBy(component, dir)
+								// )
+								;
+					}
+				}, 300);
 			}
 		},
 		onDblClick() { 

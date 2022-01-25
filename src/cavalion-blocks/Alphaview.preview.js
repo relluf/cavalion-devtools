@@ -1,5 +1,12 @@
 ["", {
 
+	onDispatchChildEvent(component, name, evt, f, args) {
+		if(name === "keydown" && evt.keyCode === 27) {
+			this.down("#preview-overlay").hide();
+		}
+		return this.inherited(arguments);
+	},
+	
 	handlers: {	
 		loaded() { 
 			var overlay = this.qs("#preview-overlay");
@@ -34,17 +41,27 @@
 	[("Container"), "preview-overlay", { 
 		classes: "glassy-overlay",
 		css: "z-index: 9999;", // << ugly z-index
+		tabIndex: 1,
+		onKeyDown(evt) { 
+			if(evt.keyCode === 27) {
+				this.ud("#preview-overlay").hide();
+			}
+			return this.inherited(arguments);
+		},
 		onLoad() { 
 			this.setParent(this.app().qs("#window")); // this suggests some defined environment
 		}
 	}, [
 		[("Container"), "preview", {
-			align: "right", width: 300,
+			align: "left", width: 300,
 			classes: "glassy no-margin with-shadow",
 			css: "padding: 32px;"
-		}]
+		}, [
+			[("Sizer"), "preview-sizer", { 
+				classes: "horizontal right", 
+				vars: { control: "preview" } 
+			}]
+		]]
 	]]
 	
-]];	
-	
-	
+]];
