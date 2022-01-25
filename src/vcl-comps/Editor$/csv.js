@@ -1,5 +1,11 @@
 "lib/bower_components/papaparse/papaparse";
 
+/*
+	- 2022/01/19: \t not auto-deteced as delimiter
+	
+	- resource-loaded => scope.render.execute
+*/
+
 var Parser = require("lib/bower_components/papaparse/papaparse");
 
 ["", {
@@ -89,7 +95,7 @@ var Parser = require("lib/bower_components/papaparse/papaparse");
     	}
     }],
 
-	$("vcl/Action", ("toggle-source"), {
+	[("vcl/Action"), ("toggle-source"), {
 		hotkey: "Shift+MetaCtrl+S",
 		onLoad() {
 			this.scope().ace.hide();
@@ -109,11 +115,11 @@ var Parser = require("lib/bower_components/papaparse/papaparse");
 			}
 			this.up().writeStorage("toggle-source-state", state);
 		}
-	}),
-	$("vcl/Action", ("render"), {
+	}],
+	[("vcl/Action"), ("render"), {
 		onExecute: function() {
 			// see https://www.papaparse.com/docs#config
-			var options = this.getVar("options", true) || {
+			var options = this.vars(["options"]) || {
 				delimiter: ",",	// auto-detect
 				// newline: "",	// auto-detect
 				quoteChar: '"',
@@ -152,19 +158,19 @@ this.print("parsed", parsed);
 			
 			this.up("vcl/ui/Tab").emit("resource-rendered", [{sender: this, data: arr}]);
 		}
-	}),
+	}],
 
 	// TODO List<Array> shared by Editor<gds> - AlphaView?
-	$("vcl/data/Array", ("array"), {
+	[("vcl/data/Array"), ("array"), {
 		onGetAttributeValue: function(name, index, value) { 
 			return (this._arr[index] || {})[name]; 
 		}
-	}),
-	$("vcl/ui/Bar", ("menu"), [
-		$("vcl/ui/Input", ("search-input"), { placeholder: locale("Search.placeholder") }),
-		$("vcl/ui/Element", "count", { content: "-" })
-	]),
-	$("vcl/ui/List", ("list"), { 
+	}],
+	[("vcl/ui/Bar"), ("menu"), [
+		["vcl/ui/Input", ("search-input"), { placeholder: locale("Search.placeholder") }],
+		["vcl/ui/Element", "count", { content: "-" }]
+	]],
+	["vcl/ui/List", ("list"), { 
 		align: "client", autoColumns: true, source: "array",
 		css: "background-color: white; min-width:100%;", 
 		onDblClick: function() {
@@ -177,5 +183,5 @@ this.print("parsed", parsed);
 		// 	}
 		// 	return value;
 		// }
-	})
+	}]
 ]];
