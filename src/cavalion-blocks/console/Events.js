@@ -48,9 +48,8 @@ var handlers = {
 							time: Date.now(),
 							component: js.sf("%n", component),
 							name: name,
-							uri: component.getUri(),
-							_uri: component._uri,
-							evt: evt
+							uri: component.getUri().split("/cavalion-blocks/").pop(),
+							_uri: component._uri.split("/cavalion-blocks/").pop()
 						});
 						scope.events.setTimeout("spliced", () => scope.events.splice(0, 0), 250);
 					} finally {

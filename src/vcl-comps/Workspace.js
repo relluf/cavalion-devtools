@@ -453,7 +453,7 @@ var Utils = {
     		var favs = ws.vars("#navigator favorites") || [];
     		var uri = ed.vars(["resource.uri"]);
     		
-    		favs = favs.map(_ => _.split(";")).filter(_ => _[2] !== "Folder").map(_ => _[0]);
+    		favs = favs.map(_ => _.split(";")).filter(_ => _[2] === "File").map(_ => _[0]);
     		
     		if(!favs.length) return;
     		

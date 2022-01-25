@@ -13,6 +13,8 @@ var PouchDB = require("pouchdb");
 ["", {
 	vars: {
 		"#navigator favorites": [
+			"Dropbox/Docs/veldapps.com/.md;;File",
+			"Dropbox-veldapps/INDEX.md;;File",
 			"Workspaces/veldapps.com/Veldoffice/veldoffice-js",
 			"Workspaces/veldapps.com/Veldoffice/veldoffice-js/src/veldapps.com;veldapps-js",
 			"Workspaces/veldapps.com/veldapps-xml",
