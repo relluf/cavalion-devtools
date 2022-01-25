@@ -448,7 +448,7 @@ function onNodesNeeded(parent) {
                     width: "32px",
                     "background-repeat": "no-repeat",
                     "background-position-x": "14px",
-                    "background-position-y": "2px",
+                    "background-position-y": "0px",
 					"background-size": "16px 16px"
                 },
                 "&.folder >.icon": {

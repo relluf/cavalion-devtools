@@ -517,7 +517,7 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
         	this.ud("#workspace-needed").execute(evt).setSelected(true);
         }
     }],
- [("vcl/Action"), "workspace-activate", {
+	[("vcl/Action"), "workspace-activate", {
     	// hotkey: [1, 2, 3, 4, 5, 6, 7, 8, 9].map(function(keyCode) { 
     	// 	return "Ctrl+" + (48 + keyCode); }).join("|"),
     	onExecute: function(evt) {
@@ -547,7 +547,7 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
     		}
     			
     		if(focused && (uri = focused.vars(["resource.uri"]))) {
-    			this.app().print("copy", uri);
+    			// this.app().print("copy", uri);
     		}
     	}
     }],

@@ -103,7 +103,7 @@ document.addEventListener("click", (evt) => {
 				uri = js.normalize(base, ("./" + href));
 			}
 			tab = editorNeeded(control, evt).execute({
-				resource: { uri: resolveUri(uri).substring("cavalion-blocks".length) + ".js"},
+				resource: { uri: resolveUri(uri).substring("cavalion-blocks/".length) + ".js"},
 				selected: true
 			});
 		} else {
