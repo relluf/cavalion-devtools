@@ -22,6 +22,11 @@ function sortResource(resource1, resource2) {
 	if(resource1.name === ".md") return -1;
 	if(resource2.name === ".md") return 1;
 	
+	var isnum1 = !isNaN(resource1.name), isnum2 = !isNaN(resource2.name);
+	if(isnum1 && isnum2) {
+		return isnum1 < isnum2 ? 1 : -1;
+	}
+	
 	if(resource1.name.startsWith(".") && !resource2.name.startsWith(".")) {
 		return -1;
 	}
