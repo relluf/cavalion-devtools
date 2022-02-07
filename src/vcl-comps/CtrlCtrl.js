@@ -4,7 +4,7 @@ $("vcl/ui/Form", {
 	autoPosition: "top-left-bottom-right",
 	css: {
 		"position": "absolute",
-		"background-color": "rgba(255, 255, 255, 0.85)",
+		// "background-color": "rgba(255, 255, 255, 0.85)",
 		"top": "120px",
 		"width": "50%",
 		"height": "64px",
@@ -16,9 +16,13 @@ $("vcl/ui/Form", {
 		"input": {
 			background: "transparent",
 			border: "none", width: "100%", height: "50px",
-			"font-size": "16pt", 
-			padding: "3px 12px"
-		}
+			"font-size": "16pt",
+			padding: "3px 12px",
+			outline: "none"
+		},
+		"border-radius":"13px",
+		"backdrop-filter": "blur(10px)",
+		"background-color": "rgba(155, 155, 155, 0.15)"
 	},
 	
 	onActivate: function() {

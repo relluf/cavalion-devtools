@@ -120,7 +120,7 @@ var Parser = require("lib/bower_components/papaparse/papaparse");
 		onExecute: function() {
 			// see https://www.papaparse.com/docs#config
 			var options = this.vars(["options"]) || {
-				delimiter: ",",	// auto-detect
+				// delimiter: ",",	// auto-detect
 				// newline: "",	// auto-detect
 				quoteChar: '"',
 				// escapeChar: '"',
