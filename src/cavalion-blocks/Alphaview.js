@@ -350,7 +350,6 @@ var Factories = {
 			
 		}
 	}],
-	
 	["Executable", ("print"), {
 		hotkey: "MetaCtrl+Enter",
 		on() {
@@ -508,6 +507,8 @@ var Factories = {
 	["List", ("list"), { 
 		css: { 
 			'': "background-color:white;",
+			".autowidth": "max-width: 320px;", 
+			".ListCell": "max-width: 332px;",
 			'.{ListColumn}': { ':active': "font-weight:bold;" },
 			'.{ListHeader}': { ':active': "background-color: gold;" }//rgb(56, 121, 217);" } 
 		},
