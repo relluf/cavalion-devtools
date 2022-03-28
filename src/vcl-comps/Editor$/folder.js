@@ -156,12 +156,12 @@ function common(tab) {
 			
 			if(!tab) {
 		    	var editor_needed = this.up("devtools/Workspace<>:root").down("#editor-needed");
-				tab = editor_needed.execute({
+				tab = editor_needed.execute(js.mixIn({
 					parents: {container: owner, tab: tabs},
 					resource: evt.resource,
 					selected: evt.selected,
 					owner: owner
-				});
+				}, evt));
 				if(evt.resource.type === "Folder") {
 					tab.addClass("bold");
 				}
@@ -173,6 +173,12 @@ function common(tab) {
 				});
 				
 			} else {
+				if(evt.formUri) {
+					tab._control._formUri = evt.formUri;
+				}
+				if(evt.formParams) {
+					tab._control._formParams = evt.formParams;
+				}
 				if(evt.selected) tab.setSelected(true);
 				// return tab;
 			}
