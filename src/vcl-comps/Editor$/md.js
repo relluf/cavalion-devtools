@@ -2,6 +2,10 @@
 
 /*-
 
+### 2022/02/28
+
+* Finetuning "restore-scroll"-feature
+
 ### 2021/01/06
 
 * Adding support for opening Tools (Library/cavalion-blocks/tools/...)
@@ -19,6 +23,8 @@
 var on = require("on");
 var markdown = require("markdown");
 var resolveUri = require("blocks/Factory").resolveUri;
+
+var isUpperCase = (s) => s.toUpperCase() === s;
 
 function editorNeeded(control, evt) {
 	if(evt.metaKey === true) {
@@ -49,28 +55,36 @@ document.addEventListener("click", (evt) => {
         	href = "blocks:/:";
         } else if(href === "[.]") {
         	href = "blocks:./:";
+        } else if(href === "[!]") {
+        	href = "blocks:!:";
+        } else if(href.startsWith("[") && href.endsWith("]")) {
+        	href = "blocks:" + href.substring(1).split("]")[0];
         }
         
-        if(href.startsWith("[") && href.endsWith("]")) {
-        	href = "blocks:" + href.substring(1).split("]")[0];
-        } else if(href.startsWith(":")) {
+        if(href.startsWith(":")) {
         	href = anchor.textContent + href.substring(1);
-        } 
-        
-		if(href.startsWith("blocks:")) {
+        } else if(href.startsWith("blocks:")) {
 			href = href.substring("blocks:".length);
 			blocks = true;
 		}
-		var fslash = href.indexOf("/");
-		if(href.indexOf(":") > fslash && fslash > -1) {
-			href = href.replace(":", anchor.textContent);
-		}
 
+		var startsWithProtocol = href.match("^[/]*[^:]*://");
+		if(!startsWithProtocol || href.split(":").length > 2) {
+			if(href.charAt(0) === "#") {
+				// if(startsWithProtocol) {
+				// 	startsWithProtocol[0].length
+				// }
+			} else {
+				// replace last : occurence with anchor.textContent
+				href = href.replace(/:([^:]*)$/, anchor.textContent + "$1");
+			}
+		}
+			
 		if(href === "") {
 			href = anchor.textContent;
 		} else if(href === ":") {
 			blocks = true;
-			href = "/" + anchor.textContent;
+			href = anchor.textContent;
 		}
 		
 		// so the rules apply these anchors as well
@@ -97,12 +111,16 @@ document.addEventListener("click", (evt) => {
         }
 
 		if(blocks) {
-			if(href.charAt(0) === "/") {
-				uri = "Library/cavalion-blocks" + href;
+			var run = href.charAt(0) === "!";
+			if(run) href = href.substring(1);
+			if(href.startsWith("./")) {
+				uri = js.normalize(base, href);
 			} else {
-				uri = js.normalize(base, ("./" + href));
+				uri = "Library/cavalion-blocks/" + href;
 			}
 			tab = editorNeeded(control, evt).execute({
+				formUri: "devtools/Editor<blocks>",
+				formParams: { run: run },
 				resource: { uri: resolveUri(uri).substring("cavalion-blocks/".length) + ".js"},
 				selected: true
 			});
@@ -192,7 +210,12 @@ var Handlers = {
     	align: "left", width: 600, action: "toggle-source",
     	executesAction: "none",
         onChange() { 
-        	this.setTimeout("render", render.bind(this), 750);
+        	if(!this._vars) {
+        		render.apply(this, []);
+        		this.vars();
+        	} else {
+        		this.setTimeout("render", render.bind(this), 750);
+        	}
         }
     }],
     
@@ -201,10 +224,15 @@ var Handlers = {
         selected: "state", visible: "state", 
         state: true,
         onLoad() {
+        	var resource = this.vars(["resource"]);
     		this.up().readStorage("source-visible", (visible) => {
     			if(typeof visible === "boolean") {
     				this.setState(visible);
-    			} else if(visible === undefined && this.vars(["resource.uri"]).split("/").pop() === ".md") {
+    			} else if(visible === undefined && (
+    					resource.uri.split("/").pop() === ".md" ||
+    					isUpperCase(resource.name.split(".md")[0])
+    				)
+    			) {
     				this.setState(false);
     			}
     		});
