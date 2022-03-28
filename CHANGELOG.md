@@ -1,3 +1,20 @@
+### 2022/03/28 - 1.0.57
+
+`#CVLN-20210102-2`
+
+* Improving devtools/Editor<md> - linking to [devtools/Editor<blocks>]([])-instances, optionally instantiating the component on load, eg:
+	* [devtools/Alphaview]([!]) <- `[devtools/Alphaview]([!])`
+* Alphaview: max-width for all lists
+* Editor<csv>: now correctly determining headers
+
+### 2022/03/10
+
+* Improving devtools/Editor<md> - linking to ?://-scheme while replacing : for anchor textContent
+
+### 2022/01/25
+
+* Fix for `devtools/Editor<md>`, clicking on [pouchdb://]()-links now works as expected/wanted/desired, ie. a _Local Storage_-document
+
 ### 2022/01/25 - 1.0.56
 
 * Fix for `devtools/Editor<tsv>` delimiter detection

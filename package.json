@@ -1,6 +1,6 @@
 {
   "name": "cavalion-devtools",
-  "version": "1.0.56",
+  "version": "1.0.57",
   "description": "Specific set of components for cavalion-code, aka devtools",
   "main": "index.js",
   "scripts": {
