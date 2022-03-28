@@ -84,6 +84,15 @@ function print(comp, msg, value) {
 
         return this.inherited(arguments);
     },
+    onReceiveParams(params) {
+    	if(params.run === true) {
+    		var scope = this.scope();
+        	scope['toggle-source'].setState(false);
+        	scope.ace.hide();
+        	scope['toggle-component'].setState(true);
+    	}
+    	return this.inherited(arguments);
+    },
     onResize: function() {
         this.setTimeout("alignControls", 32);
     }
