@@ -144,7 +144,7 @@ var Parser = require("lib/bower_components/papaparse/papaparse");
 			var scope = this.scope();
 			var parsed = Parser.parse(scope.ace.getValue(), options);
 			var arr = parsed.data;
-			var headers = arr.shift();
+			var headers = parsed.meta.fields;//arr.shift();
 
 this.print("parsed", parsed);			
 
