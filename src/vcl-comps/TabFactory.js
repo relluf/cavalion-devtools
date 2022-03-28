@@ -19,7 +19,7 @@ function FormContainer_dispatchChildEvent(component, name, evt, f, args) {
 	return this.inherited(arguments);
 }
 
-$("vcl/Action", {
+["vcl/Action", {
     vars: {
 		closeable: "default for Tab.closeable if not specified in params",
 		parents: {
@@ -47,13 +47,14 @@ $("vcl/Action", {
 		tab.setOnCloseClick(Tab_oncloseclick);
 		
 		fc._onDispatchChildEvent = FormContainer_dispatchChildEvent;
+		evt.formParams && fc.setFormParams(evt.formParams);
+
 		fc.setVisible(false);
 		fc.setParent(parents.container);
 		fc.setFormUri(formUri);
 		
-		evt.formParams && fc.setFormParams(evt.formParams);
 		evt.selected && tab.setSelected(evt.selected);
 
 		return tab;
 	}
-});
+}];

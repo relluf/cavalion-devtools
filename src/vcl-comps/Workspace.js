@@ -106,6 +106,10 @@ var Utils = {
         	value = value || {workspace:0};
             Utils.setState(js.mixIn(workspace.state||{}, value), scope);
         });
+        
+        if(workspace.vars) {
+        	js.mixIn(this.vars(), workspace.vars);
+        }
 
         this.on("state-dirty", function() {
             var workspace = scope['@owner'];

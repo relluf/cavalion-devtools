@@ -12,8 +12,9 @@
 			"Workspaces/cavalion.org/cavalion-ide/src/cavalion-blocks",
 			"Workspaces/cavalion.org/cavalion-code/src",
 			"Workspaces/cavalion.org/cavalion-code/src/vcl-comps",
-			"Workspaces/cavalion.org/cavalion-code/CHANGELOG.md;CHANGELOG.md;File",
-			"Workspaces/cavalion.org/cavalion-code/ROADMAP.md;ROADMAP.md;File",
+			// "Workspaces/cavalion.org/cavalion-code/CHANGELOG.md;CHANGELOG.md;File",
+			// "Workspaces/cavalion.org/cavalion-code/ROADMAP.md;ROADMAP.md;File",
+			"Workspaces/cavalion.org/cavalion-code/.md;.md;File",
 			"Workspaces/cavalion.org/cavalion-code/src/vcl-comps/devtools/Workspace$;Workspaces;Folder"
 		]
 	}
