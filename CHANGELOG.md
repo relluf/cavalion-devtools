@@ -1,3 +1,9 @@
+### 2022/03/29 - 1.0.59
+
+`#CVLN-20210102-2`
+
+* **Editor<md>**: Fix for linking to urls with a specific protocol (eg. pouchdb://) and for linking to current `va_objects` database (via `://`)
+
 ### 2022/03/28 - 1.0.57
 
 `#CVLN-20210102-2`

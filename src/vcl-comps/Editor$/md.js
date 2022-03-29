@@ -22,6 +22,7 @@
 
 var on = require("on");
 var markdown = require("markdown");
+var Component = require("vcl/Component");
 var resolveUri = require("blocks/Factory").resolveUri;
 
 var isUpperCase = (s) => s.toUpperCase() === s;
@@ -80,14 +81,19 @@ document.addEventListener("click", (evt) => {
 			}
 		}
 			
+		
 		if(href === "") {
 			href = anchor.textContent;
-			startsWithProtocol = href.match("^[/]*[^:]*://");
 		} else if(href === ":") {
 			blocks = true;
 			href = anchor.textContent;
+		} 
+		
+		if(href.startsWith("://")) {
+			href = js.sf("pouchdb://%s/%s", Component.storageDB.name, href.substring(3));
 		}
 		
+
 		// so the rules apply these anchors as well
 		if(href.startsWith("https://") || 
 			href.startsWith("http://") || 
@@ -100,6 +106,7 @@ document.addEventListener("click", (evt) => {
 		// links are relative to the resource
 		var base = control.vars(["resource.uri"]);
 		var tab, uri;
+
 
         if(href.endsWith("::")) {
         	// TODO allow pre/suffix?
@@ -126,6 +133,7 @@ document.addEventListener("click", (evt) => {
 				selected: true
 			});
 		} else {
+			startsWithProtocol = href.match("^[/]*[^:]*://");
 			if(!startsWithProtocol) {
 				uri = js.normalize(base, href.charAt(0) === "/" ? href.substring(1) : ("./" + href));
 			} else {
