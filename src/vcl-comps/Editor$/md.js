@@ -225,6 +225,7 @@ var Handlers = {
         state: true,
         onLoad() {
         	var resource = this.vars(["resource"]);
+        	if(!resource.name) resource.name = resource.uri.split("/").pop();
     		this.up().readStorage("source-visible", (visible) => {
     			if(typeof visible === "boolean") {
     				this.setState(visible);
