@@ -82,6 +82,7 @@ document.addEventListener("click", (evt) => {
 			
 		if(href === "") {
 			href = anchor.textContent;
+			startsWithProtocol = href.match("^[/]*[^:]*://");
 		} else if(href === ":") {
 			blocks = true;
 			href = anchor.textContent;
@@ -125,7 +126,11 @@ document.addEventListener("click", (evt) => {
 				selected: true
 			});
 		} else {
-			uri = js.normalize(base, href.charAt(0) === "/" ? href.substring(1) : ("./" + href));
+			if(!startsWithProtocol) {
+				uri = js.normalize(base, href.charAt(0) === "/" ? href.substring(1) : ("./" + href));
+			} else {
+				uri = href;
+			}
 			tab = editorNeeded(control, evt).execute({
 				resource:{ 
 					uri: uri.endsWith("/") ? uri.substring(0, uri.length - 1) : uri,
