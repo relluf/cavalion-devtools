@@ -1,3 +1,11 @@
+### 2022/03/31 - 1.0.61
+
+* Improved linking and inlining iframe and cavalion-blocks
+
+### 2022/03/30 - 1.0.60
+
+* Improved Ctrl+F11 handling, ie. toggling workspace tabs
+
 ### 2022/03/29 - 1.0.59
 
 `#CVLN-20210102-2`
