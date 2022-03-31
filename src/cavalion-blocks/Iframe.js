@@ -8,11 +8,13 @@
 	onRender() {
 		var src = this.vars(["frame-src"]) || this.getSpecializer();
 		this._node.innerHTML = js.sf("<iframe src='%s'>", src);
+		if(this.up("vcl/ui/Form").getParam("run") === true) {
+			this.udr("#bottom-tabs").set("css", "display:none;height:0;"); 
+		}
 	},
 	onLoad() {
 		var owner = this;
 		var parent = this.up("devtools/Editor<>:root");
-		
 		// if(parent && (parent = parent.down("#bottom-tabs"))) {
 		// 	B.instantiate(["Input", { 
 		// 		parent: parent, 
