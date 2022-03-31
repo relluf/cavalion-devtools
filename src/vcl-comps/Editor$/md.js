@@ -44,7 +44,7 @@ document.addEventListener("click", (evt) => {
 		}
 
 		var href = js.get("attributes.href.value", anchor) || "";
-        var blocks;
+        var blocks, blocks_vars;
         
         if(href.startsWith("javascript:")) {
         	return;
@@ -60,9 +60,12 @@ document.addEventListener("click", (evt) => {
         	href = "blocks:!:";
         } else if(href.startsWith("[") && href.endsWith("]")) {
         	href = "blocks:" + href.substring(1).split("]")[0];
+        } else if((blocks = href.match(/(\[[^\]]*\])({.*})/))) {
+        	href = "blocks:" + blocks[1].substring(1).split("]")[0];
+        	blocks_vars = blocks[2];
         }
         
-        if(href.startsWith(":")) {
+        if(href.startsWith(":") && !href.startsWith("://")) {
         	href = anchor.textContent + href.substring(1);
         } else if(href.startsWith("blocks:")) {
 			href = href.substring("blocks:".length);
@@ -129,6 +132,7 @@ document.addEventListener("click", (evt) => {
 			tab = editorNeeded(control, evt).execute({
 				formUri: "devtools/Editor<blocks>",
 				formParams: { run: run },
+				formVars: blocks_vars,
 				resource: { uri: resolveUri(uri).substring("cavalion-blocks/".length) + ".js"},
 				selected: true
 			});

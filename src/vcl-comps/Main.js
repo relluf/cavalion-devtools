@@ -67,6 +67,7 @@ function focusSidebar(ws, sidebar) {
 	}
 }
 
+var tabs_hidden = "height:0;padding:0;border:0;opacity:0;";
 var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c.hashCode();
 
 (function (styles) {
@@ -80,7 +81,14 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
 [["ui/Form"], { 
 	css: {
 	    ".{./Panel}#editors": "background-color: silver;",
-	    ".tabs-hidden": "height:0;padding:0;border:0;",
+	    ".tabs-hidden_": tabs_hidden,
+	    
+	    "&.workspace-tabs-hidden": {
+	    	"#editors-tabs": tabs_hidden,
+	    	"#bottom-tabs": tabs_hidden,
+		    // "#left-sidebar-tabs": tabs_hidden
+	    },
+	    
 	    "#left-sidebar-tabs": {
 	    	// "": "background-color:white;",
 	    	".{Tab}": "border-top-left-radius:5px; border-top-right-radius:5px;",
@@ -381,7 +389,19 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
     }],
     [("vcl/Action"), "toggle-workspace-tabs", {
     	hotkey: "Ctrl+F12", // euh ,responds to F11 instead?
-    	onExecute: function() {
+    	state: true,
+    	on() {
+    		var owner = this.getOwner();
+    		var state = this.toggleState(), has = owner.hasClass("workspace-tabs-hidden");
+    		if(state && has) {
+    			owner.removeClass("workspace-tabs-hidden");
+    			this.app().print("removed")
+    		} else if(!state && !has) {
+    			owner.addClass("workspace-tabs-hidden");
+    			this.app().print("added")
+    		}
+    	},
+    	onExecute_: function() {
     		var visible = this._tag;
 			var focused = require("vcl/Control").focused;
     		var current = this.vars(["editors-tabs:focused"]);
