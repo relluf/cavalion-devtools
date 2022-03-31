@@ -193,20 +193,24 @@ var Utils = {
             tab.render = Tab.render;
             tab._content = Tab._content;
             tab._control.once("formloaded", function() {
-            	// var ace = this._form.scope().ace;
-             //   var ed = ace.getEditor();
-                // ed.selection.on("changeCursor", function(e, thisObj) {
-                //     // tab._owner.emit("state-dirty");
-                //     // ace.p[er]
-                // });
-                // ed.session.on("changeFold", function() {
-                //     // FIXME does not work
-                //     // tab._owner.emit("state-dirty");
-                // });
                 tab.render();
 				this._form.setName(tab.vars("resource.uri"));
             });
-            
+
+            if(evt.formVars) {
+            	if(typeof evt.formVars === "string") {
+            		if(evt.formVars.startsWith("{") && evt.formVars.endsWith("}")) {
+            			var vars = {};
+            			evt.formVars.substring(1, evt.formVars.length - 1).split(";").forEach(kvp => 
+            				vars[(kvp = kvp.split("=")).shift()] = kvp.join("="));
+            			evt.formVars = vars;
+            		} else {
+            			evt.formVars = js.str2obj(evt.formVars);
+            		}
+            	}
+            	tab.mixInVars(evt.formVars);
+            }
+
             tab.set({
             	onMenuClick: function(evt) { // querySelectorAll 
             		// var editor = this.qsa("#ace").each(function(ace) {
