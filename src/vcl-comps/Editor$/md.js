@@ -126,14 +126,17 @@ document.addEventListener("click", (evt) => {
 			if(run) href = href.substring(1);
 			if(href.startsWith("./")) {
 				uri = js.normalize(base, href);
+			} else if(href.startsWith("/")) {
+				uri = href.substring(1);
 			} else {
 				uri = "Library/cavalion-blocks/" + href;
 			}
+			
 			tab = editorNeeded(control, evt).execute({
 				formUri: "devtools/Editor<blocks>",
 				formParams: { run: run },
 				formVars: blocks_vars,
-				resource: { uri: resolveUri(uri).substring("cavalion-blocks/".length) + ".js"},
+				resource: { uri: resolveUri(uri).substring("cavalion-blocks/".length) + ".js" },
 				selected: true
 			});
 		} else {
