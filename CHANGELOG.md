@@ -1,8 +1,15 @@
-### 2022/03/31 - 1.0.61
+### 2022/04/03 - 1.0.61
+
+`#CVLN-20210102-2`
+
+* Fixes issues with linking to cavalion-blocks source (devtools/Editor<md>)
+* Cleaning up some obsolete print-statements
+
+### 2022/03/31 - 1.0.60
 
 * Improved linking and inlining iframe and cavalion-blocks
 
-### 2022/03/30 - 1.0.60
+### 2022/03/30
 
 * Improved Ctrl+F11 handling, ie. toggling workspace tabs
 
