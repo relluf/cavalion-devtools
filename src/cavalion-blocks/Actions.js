@@ -3,7 +3,7 @@ var Action = require("vcl/Action");
 if(!Action.prototype.toast) {
 	Action.prototype.toast = function(evt) {
 		this.app().toast({
-			content: evt.name,
+			content: [evt.name, this._name].filter(_=>_).join(": "),
 			classes: "fade glassy big"
 		});
 	};
