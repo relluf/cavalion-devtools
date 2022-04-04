@@ -395,10 +395,10 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
     		var state = this.toggleState(), has = owner.hasClass("workspace-tabs-hidden");
     		if(state && has) {
     			owner.removeClass("workspace-tabs-hidden");
-    			this.app().print("removed")
+    			// this.app().print("removed")
     		} else if(!state && !has) {
     			owner.addClass("workspace-tabs-hidden");
-    			this.app().print("added")
+    			// this.app().print("added")
     		}
     	},
     	onExecute_: function() {
