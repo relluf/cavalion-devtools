@@ -53,8 +53,10 @@ document.addEventListener("click", (evt) => {
 		evt.preventDefault();
 		
         if(href === "[]") {
-        	href = "blocks:/:";
-        } else if(href === "[.]") {
+        	href = "[:]";
+        }
+        
+        if(href === "[.]") {
         	href = "blocks:./:";
         } else if(href === "[!]") {
         	href = "blocks:!:";
