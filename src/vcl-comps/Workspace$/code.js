@@ -8,6 +8,7 @@
 
 ["", { 
 	vars: {
+		"#navigator home": "Workspaces/cavalion.org/cavalion-code",
 		"#navigator favorites": [
 			"Workspaces/cavalion.org/cavalion-ide/src/cavalion-blocks",
 			"Workspaces/cavalion.org/cavalion-code/src",

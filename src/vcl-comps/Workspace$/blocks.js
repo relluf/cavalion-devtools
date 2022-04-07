@@ -5,6 +5,7 @@
 		"#navigator favorites": [
 			// "Workspaces/cavalion.org/cavalion-blocks/src/prototypes;blocks/prototypes",
 			"Workspaces/cavalion.org/cavalion-blocks/src/;blocks/src",
+			"Workspaces/cavalion.org/cavalion-blocks/.md;.md;File",
 			// "Workspaces/cavalion.org/cavalion-code/src/cavalion-blocks/console",
 			// "Workspaces/cavalion.org/cavalion-devtools/src/cavalion-blocks/devtools",
 			// "Workspaces/cavalion.org/cavalion-ide/src/cavalion-blocks/ide",
