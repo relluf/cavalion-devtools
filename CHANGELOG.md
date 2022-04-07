@@ -1,3 +1,12 @@
+### 2022/04/06 - 1.0.63
+
+* 46fe995 - (HEAD -> master) 1st commit
+* 8416504 - adding Ctrl+Shift+E alias for ...+S, macbook doesn't support the S it seems
+* eb1dd78 - making linking to blocks less buggy
+* 8cf5390 - commiting progress / developing / updating / bugfix in Editor<md> for linking to blocks
+* 338fba4 - commiting progress / developing / updating
+* 38b7fa9 - updating essential workspaces
+
 ### 2022/04/03 - 1.0.62
 
 `#CVLN-20210102-2`
