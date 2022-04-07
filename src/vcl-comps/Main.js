@@ -192,6 +192,7 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
 
 			"Ctrl+W": "editor-close",
 			"Shift+Ctrl+S": "editor-switch-favorite",
+			"Shift+Ctrl+E": "editor-switch-favorite",
 			"Shift+Ctrl+W": "editors-close-all", //less-one ;-)
 			"Alt+Shift+Ctrl+W": "editors-close-all", //less-one ;-)
 			
@@ -463,7 +464,7 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
     }],
 
     [("vcl/Action"), "workspace-prompt-new", {
-    	hotkey: "Shift+122",
+    	hotkey: "Shift+122|Shift+123",
     	onExecute: function(evt) {
         	var n = this.udown("#workspaces-tabs")._controls.length, me = this;
         	this.app().prompt("#workspace-needed execute", "ws" + n, function(res) {
