@@ -1,7 +1,8 @@
-### 2022/04/03 - 1.0.61
+### 2022/04/03 - 1.0.62
 
 `#CVLN-20210102-2`
 
+* Introducing [devtools/Alphaview.graph]([:])
 * Fixes issues with linking to cavalion-blocks source (devtools/Editor<md>)
 * Cleaning up some obsolete print-statements
 
