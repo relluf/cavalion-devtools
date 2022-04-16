@@ -1,3 +1,9 @@
+### 2022/04/15 - 1.0.64
+
+* 8bc8d3e - (HEAD -> master, origin/master, origin/HEAD) adding support for a zoomC-orrection var 
+* 1e37f63 - just refactoring a little 
+* 4c79f00 - support for defining formVars as string
+
 ### 2022/04/06 - 1.0.63
 
 * 46fe995 - (HEAD -> master) 1st commit
