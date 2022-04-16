@@ -201,8 +201,10 @@ var Utils = {
             	if(typeof evt.formVars === "string") {
             		if(evt.formVars.startsWith("{") && evt.formVars.endsWith("}")) {
             			var vars = {};
-            			evt.formVars.substring(1, evt.formVars.length - 1).split(";").forEach(kvp => 
-            				vars[(kvp = kvp.split("=")).shift()] = kvp.join("="));
+            			evt.formVars.substring(1, evt.formVars.length - 1).split(";").forEach(kvp => {
+            				kvp = kvp.split("=");
+            				js.set(kvp.shift(), kvp.join("="), vars);
+            			});
             			evt.formVars = vars;
             		} else {
             			evt.formVars = js.str2obj(evt.formVars);
