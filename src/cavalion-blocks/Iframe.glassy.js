@@ -1,4 +1,4 @@
-var zoomC = 1, WIDTH = 385, HEIGHT = 700;
+var WIDTH = 385, HEIGHT = 700;
 
 function e(e, o, t, i) {
     for (; o >= t && !e("(min-resolution: " + o / i + "dppx)").matches;) o--;
@@ -24,6 +24,7 @@ function zoomLevel() {
 	return o.apply(this, arguments) / 2;
 }
 
+// Maybe introduce a .zoomy class?
 
 [("devtools/Iframe"), {
 	autoSize: "both", autoPosition: "all", align: "none",
@@ -38,7 +39,7 @@ function zoomLevel() {
 			"background": "transparent",
 			"align-self": "center",
 			"box-sizing": "border-box",
-			// "z-index": "99999",
+			"z-index": "1999",
 			// "border": "3px solid rgba(0,0,0,0.05)",
 			"transition": "transform 0.45s ease 0s, right 0.45s ease 0s, bottom 0.45s ease 0s, width 0.45s ease 0s, border-width 0.45s ease 0s"
 		},
@@ -53,7 +54,7 @@ function zoomLevel() {
 		"&.right": "right: 40px; transform-origin: top right;",
 		"&.left": "left: 40px; transform-origin: top left;"
 	},
-	
+
 	onLoad() {
 		// var win = this.app().qs("#window");
 		this.override({
@@ -69,7 +70,7 @@ function zoomLevel() {
 	        	}
 	        }
 		});
-		this.addClasses("glassy glassy-overlay")
+		this.addClasses("glassy glassy-overlay");
 		return this.inherited(arguments);
 	},
 	onDestroy() { 
@@ -83,6 +84,7 @@ function zoomLevel() {
 		}
 	},
 	onNodeCreated() {
+		var zoomC = this.vars("zoomC") || 1; // TODO find better name
 		var win = this.app().qs("#window");
 		this.set("parent", win);
 
