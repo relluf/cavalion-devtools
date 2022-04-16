@@ -332,29 +332,6 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
 }, [
     [["devtools/DragDropHandler<dropbox>"]],
     [["devtools/CtrlCtrl<>"], "ctrlctrl", { visible: false}],
-    [["devtools/TabFactory"], "workspaces-new", {
-        vars: {
-            parents: {
-            tab: "workspaces-tabs",
-                container: "@owner",
-                owner: "@owner"
-            }
-        },
-        onExecute: function(evt) {
-            if(!evt.hasOwnProperty("formUri")) {
-                evt.formUri = evt.workspace.formUri ||
-                    String.format("devtools/Workspace<%s>",
-	                	replaceChars(evt.workspace.name || ""));
-            }
-            evt.params = evt.workspace;
-
-            var tab = this.inherited(arguments);
-            tab.setVar("workspace", evt.workspace);
-            tab.setText(evt.workspace.name);
-            
-            return tab;
-        }
-    }],
     
     /*- Command <dot> */
 	["vcl/Action", ("⌘."), {
@@ -463,6 +440,30 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
     	}
     }],
 
+    [["devtools/TabFactory"], "workspaces-new", {
+        vars: {
+            parents: {
+            	tab: "workspaces-tabs",
+                container: "@owner",
+                owner: "@owner"
+            }
+        },
+        onExecute: function(evt) {
+            if(!evt.hasOwnProperty("formUri")) {
+                evt.formUri = evt.workspace.formUri ||
+                    String.format("devtools/Workspace<%s>",
+	                	replaceChars(js.get("workspace.name", evt) || ""));
+            }
+            evt.params = evt.workspace;
+
+            var tab = this.inherited(arguments);
+            tab.setVar("workspace", evt.workspace);
+            tab.setText(evt.workspace.name);
+            
+            return tab;
+        }
+    }],
+    
     [("vcl/Action"), "workspace-prompt-new", {
     	hotkey: "Shift+122|Shift+123",
     	onExecute: function(evt) {
@@ -522,7 +523,7 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
             var scope = this.getScope();
     		var tabs = scope['workspaces-tabs'].getControls();
     		var tab = tabs.find(function(tab) {
-    			return tab.getVar("workspace.name") === evt.workspace.name;
+    			return tab.vars("workspace.name") === evt.workspace.name;
     		});
     		if(!tab) {
 	            tab = scope['workspaces-new'].execute(evt);
