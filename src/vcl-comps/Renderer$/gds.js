@@ -79,7 +79,6 @@ var treatZeroAs = 0.0001;
 
 /* Some styles and class */
 var css = {
-		"": "background-color:white;",
 		"a": "visibility:hidden;",
 		".multiple > div": "width:48%;height:48%;display:inline-block;" + 
 			"border: 1px dashed black;" +
@@ -2729,7 +2728,7 @@ function isEditableTrendLine(tl) {
 	// return tl.dashLength === 0 && (tl.lineColor == "red" || tl.lineColor === "green");
 }
 
-["", { handlers: handlers, css: "background-color:white;" }, [
+["", { handlers: handlers }, [
 
 	["vcl/data/Array", ("array-measurements"), {
 		onGetAttributeValue: function(name, index, value) { 
