@@ -55,7 +55,7 @@ function common(tab) {
 
 [(""), {
 	css: {
-		"[id$=-editors-tabs]": "border-top-color: transparent;"
+		// "[id$=-editors-tabs]": "border-top-color: transparent;"
 	},
 	_onDispatchChildEvent: function(component, name, evt, f, args) {
 		if(name !== "keyup") {

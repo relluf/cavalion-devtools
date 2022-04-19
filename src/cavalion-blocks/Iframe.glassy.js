@@ -1,4 +1,4 @@
-var WIDTH = 385, HEIGHT = 700;
+var WIDTH = 985, HEIGHT = 700;
 
 function e(e, o, t, i) {
     for (; o >= t && !e("(min-resolution: " + o / i + "dppx)").matches;) o--;
@@ -28,6 +28,7 @@ function zoomLevel() {
 
 [("devtools/Iframe"), {
 	autoSize: "both", autoPosition: "all", align: "none",
+	classes: "right",
 	css: {
 		"": {
 			"flex-shrink": "0",
@@ -118,6 +119,6 @@ this.setTimeout("move", () => {
 }, 1000);
 		
 		return this.inherited(arguments);
-	},
+	}
 	
 }];
