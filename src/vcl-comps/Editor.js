@@ -17,6 +17,7 @@ var ExtensionToMode = {
             "vcl": "javascript",
             "ts": "typescript",
             "md": "markdown",
+            "markdown": "markdown",
             "java": "java",
             "jsx": "jsx",
             "rdf": "xml",

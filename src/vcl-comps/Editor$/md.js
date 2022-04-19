@@ -192,15 +192,14 @@ function render() {
 		    on(node.qsa("img"), "load", function(img, r) {
 		    	img = this; r = window.devicePixelRatio || 1;
 		    	if(img.src.indexOf("?2x") !== -1) {
-	    			img.style.width = img.naturalWidth / r + "px";
+	    			img.style.widthWhenHovered = img.naturalWidth / r + "px";
 		    	}
 		    });
 		    
 		    node.qsa("img").forEach(function(img) {
 		    	var r = window.devicePixelRatio > 1 ? 2 : 2;
 		    	if(img.naturalWidth && img.src.indexOf("?2x") !== -1) {
-			    	// console.log(">>>", img.naturalWidth, img);
-		    		img.style.width = img.naturalWidth / r + "px";
+		    		img.style.widthWhenHovered = img.naturalWidth / r + "px";
 		    	}
 		    });
     	}.bind(_));
@@ -275,11 +274,43 @@ var Handlers = {
 		    "border-right": "1px solid silver",
 		    "font-family": "times,-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif,'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol'", 
 		    "font-size": "12pt",
+		    'img': {
+		    	'': "width:75%; transition: width 1s ease 0s;",
+		    	'&:hover': "width: 100%;",// max-height: 600px;",
+		    },
 		    padding: "10px",
-		    "img:not(:hover)": "max-width: 75%;",// max-height: 600px;",
 		    "a": "text-decoration:underline;color:blue;",
 		    // "img:hover": "width:100%;max-width:600px;",
 		    "code": "border-radius:3px;font-size: 10pt;background-color:white;padding:2px;line-height:12pt;",
-	    } 
+	    },
+	    
+	    onMouseMove(evt) {
+	    	
+	    	if(evt.shiftKey === false) return;
+	    	
+	    	var current = evt.target;
+	    	if(current.nodeName !== "IMG") {
+	    		current = undefined;
+	    	}
+	    	
+	    	var last = this.vars("last");
+    		if(last !== current) {
+    			if(last) {
+    				last.style.width = "";
+    			}
+    			last = current;
+    			if(last) {
+    				last.style.width = last.style.widthWhenHovered;
+    			}
+    		}
+    		
+    		last && this.vars("last", last);
+	    },
+	    onMouseLeave(evt) {
+	    	var last = this.removeVar("last");
+			if(last) {
+				last.style.width = "";
+			}
+	    }
     }]
 ]];
