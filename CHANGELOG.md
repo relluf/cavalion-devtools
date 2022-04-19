@@ -1,3 +1,10 @@
+### 2022/04/18 - 1.0.65
+
+* eaeca9f - (HEAD -> master) making background transparent where possible - preparing for embedding in Docs-like environment
+* 5606ae4 - adding support for glassy iframes
+* e648b3b - 1st commit - adding support for .markdown-extensioned files
+* 50e1f1a - adding support for .markdown-extensioned files - chaning behaviour of rendered images
+
 ### 2022/04/15 - 1.0.64
 
 * 8bc8d3e - (HEAD -> master, origin/master, origin/HEAD) adding support for a zoomC-orrection var 

@@ -275,8 +275,8 @@ var Handlers = {
 		    "font-family": "times,-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif,'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol'", 
 		    "font-size": "12pt",
 		    'img': {
-		    	'': "width:75%; transition: width 1s ease 0s;",
-		    	'&:hover': "width: 100%;",// max-height: 600px;",
+		    	'': "width:75%; transition: width 1s ease 0s, box-shadow 1s ease 0s;",
+		    	'&:hover': "width: 100%; box-shadow: rgb(0 0 0 / 40%) 0px 1px 2px 0px;",// max-height: 600px;",
 		    },
 		    padding: "10px",
 		    "a": "text-decoration:underline;color:blue;",
