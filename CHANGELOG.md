@@ -1,3 +1,14 @@
+### 2022/04/24 - 1.0.67
+
+* Editor<svg>: enhancing previewing SVG graphic, now scrollable 
+* Editor<html>: cleaning up Framework7 and pages/Controller references
+* Editor<md>: further enhancing "linking-features"
+
+### 2022/04/22 - 1.0.66
+
+* #links support
+* 9f67437 - (origin/master, origin/HEAD) 1.0.66
+
 ### 2022/04/18 - 1.0.65
 
 * eaeca9f - (HEAD -> master) making background transparent where possible - preparing for embedding in Docs-like environment

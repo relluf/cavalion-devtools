@@ -12,7 +12,7 @@
 			var overlay = this.qs("#preview-overlay");
 			var list = this.qs("#list");
 			this.override("visibleChanged", function() {
-				overlay.setVisible(list.getSelection().length && this.isVisible());
+				overlay.setVisible(list.getSelection().length > 0 && this.isVisible());
 				return this.inherited(arguments);	
 			});
 		}

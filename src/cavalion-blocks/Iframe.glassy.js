@@ -33,7 +33,7 @@ function zoomLevel() {
 		"": {
 			"flex-shrink": "0",
 			"box-shadow": "0 0 20px 10px rgba(0,0,0,.2)",
-			"width": WIDTH + "px",
+			"width": "90%",//WIDTH + "px",
 			"height": HEIGHT + "px",
 			"top": "5%", 
 			"border-radius": "25px",
@@ -44,6 +44,7 @@ function zoomLevel() {
 			// "border": "3px solid rgba(0,0,0,0.05)",
 			"transition": "transform 0.45s ease 0s, right 0.45s ease 0s, bottom 0.45s ease 0s, width 0.45s ease 0s, border-width 0.45s ease 0s"
 		},
+		
 		".wrapper": {
 			"position": "relative",
 			"border-radius": "20px",
@@ -52,8 +53,9 @@ function zoomLevel() {
 			"height": "100%"
 		},
 		"&.glassy-overlay > .wrapper.no-margin": "margin:0;",
-		"&.right": "right: 40px; transform-origin: top right;",
-		"&.left": "left: 40px; transform-origin: top left;"
+		"&.right": "right: 5%; transform-origin: top right;",
+		"&.left": "left: 5%; transform-origin: top left;",
+		"&:not(:hover)": "transform: translate3d(75%, 0, 0);"
 	},
 
 	onLoad() {
@@ -85,6 +87,7 @@ function zoomLevel() {
 		}
 	},
 	onNodeCreated() {
+// return this.inherited(arguments);
 		var zoomC = this.vars("zoomC") || 1; // TODO find better name
 		var win = this.app().qs("#window");
 		this.set("parent", win);
