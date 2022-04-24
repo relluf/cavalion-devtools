@@ -2,6 +2,12 @@
 
 /*-
 
+### 2022/04/24
+
+* Linking vcl-comps: [](())
+* Linking cavalion-blocks: []([])
+* Running cavalion-blocks: []([!]{vars})
+
 ### 2022/02/28
 
 * Finetuning "restore-scroll"-feature
@@ -29,7 +35,7 @@ var resolveUri_blocks = require("blocks/Factory").resolveUri;
 var isUpperCase = (s) => s.toUpperCase() === s;
 var e_v_a_l = (s) => {
 	var E;
-	return window[(E = "e") + 'val'](js.sf("({f:function (app, ws, ed) { return `%s`; }})", s));
+	return window[(E = "e") + 'val'](js.sf("({f:function (app, ws, ed, v, l) { return `%s`; }})", s));
 };
 
 function editorNeeded(control, evt) {
@@ -127,14 +133,16 @@ document.addEventListener("click", (evt) => {
 			href = js.sf("pouchdb://%s/%s", Component.storageDB.name, href.substring(3) || anchor.textContent);
 		}
 		
+		var backtick_params = [
+			control.app(), 
+			control.up("devtools/Workspace<>:root"), 
+			control.up("devtools/Editor<>:root"),
+			(a, b, c, d) => control.vars.apply(control, [a, b, c, d].filter(a => a)),
+			window.locale];
 		if(backticks) {
-			var params = [
-				control.app(), 
-				control.up("devtools/Workspace<>:root"), 
-				control.up("devtools/Editor<>:root")];
-			href = e_v_a_l(href).f.apply(control, params);
-			blocks_vars = e_v_a_l(blocks_vars).f.apply(control, params);
-			comps_vars = e_v_a_l(comps_vars).f.apply(control, params);
+			href = e_v_a_l(href).f.apply(control, backtick_params);
+			blocks_vars = e_v_a_l(blocks_vars).f.apply(control, backtick_params);
+			comps_vars = e_v_a_l(comps_vars).f.apply(control, backtick_params);
 		}
 
 		// so the rules apply these anchors as well
@@ -160,7 +168,12 @@ document.addEventListener("click", (evt) => {
         	throw new Error(js.sf("%s not found", href.split(":")[0]));
         }
 
-		var run;
+		var run, title = anchor.title;
+		if(title.startsWith('`') && title.endsWith('`')) {
+			title = title.substring(1, title.length - 1);
+			title = e_v_a_l(title).f.apply(control, backtick_params);
+		}
+		
 		if(blocks) {
 			run = href.charAt(0) === "!";
 			if(run) href = href.substring(1);
@@ -196,7 +209,7 @@ document.addEventListener("click", (evt) => {
 				formVars: blocks_vars,
 				resource: { 
 					uri: resolveUri_comps(uri).substring("vcl-comps/".length) + ".js",
-					title: anchor.title || anchor.textContent//href.substring(href.charAt(0) === "/" ? 1 : 0)
+					title: title === "" ? "" : title || anchor.textContent//href.substring(href.charAt(0) === "/" ? 1 : 0)
 				},
 				selected: true
 			});
@@ -211,7 +224,7 @@ document.addEventListener("click", (evt) => {
 				resource:{ 
 					uri: uri.endsWith("/") ? uri.substring(0, uri.length - 1) : uri,
 					type: uri.endsWith("/") ? "Folder" : "File",
-					title: anchor.title || anchor.textContent//href.substring(href.charAt(0) === "/" ? 1 : 0)
+					title: title === "" ? "" : title || anchor.textContent//href.substring(href.charAt(0) === "/" ? 1 : 0)
 				},
 				bringToFront: evt.shiftKey === true,
 				selected: true
