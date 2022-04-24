@@ -23,9 +23,14 @@
 var on = require("on");
 var markdown = require("markdown");
 var Component = require("vcl/Component");
-var resolveUri = require("blocks/Factory").resolveUri;
+var resolveUri_comps = require("vcl/Factory").resolveUri;
+var resolveUri_blocks = require("blocks/Factory").resolveUri;
 
 var isUpperCase = (s) => s.toUpperCase() === s;
+var e_v_a_l = (s) => {
+	var E;
+	return window[(E = "e") + 'val'](js.sf("({f:function (app, ws, ed) { return `%s`; }})", s));
+};
 
 function editorNeeded(control, evt) {
 	if(evt.metaKey === true) {
@@ -39,19 +44,23 @@ document.addEventListener("click", (evt) => {
 	if(anchor) {
 
 		var control = require("vcl/Control").findByNode(anchor);
-		if(!control || !control.up("devtools/Editor<md>")) {
+		if(!control || !(control.up("devtools/Editor<md>") || control._owner)) {
 			return;
 		}
 
 		var href = js.get("attributes.href.value", anchor) || "";
-        var blocks, blocks_vars;
+        var blocks, blocks_vars, comps, comps_vars;
+        var backticks = false;
         
         if(href.startsWith("javascript:")) {
         	return;
         }
         
-		evt.preventDefault();
-		
+        if(href.startsWith("`") && href.endsWith("`")) {
+        	backticks = true;
+        	href = href.substring(1, href.length - 1);
+        }
+        
         if(href === "[]") {
         	href = "[:]";
         }
@@ -61,43 +70,72 @@ document.addEventListener("click", (evt) => {
         } else if(href === "[!]") {
         	href = "blocks:!:";
         } else if(href.startsWith("[") && href.endsWith("]")) {
-        	href = "blocks:" + href.substring(1).split("]")[0];
+        	href = "blocks:" + href.substring(1, href.length - 1);
         } else if((blocks = href.match(/(\[[^\]]*\])({.*})/))) {
         	href = "blocks:" + blocks[1].substring(1).split("]")[0];
         	blocks_vars = blocks[2];
         }
+
+        if(href === "()") {
+        	href = "(:)";
+        }
         
+        if(href === "(.)") {
+        	href = "comps:./:";
+        } else if(href === "(!)") {
+        	href = "comps:!:";
+        } else if(href.startsWith("(") && href.endsWith(")")) {
+        	href = "comps:" + href.substring(1, href.length - 1);
+        } else if((comps = href.match(/(\([^\)]*\))({.*})/))) {
+        	href = "comps:" + comps[1].substring(1).split(")")[0];
+        	comps_vars = comps[2];
+        }
+
         if(href.startsWith(":") && !href.startsWith("://")) {
         	href = anchor.textContent + href.substring(1);
         } else if(href.startsWith("blocks:")) {
 			href = href.substring("blocks:".length);
 			blocks = true;
+        } else if(href.startsWith("comps:")) {
+			href = href.substring("comps:".length);
+			comps = true;
 		}
 
 		var startsWithProtocol = href.match("^[/]*[^:]*://");
 		if(!startsWithProtocol || href.split(":").length > 2) {
 			if(href.charAt(0) === "#") {
-				// if(startsWithProtocol) {
-				// 	startsWithProtocol[0].length
-				// }
+				if(!href.endsWith(":")) {
+					return;
+				}
 			} else {
 				// replace last : occurence with anchor.textContent
 				href = href.replace(/:([^:]*)$/, anchor.textContent + "$1");
 			}
 		}
 			
-		
+		evt.preventDefault();
+
 		if(href === "") {
 			href = anchor.textContent;
 		} else if(href === ":") {
+			alert("HUU?")
 			blocks = true;
 			href = anchor.textContent;
-		} 
-		
+		}
+
 		if(href.startsWith("://")) {
-			href = js.sf("pouchdb://%s/%s", Component.storageDB.name, href.substring(3));
+			href = js.sf("pouchdb://%s/%s", Component.storageDB.name, href.substring(3) || anchor.textContent);
 		}
 		
+		if(backticks) {
+			var params = [
+				control.app(), 
+				control.up("devtools/Workspace<>:root"), 
+				control.up("devtools/Editor<>:root")];
+			href = e_v_a_l(href).f.apply(control, params);
+			blocks_vars = e_v_a_l(blocks_vars).f.apply(control, params);
+			comps_vars = e_v_a_l(comps_vars).f.apply(control, params);
+		}
 
 		// so the rules apply these anchors as well
 		if(href.startsWith("https://") || 
@@ -112,7 +150,6 @@ document.addEventListener("click", (evt) => {
 		var base = control.vars(["resource.uri"]);
 		var tab, uri;
 
-
         if(href.endsWith("::")) {
         	// TODO allow pre/suffix?
         	var hs = href.split(":"), action = control.udr(hs[0]);
@@ -123,8 +160,9 @@ document.addEventListener("click", (evt) => {
         	throw new Error(js.sf("%s not found", href.split(":")[0]));
         }
 
+		var run;
 		if(blocks) {
-			var run = href.charAt(0) === "!";
+			run = href.charAt(0) === "!";
 			if(run) href = href.substring(1);
 			if(href.startsWith("./")) {
 				uri = js.normalize(base, href);
@@ -138,7 +176,28 @@ document.addEventListener("click", (evt) => {
 				formUri: "devtools/Editor<blocks>",
 				formParams: { run: run },
 				formVars: blocks_vars,
-				resource: { uri: resolveUri(uri).substring("cavalion-blocks/".length) + ".js" },
+				resource: { uri: resolveUri_blocks(uri).substring("cavalion-blocks/".length) + ".js" },
+				selected: true
+			});
+		} else if(comps) {
+			run = href.charAt(0) === "!";
+			if(run) href = href.substring(1);
+			if(href.startsWith("./")) {
+				uri = js.normalize(base, href);
+			} else if(href.startsWith("/")) {
+				uri = href.substring(1);
+			} else {
+				uri = "Library/vcl-comps/" + href;
+			}
+			
+			tab = editorNeeded(control, evt).execute({
+				formUri: "devtools/Editor<blocks>",
+				formParams: { run: run },
+				formVars: blocks_vars,
+				resource: { 
+					uri: resolveUri_comps(uri).substring("vcl-comps/".length) + ".js",
+					title: anchor.title || anchor.textContent//href.substring(href.charAt(0) === "/" ? 1 : 0)
+				},
 				selected: true
 			});
 		} else {
@@ -152,7 +211,7 @@ document.addEventListener("click", (evt) => {
 				resource:{ 
 					uri: uri.endsWith("/") ? uri.substring(0, uri.length - 1) : uri,
 					type: uri.endsWith("/") ? "Folder" : "File",
-					title: anchor.textContent//href.substring(href.charAt(0) === "/" ? 1 : 0)
+					title: anchor.title || anchor.textContent//href.substring(href.charAt(0) === "/" ? 1 : 0)
 				},
 				bringToFront: evt.shiftKey === true,
 				selected: true
@@ -182,6 +241,14 @@ function render() {
     	_.update(function() {
     		var node = this.nodeNeeded();
     		
+    		node.qsa("a").forEach(a => {
+    			if(a.title && a.title.startsWith("`") && a.title.endsWith("`")) {
+					var params = [this.app(), this.up("devtools/Workspace<>:root"), 
+						this.up("devtools/Editor<>:root")];
+    				a.title = e_v_a_l(a.title.substring(1, a.title.length - 1)).f.apply(this, params);
+    			}
+    		});
+    		
 		    node.qsa("img").forEach(img => {
 		    	var src = js.get("attributes.src.value", img) || "";
 		    	if(src.indexOf(":") === -1) {
@@ -202,6 +269,17 @@ function render() {
 		    		img.style.widthWhenHovered = img.naturalWidth / r + "px";
 		    	}
 		    });
+		    
+			var insertA = (H) => {
+				var a = document.createElement("A");
+				a.id = H.textContent.toLowerCase().split(" ").join("-");
+				a.href = "#" + H.textContent.toLowerCase().split(" ").join("-");
+				H.appendChild(a);
+				return a.href;
+			};
+			
+			"h1,h2,h3,h4,h5".split(",").forEach(H => node.qsa(H).map(insertA));
+		    
     	}.bind(_));
     });
 }        	
