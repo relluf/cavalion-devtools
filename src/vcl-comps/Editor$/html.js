@@ -1,6 +1,8 @@
-"use pages/Controller, Framework7";
+// "use pages/Controller, Framework7";
 
 /*- 
+
+2022/04/24 - cleaning up Framework7 stuff
 
 	The Editor<html> should maintain a persistent register of classes being applied 
 	to the `preview`.
@@ -18,59 +20,57 @@
 var q$ = require("jquery");
 
 ["", {
-	onLoad: function() {
-		var resource = this.getVar("resource", true);
-		var scope = this.scope();
-		if(
-			(resource.uri.indexOf("/V7/src/") !== -1 || resource.uri.indexOf("/src/pages/") !== -1 || resource.uri.indexOf(".page/.html") !== -1) ||
-			(resource.uri.indexOf("/src/gdtis/pages/") !== -1)
-		) {
-			require("pages/Controller");
-			scope.preview.setClasses("fw7 ios");
-		}
+	// onLoad: function() {
+	// 	var resource = this.getVar("resource", true);
+	// 	var scope = this.scope();
+	// 	if(
+	// 		(resource.uri.indexOf("/V7/src/") !== -1 || resource.uri.indexOf("/src/pages/") !== -1 || resource.uri.indexOf(".page/.html") !== -1) ||
+	// 		(resource.uri.indexOf("/src/gdtis/pages/") !== -1)
+	// 	) {
+	// 		require("pages/Controller");
+	// 		scope.preview.setClasses("fw7 ios");
+	// 	}
 		
-		scope.preview.override({
-			layoutChanged: function() {
-				this.inherited();
+	// 	scope.preview.override({
+	// 		layoutChanged: function() {
+	// 			this.inherited();
 				
-				var template;
-				if(this._node.childNodes.length && (template = this._node.childNodes[0]).nodeName === "TEMPLATE") {
-					var instance = document.importNode(template.content, true);
-					this._node.insertBefore(instance, template);
-				}
+	// 			var template;
+	// 			if(this._node.childNodes.length && (template = this._node.childNodes[0]).nodeName === "TEMPLATE") {
+	// 				var instance = document.importNode(template.content, true);
+	// 				this._node.insertBefore(instance, template);
+	// 			}
 
-				var node = this._node.childNodes[0] || {};
-				if(node.className === "popup" && node.childNodes.length) {
-					node.className = "popup_";
-					if(node.childNodes[0].className === "view") {
-						node.childNodes[0].className = "view_";
-					}
-				}
-			}
-		});
+	// 			var node = this._node.childNodes[0] || {};
+	// 			if(node.className === "popup" && node.childNodes.length) {
+	// 				node.className = "popup_";
+	// 				if(node.childNodes[0].className === "view") {
+	// 					node.childNodes[0].className = "view_";
+	// 				}
+	// 			}
+	// 		}
+	// 	});
 		
-		return this.inherited(arguments);
-	}
+	// 	return this.inherited(arguments);
+	// }
+    onLoad: function() {
+    	var scope = this.scope();
+        var uri = this.vars(["resource.uri"]);
+        // if(uri.indexOf("vcl-comps/f7/Page$/") !== -1) {
+        // 	require(["Framework7", "font-awesome"]);
+        // 	scope.preview.addClass("f7-body");
+        // }
+        if(uri.indexOf("index.html") !== -1) {
+        	scope.preview.setVisible(false);
+        }
+    	return this.inherited(arguments);
+    }
 }, [
     [("#ace"), {
         align: "left",
         width: 750,
-        onLoad: function() {
-        	var scope = this.scope();
-	        var uri = this.vars(["resource.uri"]);
-	        if(uri.indexOf("vcl-comps/f7/Page$/") !== -1) {
-	        	require(["Framework7", "font-awesome"]);
-	        	scope.preview.addClass("f7-body");
-	        }
-            if(uri.indexOf("index.html") !== -1) {
-            	scope.preview.setVisible(false);
-            }
-        	return this.inherited(arguments);
-        },
         onChange: function() {
-        	this.setTimeout("render", function() {
-            	this.scope().render.execute();
-        	}.bind(this), 250);
+        	this.setTimeout("render", () => this.scope().render.execute(), 250);
         },
     }],
 	[("vcl/Action"), "toggle-source", {
