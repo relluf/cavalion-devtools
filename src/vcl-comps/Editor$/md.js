@@ -7,6 +7,7 @@
 * Linking vcl-comps: [](())
 * Linking cavalion-blocks: []([])
 * Running cavalion-blocks: []([!]{vars})
+* Use backticks for context-sensitivity: []([])
 
 ### 2022/02/28
 

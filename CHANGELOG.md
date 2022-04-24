@@ -1,12 +1,16 @@
-### 2022/04/24 - 1.0.67
+### 2022/04/24 - 1.0.67-68
+
+`#CVLN-20210102-2`
 
 * Editor<svg>: enhancing previewing SVG graphic, now scrollable 
 * Editor<html>: cleaning up Framework7 and pages/Controller references
-* Editor<md>: further enhancing "linking-features"
+* Editor<md>: advancing "link-features", dynamic titles and hrefs with backticks
 
 ### 2022/04/22 - 1.0.66
 
-* #links support
+`#CVLN-20210102-2`
+
+* Editor<md>: Adding support for document-relative links ([for example](#2020-07-08)) _history-navigation-time!_
 * 9f67437 - (origin/master, origin/HEAD) 1.0.66
 
 ### 2022/04/18 - 1.0.65
