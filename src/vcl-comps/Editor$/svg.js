@@ -8,11 +8,12 @@
     }],
 	[("#console"), {
 		align: "top", autoSize:"height",
+		css: "max-height: 45%;",
 		visible: false
 	}],
     [("#output"), [
 	    ["vcl/ui/Panel", "preview_wrapper", { align: "client" }, [
-		    ["vcl/ui/Panel", "preview", { align: "client", css: "text-align: center; padding-top: 10%;" }]
+		    ["vcl/ui/Panel", "preview", { align: "client", css: "text-align: center;" }]
 	    ]]
     ]],
     [("#tabs"), [
