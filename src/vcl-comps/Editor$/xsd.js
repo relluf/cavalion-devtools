@@ -423,7 +423,7 @@ var xsTypes = {};
 					}, this);
 					xsArray("sequence.sequence.element", xstype).map(function(xsel, i) {
 						this.stamp(xsel);
-						this.inheritElement(xselem, xsel, xstype_name);
+						this.inheritElement(xselem, xsel, xsel['@_type']);
 					}, this);
 				},
 				inheritAttribute: function(xselem, xsattribute, xsattribute_name) {
