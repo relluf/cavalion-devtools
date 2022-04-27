@@ -451,7 +451,6 @@ var Utils = {
             // 	.execute({resource: resource}, this);
         }
     }],
-    
     ["vcl/Action", ("editor-switch-favorite"), {
     	on() {
     		var ws = this.up("devtools/Workspace<>:root");
@@ -460,7 +459,7 @@ var Utils = {
     		
     		ed = ed.pop().up();
     		
-    		var favs = ws.vars("#navigator favorites") || [];
+    		var favs = ws.vars(["#navigator favorites"]) || [];
     		var uri = ed.vars(["resource.uri"]);
     		
     		favs = favs.map(_ => _.split(";")).filter(_ => _[2] === "File").map(_ => _[0]);
