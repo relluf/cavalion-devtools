@@ -6,7 +6,7 @@ var Factory = require("blocks/Factory");
 var styles = {
 	"#host": {
 		"&.full-width": "min-width: 100%;",
-        "background-color": "#f0f0f0", 
+        // "background-color": "#f0f0f0", 
         "border-right": "1px solid silver"
 	},
 	"#ace": {
@@ -204,7 +204,9 @@ function print(comp, msg, value) {
     
     ["#ace", { align: "left", width: 750 }],
     
-	["vcl/ui/Tabs#bottom-tabs", { align: "bottom", classes: "bottom inset", autoSize: "height" }, [
+	["vcl/ui/Tabs", ("bottom-tabs"), { 
+		align: "bottom", classes: "bottom inset", 
+		autoSize: "height" }, [
     	["vcl/ui/Tab", { action: "toggle-source", text: locale("Source"), control: "ace", groupIndex: -2, visible: "always" }],
     	["vcl/ui/Tab", { action: "toggle-component", text: locale("Component"), control: "host", groupIndex: -3, visible: "always" }],
     	["vcl/ui/Tab", { action: "toggle-full-width", classes: "without-menu", text: locale(".full-width"), groupIndex: -4, visible: "always" }]

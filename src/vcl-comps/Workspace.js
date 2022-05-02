@@ -507,7 +507,7 @@ var Utils = {
         ["vcl/ui/Panel", "search-panel", { align: "client", visible: false }],
         ["vcl/ui/Panel", "inspector-panel", { align: "client", visible: false }]
     ]],
-    ["vcl/ui/Panel", ("editors"), { align: "client", css: "background-color: silver;" }, [
+    ["vcl/ui/Panel", ("editors"), { align: "client" }, [
         ["vcl/ui/Tabs", ("editors-tabs"), {
             onChange: function(tab, previous) {
 // TODO tell application to render it's title

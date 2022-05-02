@@ -426,12 +426,12 @@ function onNodesNeeded(parent) {
             "overflow-x": undefined,
             ".{./Node}": {
             	"&.seperator.bottom": {
-            		"border-bottom": "1px solid #f0f0f0", 
+            		"border-bottom": "1px solid rgba(240,240,240,0.5)", 
             		"margin-bottom":" 2px", 
             		"padding-bottom": "2px"
             	},
             	"&.seperator.top": {
-            		"border-top": "1px solid #f0f0f0", 
+            		"border-top": "1px solid rgba(240,240,240,0.5)", 
             		"margin-top":" 2px", 
             		"padding-top": "2px"
             	},

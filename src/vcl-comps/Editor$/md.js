@@ -361,7 +361,7 @@ var Handlers = {
     	css: {
 /*- TODO should be centralized */
 			"": "margin-left:auto;margin-right:auto;width:900px;",
-		    "background-color": "#f0f0f0", 
+		    "background-color": "rgba(240,240,240,1)", 
 		    "border-left": "1px solid silver",
 		    "border-right": "1px solid silver",
 		    "font-family": "times,-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif,'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol'", 

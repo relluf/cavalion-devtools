@@ -80,7 +80,6 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
 
 [["ui/Form"], { 
 	css: {
-	    ".{./Panel}#editors": "background-color: silver;",
 	    ".tabs-hidden_": tabs_hidden,
 	    
 	    "&.workspace-tabs-hidden": {
@@ -100,7 +99,7 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
 	    	".{Tab}.selected": "padding-left:8px;"
 	    },
 	    "#workspaces-tabs": {
-	    	"": "background-color:white;",
+	    	"": "background-color:rgba(255,255,255,0.75);",
 	    	".{Tab}": "border-bottom-left-radius:5px; border-bottom-right-radius:5px;",
 	    	".{Tab}.selected": "padding-left:8px;"
 	    },

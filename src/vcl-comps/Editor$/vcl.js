@@ -5,7 +5,7 @@ var Factory = require("vcl/Factory");
 var Node = require("vcl/ui/Node");
 var Tab = require("vcl/ui/Tab");
 
-$(["./Editor<js>"], {
+[["./Editor<js>"], {
     onLoad: function() {
         var tab = this.up("vcl/ui/Tab");
         var scope = this.scope();
@@ -64,76 +64,76 @@ $(["./Editor<js>"], {
         this.setTimeout("alignControls", 32);
     }
 }, [
-	$("vcl/Action#instantiate", {
+	["vcl/Action", ("instantiate"), {
 		onExecute: function(evt) {
 			var scope = this.scope(), uri = evt.uri;
-        	if(!scope.host.isVisible()) { return; } //TODO shouldn't be here
-        	
-            var factory = new Factory(require, uri, evt.sourceUri);
-            var root = scope.host.getControls()[0];
-            var ws = root.up("devtools/Workspace<>");
-            
-            while(root) {
-            	root && root.setParent(null);
-            	root = scope.host.getControls()[0];
-            }
-            
-            factory.load(scope.ace.getValue(), 
-                function() {
-                    try {
-                        root && root.destroy();
-                        root = factory.newInstance(scope['@owner'], uri);
-                        if(root instanceof require("vcl/Control")) {
-                            root.setParent(scope.host);
-                        } else {
-                        	root.qsa(":instanceOf(vcl/Control)").forEach(function(c) {
-                        		if(c.getParentComponent() === root) {
-                        			c.setParent(scope.host);
-                        		}
-                        	});
-                        }
-                        ws.print(scope['@this'], root);
-                    } catch(e) {
-                        alert(e.message); 
-                    }
-                }, 
-                function(e) {
-                    root && root.show();
-                    
-                	if(e instanceof Error) {
-                    	console.error(e);
-                		alert(e.message);
-                		scope.host.up().print(e);
-                	}
+	    	if(!scope.host.isVisible()) { return; } //TODO shouldn't be here
+	    	
+	        var factory = new Factory(require, uri, evt.sourceUri);
+	        var root = scope.host.getControls()[0];
+	        var ws = root.up("devtools/Workspace<>");
+	        
+	        while(root) {
+	        	root && root.setParent(null);
+	        	root = scope.host.getControls()[0];
+	        }
+	        
+	        factory.load(scope.ace.getValue(), 
+	            function() {
+	                try {
+	                    root && root.destroy();
+	                    root = factory.newInstance(scope['@owner'], uri);
+	                    if(root instanceof require("vcl/Control")) {
+	                        root.setParent(scope.host);
+	                    } else {
+	                    	root.qsa(":instanceOf(vcl/Control)").forEach(function(c) {
+	                    		if(c.getParentComponent() === root) {
+	                    			c.setParent(scope.host);
+	                    		}
+	                    	});
+	                    }
+	                    ws.print(scope['@this'], root);
+	                } catch(e) {
+	                    alert(e.message); 
+	                }
+	            }, 
+	            function(e) {
+	                root && root.show();
+	                
+	            	if(e instanceof Error) {
+	                	console.error(e);
+	            		alert(e.message);
+	            		scope.host.up().print(e);
+	            	}
 				});
-
-		}
-	}),
 	
-    $("vcl/Action#toggle-source", {
-        hotkey: "Shift+MetaCtrl+S",
-        selected: "state",
-        visible: "state",
-        state: true,
-        
-        onExecute: function() {
-        	this.setState(!this.getState());
-        }
-    }),
-    $("vcl/Action#toggle-component", {
-        hotkey: "Shift+MetaCtrl+C",
-        selected: "state",
-        visible: "state",
-        state: false,
-        
-        onExecute: function() {
-        	this.setState(!this.getState());
-        	// var preview = this.scope().preview;
-        	// preview.setSelected(!preview.isSelected());
-        }
-    }),
-    $("vcl/Action#toggle-instantiate", {
-        hotkey: "Shift+MetaCtrl+X",
+		}
+	}],
+	
+	["vcl/Action", ("toggle-source"), {
+	    hotkey: "Shift+MetaCtrl+S",
+	    selected: "state",
+	    visible: "state",
+	    state: true,
+	    
+	    onExecute: function() {
+	    	this.setState(!this.getState());
+	    }
+	}],
+	["vcl/Action", ("toggle-component"), {
+	    hotkey: "Shift+MetaCtrl+C",
+	    selected: "state",
+	    visible: "state",
+	    state: false,
+	    
+	    onExecute: function() {
+	    	this.setState(!this.getState());
+	    	// var preview = this.scope().preview;
+	    	// preview.setSelected(!preview.isSelected());
+	    }
+	}],
+	["vcl/Action", ("toggle-instantiate"), {
+	    hotkey: "Shift+MetaCtrl+X",
 		onExecute: function(evt) {
 			// TODO source might be lost because of #refresh
 			var scope = this.scope();
@@ -147,16 +147,16 @@ $(["./Editor<js>"], {
 				tc.setState(false);
 			}
 		}    	
-    }),
+	}],
 
-    $i("ace", { align: "left", width: 750 }),
+    ["#ace", { align: "left", width: 750 }],
     
-	$("vcl/ui/Tabs#bottom-tabs", { align: "bottom", classes: "bottom inset", autoSize: "height" }, [
-    	$("vcl/ui/Tab", { action: "toggle-source", text: locale("Source"), control: "ace", groupIndex: -2, visible: "always" }),
-    	$("vcl/ui/Tab", { action: "toggle-component", text: locale("Component"), control: "host", groupIndex: -3, visible: "always" })
-	]),
+	["vcl/ui/Tabs", ("bottom-tabs"), { align: "bottom", classes: "bottom inset", autoSize: "height" }, [
+    	[("vcl/ui/Tab"), { action: "toggle-source", text: locale("Source"), control: "ace", groupIndex: -2, visible: "always" }],
+    	[("vcl/ui/Tab"), { action: "toggle-component", text: locale("Component"), control: "host", groupIndex: -3, visible: "always" }]
+	]],
 	
-    $("vcl/ui/Tree", "tree", {
+    ["vcl/ui/Tree", ("tree"), {
         align: "client", visible: false,
         css: { 
         	padding: "8px",
@@ -174,18 +174,18 @@ $(["./Editor<js>"], {
         		node.setParent(parent || this);
         	}
         }
-	}),
+	}],
 	
-    $("vcl/ui/Panel", "host", {
+    ["vcl/ui/Panel", ("host"), {
         action: "toggle-component", align: "client", selected: "never", executesAction: false,
         classes: "animated",
         css: { 
-            "background-color": "#f0f0f0", 
+            // "background-color": "#f0f0f0", 
             "border-left": "1px solid silver",
             "border-right": "1px solid silver"
         }
     }, [
-    	$("vcl/ui/Element", {
+    	["vcl/ui/Element", {
     		content: "<h3 style='margin-top:10%;'><center>" + 
     			"Reload <small>&#x2318;+R</small> or Save <small>&#x2318;+S</small> to view the component here<br><small>(or just click here to Reload)</small><br><br><br>" + 
     			"</center></h3><p style='padding-left:16px;'>Other shortcuts that might come handy:<ul>" + 
@@ -195,7 +195,7 @@ $(["./Editor<js>"], {
     		onClick: function() {
     			this.scope().refresh.execute();
     		}
-    	})
-    ])
+    	}]
+    ]]
 
-]);
+]];
