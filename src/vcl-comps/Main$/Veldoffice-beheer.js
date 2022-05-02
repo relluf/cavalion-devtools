@@ -1,6 +1,6 @@
-"use vo/VO";
+"use veldoffice/VO";
 
-window.VO = require("vo/VO");
+window.VO = require("veldoffice/VO");
 
 [["devtools/Main<Veldoffice>"], {
 	onLoad() {
