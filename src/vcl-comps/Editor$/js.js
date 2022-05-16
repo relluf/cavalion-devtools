@@ -1,4 +1,4 @@
-$([], {
+["", {
 	
 	onLoad() {
 		var ace = this.down("#ace"), firstRun = false;
@@ -18,4 +18,4 @@ $([], {
 		return this.inherited(arguments);
 	}
 	
-});
+}];

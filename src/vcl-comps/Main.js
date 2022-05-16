@@ -1,5 +1,37 @@
 "js/Method, vcl/ui/Ace, vcl/ui/Tab, vcl/ui/Panel, vcl/ui/Bar, vcl/ui/FormContainer, util/HotkeyManager, util/net/Url";
 
+var hotkeys = {
+	"Ctrl+Alt+F1": "editor-move-to-front",
+	"Ctrl+N": "editor-new", 
+	"Alt+Ctrl+N": "editor-new",
+	
+	"Shift+Ctrl+40": "editors-next",
+	"Shift+Ctrl+38": "editors-previous",
+	"Shift+Ctrl+39": "editor-next", 
+	"Shift+Ctrl+37": "editor-previous", 
+	
+	"Shift+Ctrl+186": "editors-next",
+	"Shift+Ctrl+189": "editors-previous",
+	"Shift+Ctrl+222": "editors-next",
+	"Shift+Ctrl+221": "editor-next", 
+	"Shift+Ctrl+219": "editor-previous", 
+	
+	"Ctrl+Tab": "editor-next", 
+	"Shift+Ctrl+Tab": "editor-previous", 
+	
+	"Shift+Ctrl+Meta+219": "editor-move-left",
+	"Shift+Ctrl+Meta+221": "editor-move-right",
+
+	"Ctrl+W": "editor-close",
+	"Shift+Ctrl+S": "editor-switch-favorite",
+	"Alt+Shift+Ctrl+S": "editor-switch-favorite",
+	"Shift+Ctrl+W": "editors-close-all", //less-one ;-)
+	"Alt+Shift+Ctrl+W": "editors-close-all", //less-one ;-)
+	
+	// "MetaCtrl+48": "editor-focus-in-navigator",
+	"Escape": "editor-setfocus"
+};
+
 var Ace = require("vcl/ui/Ace");
 var Tab = require("vcl/ui/Tab");
 var Control = require("vcl/Control");
@@ -26,11 +58,13 @@ function title_css() {
 		"&:not(.custom-colors)": js.sf("background-color:%s;color:%s;", colors[0], colors[1]),
 		"&.arcadis": "background-color:orange;color:black;",
 		"&.cavalion": "background-color:rgb(48,61,80);color:white;",
-		"&.gx": "background-color:purple;color:white;",
+		"&.terrannia": "background-color:purple;color:white;",
+		"&.veldoffice": "background-color:limegreen;color:darkgreen;",
 		"&.veldapps": "background-color:lightgreen;color:darkgreen;",
 		"&.veldapps-alt": "background-color:limegreen;color:white;",
 		"&.eae": "background-color:rgb(14,32,77);color:white;",
-		"&.rws": "background-color:#fbe122; color:maroon;"
+		"&.smdl": "background-color:gold;color:maroon;",
+		"&.gx": "background-color:navy; color:white;"
 	};
 }
 function replaceChars(uri) {
@@ -82,6 +116,8 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
 	css: {
 	    ".tabs-hidden_": tabs_hidden,
 	    
+	    "background-color": "rgba(255,255,255,0.975)",
+	    
 	    "&.workspace-tabs-hidden": {
 	    	"#editors-tabs": tabs_hidden,
 	    	"#bottom-tabs": tabs_hidden,
@@ -99,7 +135,7 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
 	    	".{Tab}.selected": "padding-left:8px;"
 	    },
 	    "#workspaces-tabs": {
-	    	"": "background-color:rgba(255,255,255,0.75);",
+	    	"": "background-color:#f0f0f0",//rgba(255,255,255,0.75);",
 	    	".{Tab}": "border-bottom-left-radius:5px; border-bottom-right-radius:5px;",
 	    	".{Tab}.selected": "padding-left:8px;"
 	    },
@@ -167,37 +203,6 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
         return this.inherited(arguments);
     },
     onActivate() {
-		var shortcuts = {
-			"Ctrl+Alt+F1": "editor-move-to-front",
-			"Ctrl+N": "editor-new", 
-			"Alt+Ctrl+N": "editor-new",
-			
-			"Shift+Ctrl+40": "editors-next",
-			"Shift+Ctrl+38": "editors-previous",
-			"Shift+Ctrl+39": "editor-next", 
-			"Shift+Ctrl+37": "editor-previous", 
-			
-			"Shift+Ctrl+186": "editors-next",
-			"Shift+Ctrl+189": "editors-previous",
-			"Shift+Ctrl+222": "editors-next",
-			"Shift+Ctrl+221": "editor-next", 
-			"Shift+Ctrl+219": "editor-previous", 
-			
-			"Ctrl+Tab": "editor-next", 
-			"Shift+Ctrl+Tab": "editor-previous", 
-			
-			"Shift+Ctrl+Meta+219": "editor-move-left",
-			"Shift+Ctrl+Meta+221": "editor-move-right",
-
-			"Ctrl+W": "editor-close",
-			"Shift+Ctrl+S": "editor-switch-favorite",
-			"Shift+Ctrl+E": "editor-switch-favorite",
-			"Shift+Ctrl+W": "editors-close-all", //less-one ;-)
-			"Alt+Shift+Ctrl+W": "editors-close-all", //less-one ;-)
-			
-			// "MetaCtrl+48": "editor-focus-in-navigator",
-			"Escape": "editor-setfocus"
-		};
 		
 		var me = this;
 		function create_callback(hotkey, action) {
@@ -264,11 +269,11 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
 			}
 		}
 		
-		// general shortcuts, see def above
-		for(var k in shortcuts) {
+		// general hotkeys, see def above
+		for(var k in hotkeys) {
 			HotkeyManager.register(k, {
 				type: "keydown",
-				callback: create_callback(k, shortcuts[k])
+				callback: create_callback(k, hotkeys[k])
 			});
 		}
 		

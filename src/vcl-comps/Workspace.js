@@ -93,7 +93,7 @@ var Utils = {
 	     //           }, 0);
 	     //       });
 	        });
-	        scope['left-sidebar'].setVisible(state['left-sidebar.visible'] !== false);
+	        scope['left-sidebar'].setVisible(state['left-sidebar.visible'] === true);
         }
     }
 };
@@ -142,6 +142,8 @@ var Utils = {
         	}
         	scope['editor-needed'].execute(evt);
         };
+        
+        this.qsa("#editor-switch-favorite").execute();
         
         return this.inherited(arguments);
     },
@@ -455,12 +457,16 @@ var Utils = {
     	on() {
     		var ws = this.up("devtools/Workspace<>:root");
     		var ed = ws.qsa("devtools/Editor<>:root:visible").map(_ => _.down("#ace"));
-    		if(!ed.length) return;
+    		// if(!ed.length) return;
     		
-    		ed = ed.pop().up();
+    		if(ed.length) {
+    			ed = ed.pop().up();
+    		} else {
+    			ed = null;
+    		}
     		
     		var favs = ws.vars(["#navigator favorites"]) || [];
-    		var uri = ed.vars(["resource.uri"]);
+    		var uri = ed && ed.vars(["resource.uri"]);
     		
     		favs = favs.map(_ => _.split(";")).filter(_ => _[2] === "File").map(_ => _[0]);
     		
@@ -483,7 +489,7 @@ var Utils = {
     	}
     }],
     
-    ["vcl/ui/Panel", ("left-sidebar"), { align: "left", css: "border-right: 1px solid gray;", width: 375 }, [
+    ["vcl/ui/Panel", ("left-sidebar"), { align: "left", css: "border-right: 1px solid gray;", width: 375, visible: false }, [
     	
         ["vcl/ui/Tabs", ("left-sidebar-tabs"), [
             ["vcl/ui/Tab", { text: locale("Navigator"), control: "navigator", selected: true }],
@@ -507,7 +513,10 @@ var Utils = {
         ["vcl/ui/Panel", "search-panel", { align: "client", visible: false }],
         ["vcl/ui/Panel", "inspector-panel", { align: "client", visible: false }]
     ]],
-    ["vcl/ui/Panel", ("editors"), { align: "client" }, [
+    ["vcl/ui/Panel", ("editors"), { 
+    	align: "client",
+    	css: "background-color: rgb(140,140,140,0.35);",
+    }, [
         ["vcl/ui/Tabs", ("editors-tabs"), {
             onChange: function(tab, previous) {
 // TODO tell application to render it's title
