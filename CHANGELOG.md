@@ -1,3 +1,17 @@
+### 2022/05/15 - 1.0.71
+
+### 2022/05/02 - 1.0.70
+
+* 4f6fda7 - Veldoffice-workspace: #session-bar is gone (?) 
+* 4f6fda7 - Refactoring vo/VO => veldoffice/VO
+* 24be0e9 - Style and cosmetic changes, mainly more transparency and less code
+
+### 2022/04/27 - 1.0.69
+
+`#VA-20220427-1`
+
+* Editor<xsd>: Incredible, but still true, fixed a bug concerning "sequence.sequence.element" definitions
+
 ### 2022/04/24 - 1.0.67-68
 
 `#CVLN-20210102-2`
@@ -5,6 +19,10 @@
 * Editor<svg>: enhancing previewing SVG graphic, now scrollable 
 * Editor<html>: cleaning up Framework7 and pages/Controller references
 * Editor<md>: advancing "link-features", dynamic titles and hrefs with backticks
+
+### 2022/04/25 - 1.0.67
+
+* Workspace<>#editor-switch-favorite: `vars(["#navigator favorites"])` can be inherited now
 
 ### 2022/04/22 - 1.0.66
 
