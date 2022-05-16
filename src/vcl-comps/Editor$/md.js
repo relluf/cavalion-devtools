@@ -1,4 +1,4 @@
-"use on, markdown, blocks/Factory";
+"use on, markdown, blocks/Factory, util/HtmlElement";
 
 /*-
 
@@ -30,13 +30,17 @@
 var on = require("on");
 var markdown = require("markdown");
 var Component = require("vcl/Component");
+var HE = require("util/HtmlElement");
 var resolveUri_comps = require("vcl/Factory").resolveUri;
 var resolveUri_blocks = require("blocks/Factory").resolveUri;
 
 var isUpperCase = (s) => s.toUpperCase() === s;
 var e_v_a_l = (s) => {
 	var E;
-	return window[(E = "e") + 'val'](js.sf("({f:function (app, ws, ed, v, l) { return `%s`; }})", s));
+	return window[(E = "e") + 'val'](js.sf("({" + 
+		"f:function (app, ws, ed, v, l) { return `%s`; }, " + 
+		"i:function (img, app, ws, ed, v, l) { return `%s`; } " + 
+	"})", s, s));
 };
 
 function editorNeeded(control, evt) {
@@ -125,7 +129,7 @@ document.addEventListener("click", (evt) => {
 		if(href === "") {
 			href = anchor.textContent;
 		} else if(href === ":") {
-			alert("HUU?")
+			// alert("HUU?")
 			blocks = true;
 			href = anchor.textContent;
 		}
@@ -253,7 +257,7 @@ function render() {
     this.up().qsa("#output").forEach(_ => {
     	_.setContent(markdown.renderJsonML(root));
     	_.update(function() {
-    		var node = this.nodeNeeded();
+    		var node = this.nodeNeeded(), me = this;
     		
     		node.qsa("a").forEach(a => {
     			if(a.title && a.title.startsWith("`") && a.title.endsWith("`")) {
@@ -265,22 +269,54 @@ function render() {
     		
 		    node.qsa("img").forEach(img => {
 		    	var src = js.get("attributes.src.value", img) || "";
-		    	if(src.indexOf(":") === -1) {
+		    	if(src.indexOf(":") === -1) { // relative image src
 		    		img.src = "/home/" + js.up(resource.uri) + "/" + src;
 		    	}
 		    });
 
 		    on(node.qsa("img"), "load", function(img, r) {
 		    	img = this; r = window.devicePixelRatio || 1;
-		    	if(img.src.indexOf("?2x") !== -1) {
-	    			img.style.widthWhenHovered = img.naturalWidth / r + "px";
-		    	}
+	    		if(img.style.maxWidth === "") {
+	    			r = img['@?x'] || r;
+me.print("setting maxWidth", js.sf("%dpx", (img.naturalWidth / r)));
+    				img.style.maxWidth = js.sf("%dpx", (img.naturalWidth / r));
+	    		}
+
 		    });
 		    
 		    node.qsa("img").forEach(function(img) {
-		    	var r = window.devicePixelRatio > 1 ? 2 : 2;
+		    	// HE.addClass(img, "centered");
+		    	
+		    	var r = window.devicePixelRatio > 1 ? 2 : 2, title, imgs;
 		    	if(img.naturalWidth && img.src.indexOf("?2x") !== -1) {
 		    		img.style.widthWhenHovered = img.naturalWidth / r + "px";
+		    	}
+		    	if(img.title.match(/^@([0-9]*[.])?[0-9]+/)) {
+		    		imgs = img.title.split(' ');
+		    		img['@?x'] = parseFloat(imgs.shift().substring(1))
+		    		img.title = imgs.join(' ');
+		    	}
+		    	
+		    	if(img.title.startsWith('`') && img.title.endsWith('`')) {
+					var backtick_params = [
+						img,
+						me.app(), 
+						me.up("devtools/Workspace<>:root"), 
+						me.up("devtools/Editor<>:root"),
+						(i, a, b, c, d) => me.vars.apply(me, [i, a, b, c, d].filter(a => a)),
+						window.locale];
+
+		    		imgs = img.title.split('`');
+		    		img.title = imgs.pop();
+		    		imgs = e_v_a_l(imgs[1]).i.apply(me, backtick_params).split(";");
+		    		
+		    		if(imgs.length === 1) { // only classes
+		    			HE.addClasses(imgs.pop());
+		    		}
+
+		    		if(imgs.length) { // mixin on img.style
+    					js.mixIn(img.style, js.str2obj(imgs.join(";")));
+		    		}
 		    	}
 		    });
 		    
@@ -352,8 +388,15 @@ var Handlers = {
     		});
         },
         onExecute() {
-        	this.setState(!this.getState());
+        	var state = !this.getState();
+        	this.setState(state);
+        	if(state === true) {
+        		var ace = this.ud("#ace");
+        		ace.setFocus();
+        		// this.nextTick(() => ace.focus());
+        	}
         	this.up().writeStorage("source-visible", this.getState());
+        	
         }
     }],
     ["vcl/ui/Panel", ("output"), { 
@@ -368,6 +411,7 @@ var Handlers = {
 		    "font-size": "12pt",
 		    'img': {
 		    	'': "width:75%; transition: width 1s ease 0s, box-shadow 1s ease 0s;",
+		    	':not(.virgin)': "display:block;margin:auto;",
 		    	'&:hover': "width: 100%; box-shadow: rgb(0 0 0 / 40%) 0px 1px 2px 0px;",// max-height: 600px;",
 		    },
 		    padding: "10px",
