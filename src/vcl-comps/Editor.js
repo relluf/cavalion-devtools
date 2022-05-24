@@ -27,6 +27,7 @@ var ExtensionToMode = {
             "kml": "xml",
             "xsl": "xml",
             "jsp": "jsp",
+            "yml": "yaml",
             "openapi": "yaml"
         };
 
