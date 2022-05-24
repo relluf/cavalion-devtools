@@ -10,13 +10,13 @@
 	vars: {
 		"#navigator home": "Workspaces/cavalion.org/cavalion-code",
 		"#navigator favorites": [
-			"Workspaces/cavalion.org/cavalion-ide/src/cavalion-blocks",
-			"Workspaces/cavalion.org/cavalion-code/src",
-			"Workspaces/cavalion.org/cavalion-code/src/vcl-comps",
+			// "Workspaces/cavalion.org/cavalion-ide/src/cavalion-blocks",
+			"Workspaces/cavalion.org/cavalion-code/src;src",
+			// "Workspaces/cavalion.org/cavalion-code/src/vcl-comps;vcl",
 			// "Workspaces/cavalion.org/cavalion-code/CHANGELOG.md;CHANGELOG.md;File",
 			// "Workspaces/cavalion.org/cavalion-code/ROADMAP.md;ROADMAP.md;File",
 			"Workspaces/cavalion.org/cavalion-code/.md;.md;File",
-			"Workspaces/cavalion.org/cavalion-code/src/vcl-comps/devtools/Workspace$;Workspaces;Folder"
+			// "Workspaces/cavalion.org/cavalion-code/src/vcl-comps/devtools/Workspace$;Workspaces;Folder"
 		]
 	}
 }];
