@@ -148,12 +148,23 @@ var Tab = require("vcl/ui/Tab");
 			}
 		}    	
 	}],
+	["vcl/Action", ("toggle-notes"), {
+	    hotkey: "Shift+MetaCtrl+N",
+	    selected: "state",
+	    visible: "state",
+	    state: false,
+	    
+	    on() {
+	    	this.setState(!this.getState());
+	    }
+	}],
 
     ["#ace", { align: "left", width: 750 }],
     
 	["vcl/ui/Tabs", ("bottom-tabs"), { align: "bottom", classes: "bottom inset", autoSize: "height" }, [
     	[("vcl/ui/Tab"), { action: "toggle-source", text: locale("Source"), control: "ace", groupIndex: -2, visible: "always" }],
-    	[("vcl/ui/Tab"), { action: "toggle-component", text: locale("Component"), control: "host", groupIndex: -3, visible: "always" }]
+    	[("vcl/ui/Tab"), { action: "toggle-component", text: locale("Component"), control: "host", groupIndex: -3, visible: "always" }],
+    	[("vcl/ui/Tab"), { action: "toggle-notes", text: locale("Notes"), control: "notes", groupIndex: -4, visible: "always" }]
 	]],
 	
     ["vcl/ui/Tree", ("tree"), {
@@ -196,6 +207,16 @@ var Tab = require("vcl/ui/Tab");
     			this.scope().refresh.execute();
     		}
     	}]
-    ]]
+    ]],
+    
+    // ["devtools/Editor<md>", ("notes"), {
+    //     action: "toggle-notes", align: "client", selected: "never", executesAction: false,
+    //     vars: {
+    //     	resource: { uri: "xyz" }
+    //     }
+    	
+    // }, [
+    	
+    // ]]
 
 ]];
