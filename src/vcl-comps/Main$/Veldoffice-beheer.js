@@ -163,5 +163,3 @@ window.VO = require("veldoffice/VO");
 		
 	]]
 ]];
-
-

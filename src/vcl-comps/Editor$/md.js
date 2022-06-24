@@ -278,7 +278,7 @@ function render() {
 		    	img = this; r = window.devicePixelRatio || 1;
 	    		if(img.style.maxWidth === "") {
 	    			r = img['@?x'] || r;
-me.print("setting maxWidth", js.sf("%dpx", (img.naturalWidth / r)));
+// me.print("setting maxWidth", js.sf("%dpx", (img.naturalWidth / r)));
     				img.style.maxWidth = js.sf("%dpx", (img.naturalWidth / r));
 	    		}
 
