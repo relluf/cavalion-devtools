@@ -1,4 +1,4 @@
-"js/Method, vcl/ui/Ace, vcl/ui/Tab, vcl/ui/Panel, vcl/ui/Bar, vcl/ui/FormContainer, util/HotkeyManager, util/net/Url";
+"clipboard-copy, js/Method, vcl/ui/Ace, vcl/ui/Tab, vcl/ui/Panel, vcl/ui/Bar, vcl/ui/FormContainer, util/HotkeyManager, util/net/Url";
 
 var hotkeys = {
 	"Ctrl+Alt+F1": "editor-move-to-front",
@@ -567,13 +567,22 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
     	hotkey: "Cmd+C",
     	hotkeyPreventsDefault: false,
     	onExecute(evt) {
+    		var copy = require("clipboard-copy");
+    		
     		var focused = require("vcl/Control").focused;
     		if(focused instanceof require("vcl/ui/Tabs")) {
     			focused = focused.getSelectedControl(1);
+    		} else if(focused instanceof require("vcl/ui/Node")) {
+    		// 	focused = focused.getSelectedControl(1);
+    		} else if(focused instanceof require("vcl/ui/List")) {
+    			return copy(focused.getSelection(true).map(resource => resource.uri).join("\n"));	
+    		} else {
+    			focused = null;
     		}
     			
     		if(focused && (uri = focused.vars(["resource.uri"]))) {
     			// this.app().print("copy", uri);
+    			copy(uri);
     		}
     	}
     }],
