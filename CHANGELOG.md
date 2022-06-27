@@ -1,8 +1,18 @@
+### 2022/06/27 - 1.0.73
+
+* d75591f - now also activating CtrlCtrl<>> by double fastpress of right Alt-key
+* 6ae1aef - cosmetic / developing (finally!) - currently rendering a list of all within #editors-tabs nested vcl/ui/Tab
+
 ### 2022/05/15 - 1.0.72
 
 * Adding devtools/Editor<yml>
 
 ### 2022/05/15 - 1.0.71
+
+* a6e918e - developing support for styling images and scaling shortcuts (@Fx)
+* a60eefd - cosmetic, ui improvements
+* 4f6fda7 - refactoring Veldoffice workspace (session-bar is gone?) - refactoring vo/VO => veldoffice/VO
+* 24be0e9 - style and cosmetic - more transparent - less code
 
 ### 2022/05/02 - 1.0.70
 
