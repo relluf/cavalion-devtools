@@ -259,7 +259,6 @@ function onNodesNeeded(parent) {
             var list = this.scope('search-list'), me = this;
             var ws = this.up("devtools/Workspace<>:root");
             var a = ws.down("#editor-needed");
-            
             list.getSelection(true).forEach(function (resource) {
             	var metadata = require("v7/pdok/viewer-metadata");
             	var themes = require("v7/pdok/themes");

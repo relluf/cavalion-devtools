@@ -328,6 +328,19 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
 					}
 				}
 			});
+			HotkeyManager.register({
+				keyCode: 18, type: "keyup",
+				callback: function(evt) {
+					if(evt.code !== "AltRight") return;
+					if(focused) {
+						if(ctrlctrl.getVisible()) ctrlctrl.hide(); 
+						else ctrlctrl.show();
+					} else {
+						focused = require("vcl/Control").focused || 1;
+						me.setTimeout("ctrlctrl", () => focused = null, 250);
+					}
+				}
+			});
 		}());
     },
     onDeactivate() {
