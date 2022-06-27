@@ -1,6 +1,6 @@
 "vcl/ui/ListHeader";
 
-$("vcl/ui/Form", {
+[("vcl/ui/Form"), {
 	activeControl: "list",
     onActivate: function (parent) {
         this.scope("editors-array").setArray(
@@ -20,9 +20,9 @@ $("vcl/ui/Form", {
 		return this.inherited(arguments);
     }
 }, [
-    $("vcl/data/Array", "editors-array", {}),
+    [("vcl/data/Array"), "editors-array", {}],
     
-    $("vcl/Action", "editor-open", {
+    [("vcl/Action"), "editor-open", {
         onExecute: function (evt) {
             var list = this.scope('list');
             var a = this.up("devtools/Workspace<>:root").down("#editor-needed");
@@ -30,8 +30,8 @@ $("vcl/ui/Form", {
             	a.execute({resource: resource, selected: true});
             }, this);
         }
-    }),
-    $("vcl/Action", "search-focus", {
+    }],
+    [("vcl/Action"), "search-focus", {
         hotkey: "MetaCtrl+191|Alt+F",
         onExecute: function () {
             var scope = this.getScope();
@@ -44,8 +44,8 @@ $("vcl/ui/Form", {
             scope['search-input'].setFocus(true);
             this.setVar("previous", now);
         }
-    }),
-    $("vcl/Action", "search", {
+    }],
+    [("vcl/Action"), "search", {
         onExecute: function () {
             var scope = this.getScope();
             var text = scope['search-input'].getInputValue();
@@ -81,14 +81,14 @@ $("vcl/ui/Form", {
                         return prev.concat(curr.sort(sort));
                     }));
         }
-    }),
-    $("vcl/ui/Panel", "search-panel", {
+    }],
+    [("vcl/ui/Panel"), "search-panel", {
         align: "top",
         autoSize: "height",
         css: "padding: 4px 5px;", 
         visible: false
     }, [
-        $("vcl/ui/Input", "search-input", {
+        [("vcl/ui/Input"), "search-input", {
             placeholder: "search",
             css: {
                 width: "100%",
@@ -137,9 +137,9 @@ $("vcl/ui/Form", {
                     scope.search.execute(evt);
                 }
             }
-        })
-    ]),
-    $("vcl/ui/List", "list", {
+        }]
+    ]],
+    [("vcl/ui/List"), "list", {
         align: "client",
         action: "editor-open",
         source: "editors-array",
@@ -172,7 +172,7 @@ $("vcl/ui/Form", {
             this._rowHeight = 21;
         }
     }, [
-        $("vcl/ui/ListColumn", {
+        [("vcl/ui/ListColumn"), {
             content: "#",
             attribute: ".",
             onGetValue: function (value, row, source) {
@@ -186,6 +186,6 @@ $("vcl/ui/Form", {
                 classes.push(orgValue.type === "Folder" ? "folder" : "file");
                 cell.className = classes.join(" ");
             }
-        })
-    ])
-]);
+        }]
+    ]]
+]];
