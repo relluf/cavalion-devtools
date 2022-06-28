@@ -466,24 +466,42 @@ var Utils = {
     		}
     		
     		var favs = ws.vars(["#navigator favorites"]) || [];
-    		var uri = ed && ed.vars(["resource.uri"]);
+    		var uri = this.vars("last-uri") || (ed && ed.vars(["resource.uri"]));
     		
-    		favs = favs.map(_ => _.split(";")).filter(_ => _[2] === "File").map(_ => _[0]);
+    		favs = favs
+    			.map(_ => _.split(";"))
+    			.filter(_ => _[2] === "File").map(_ => _[0])
+    			.concat(ws.qsa("vcl/ui/Tab").filter(tab => (tab.vars("resource.uri")||"").endsWith("/.md"))
+    				.map(tab => tab.vars("resource.uri")))
+    			.filter((s, i, a) => a.indexOf(s) === i);
     		
     		if(!favs.length) return;
     		
     		var state = ws.vars(this._name) || {};
     		var ago = Date.now() - (state.time || 0);
     		var index = favs.indexOf(uri);
-
+    		
     		if(ago < 1500 && index !== -1) {
-    			this.ud("#editor-needed").execute(favs[(index + 1) % favs.length]);
+    			this.ud("#editor-needed").execute(uri = favs[index = (index + 1) % favs.length]);
     		} else if(index !== -1) {
-    			this.ud("#editor-needed").execute(favs[index]);
+    			this.ud("#editor-needed").execute(uri = favs[index]);
     		} else {
-    			this.ud("#editor-needed").execute(favs[0]);
+    			this.ud("#editor-needed").execute(uri = favs[index = 0]);
     		}
-   
+
+    		this.vars("last-uri", uri);
+    		
+			var content = favs.map((s, i) => index === i ? js.sf("<b>%H</b>", s) : s).join("<br>");
+			var toast = this.vars("toast");
+			if(toast) {
+				toast.element.setContent(content);	
+			} else {
+				toast = app.toast({ classes: "fade glassy", content: content, timeout: false });
+				this.vars("toast", toast);
+			}
+			
+			this.setTimeout("remove-toast", () => { toast.remove(); this.vars("toast", null); }, 1500);
+
     		state.time = Date.now();
     		ws.vars(this._name, state);
     	}
@@ -502,7 +520,7 @@ var Utils = {
            
         ]],
 
-        [["./Navigator<>"], "navigator"],
+        [["./Navigator<>"], "navigator", { visible: false }],
         [["./Bookmarks"], "bookmarks", { align: "client", visible: false }],
         [["./Outline"], "outline", { _align: "client", visible: false }],
         [["./OpenTabs"], "openTabs", { visible: false }],
