@@ -51,14 +51,32 @@ var getKeyName = (key) => {
 					name = "";
 				}
 				
-				if(e.type !== "keydown") return;// || !name) return;
-
+				name = name.replace(/Digit/, "");
 				name = String.format("%s%s", modifiers, name || "");
-				this.print(e.type, {event: e, name: name, code: e.code, key: e.key, keyCode: e.keyCode});
+
+				// this.print(e.type, {event: e, name: name || e.code, code_: e.code, key: e.key, keyCode: e.keyCode});
 				
 				// if(modifiers.length === 0) return; 
 				
-				app.toast({ classes: "fade glassy big", content: name });
+				var toast = this.vars("toast");
+				if(toast) {
+					name.length && toast.element.setContent(name);
+				} else if(name.length && e.type === "keydown") {
+					toast = app.toast({ classes: "fade glassy big", content: name, timeout: false });
+					toast.pressed = 0;
+					this.vars("toast", toast);
+				}
+				
+				var st = (id) => this.setTimeout(id || "remove", () => toast.remove(), 1250);
+				
+				if(e.type !== "keydown") {
+					this.removeVar("toast");
+					st(Date.now());
+				} else if(e.keyCode > 31) {
+					this.removeVar("toast");
+					st(Date.now());
+				}
+				
 			}
 		}));
 		this.print("just casually tracking keystrokes");
