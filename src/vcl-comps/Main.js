@@ -223,11 +223,10 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
 				}
 				sidebar.update(function() {
 					var tabs = me.down("devtools/Workspace<>:root:selected #left-sidebar-tabs");
-					var tab = tabs._controls.filter(_ => _ instanceof Control)[index];
-					tab.setSelected(true);
-					tab.update(function() {
-						focusSidebar(ws, sidebar);	
-					});
+					// var tab = tabs._controls.filter(_ => _ instanceof Control)[index];
+					// tab.setSelected(true);
+					tabs._controls.forEach((tab, i) => tab.setSelected(i === index));
+					tabs._controls[index].update(() => focusSidebar(ws, sidebar));
 				});		
 			};
 		}
@@ -263,9 +262,7 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
 				f && f.setFocus();
 			} else {
 				sidebar.show();
-				sidebar.update(function() {
-					focusSidebar(ws, sidebar);
-				});
+				sidebar.update(() => focusSidebar(ws, sidebar));
 			}
 		}
 		
