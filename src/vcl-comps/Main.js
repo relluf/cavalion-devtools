@@ -347,10 +347,9 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
     [["devtools/DragDropHandler<dropbox>"]],
     [["devtools/CtrlCtrl<>"], "ctrlctrl", { visible: false}],
     
-    /*- Command <dot> */
-	["vcl/Action", ("⌘."), {
+	[("vcl/Action"), "⌘.", {
 		hotkey: "Meta+190",
-		on() {
+		on_() {
 			var editor, ws;
 			if(Control.focused) {
 				editor = Control.focused.up("devtools/Editor<>");
@@ -362,8 +361,40 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
 			if(editor && ws) {
 				ws.print(nameOf(this), editor.vars(["resource.uri"]));
 			}
+		},
+		on() {
+			var editor = app.qsa("vcl/ui/Tab:visible:selected").filter(_ => _.vars("resource")).pop();
+			if(editor) {
+				var uri = editor.vars("resource.uri"); 
+				app.print(uri, editor);
+				app.toast({classes: "glassy fade", content: uri})
+			}
 		}
+		
 	}],
+    [("vcl/Action"), "copy-handler", {
+    	hotkey: "Cmd+C",
+    	hotkeyPreventsDefault: false,
+    	onExecute(evt) {
+    		var copy = require("clipboard-copy");
+    		
+    		var focused = require("vcl/Control").focused;
+    		if(focused instanceof require("vcl/ui/Tabs")) {
+    			focused = focused.getSelectedControl(1);
+    		} else if(focused instanceof require("vcl/ui/Node")) {
+    		// 	focused = focused.getSelectedControl(1);
+    		} else if(focused instanceof require("vcl/ui/List")) {
+    			return copy(focused.getSelection(true).map(resource => resource.uri).join("\n"));	
+    		} else {
+    			focused = null;
+    		}
+    			
+    		if(focused && (uri = focused.vars(["resource.uri"]))) {
+    			// this.app().print("copy", uri);
+    			copy(uri);
+    		}
+    	}
+    }],
 
     [("vcl/Action"), "hide-workspace-tabs", {
     	onExecute() { 
@@ -572,31 +603,7 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
             }
     	}
     }],
-    
-    [("vcl/Action"), "copy-handler", {
-    	hotkey: "Cmd+C",
-    	hotkeyPreventsDefault: false,
-    	onExecute(evt) {
-    		var copy = require("clipboard-copy");
-    		
-    		var focused = require("vcl/Control").focused;
-    		if(focused instanceof require("vcl/ui/Tabs")) {
-    			focused = focused.getSelectedControl(1);
-    		} else if(focused instanceof require("vcl/ui/Node")) {
-    		// 	focused = focused.getSelectedControl(1);
-    		} else if(focused instanceof require("vcl/ui/List")) {
-    			return copy(focused.getSelection(true).map(resource => resource.uri).join("\n"));	
-    		} else {
-    			focused = null;
-    		}
-    			
-    		if(focused && (uri = focused.vars(["resource.uri"]))) {
-    			// this.app().print("copy", uri);
-    			copy(uri);
-    		}
-    	}
-    }],
-    
+
     [("vcl/Action"), "workspace-left-sidebar-tabs::next-previous", {
     	hotkey: "Ctrl+32|Ctrl+Shift+32",
     	onExecute: function(evt) {
