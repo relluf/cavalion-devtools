@@ -467,12 +467,14 @@ var Utils = {
     		
     		var favs = ws.vars(["#navigator favorites"]) || [];
     		var uri = this.vars("last-uri") || (ed && ed.vars(["resource.uri"]));
+    		var tab_uris = ws.qsa("vcl/ui/Tab")
+    			.filter(tab => (tab.vars("resource.uri")||"").endsWith("/.md"))
+    			.map(tab => [tab, tab.vars("resource.uri")]);
     		
     		favs = favs
     			.map(_ => _.split(";"))
     			.filter(_ => _[2] === "File").map(_ => _[0])
-    			.concat(ws.qsa("vcl/ui/Tab").filter(tab => (tab.vars("resource.uri")||"").endsWith("/.md"))
-    				.map(tab => tab.vars("resource.uri")))
+    			.concat(tab_uris.map(tab => tab[1]))
     			.filter((s, i, a) => a.indexOf(s) === i);
     		
     		if(!favs.length) return;
