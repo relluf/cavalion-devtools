@@ -1,5 +1,6 @@
 "use vcl/ui/ListColumn, util/Event";
 
+/*- ### 2022/07/24 #q.placeholder reflects location in tree (more or less) */
 /*- ### 2022/01/10 ... */
 /*- ### 2021/09/18 Hooking devtools/Editor<xml>'s console */
 /*- ### 2021/09/11 Whatvar? console or sel */
@@ -290,6 +291,22 @@ var Factories = {
 				}
 			} else {
 				sel = sel || cons.sel || [];
+			}
+			
+			if(cons) {
+				var node = cons.getNode().qsa(".node.object.selected").pop();
+				if(node) {
+					node = node.qs(".key");
+					var content = node.textContent;
+					if(content) {
+						var parent = node.parentNode.parentNode.parentNode.qs(".key");
+						if(parent.textContent.charAt(0) === "[") {
+							parent = parent.parentNode.parentNode.parentNode.qs(".key");
+						}
+						parent = parent && parent.textContent;
+						this.ud("#q").setPlaceholder(js.sf("%s/%s", parent.replace(/: $/, ""), content.replace(/: $/, "")));
+					}
+				}
 			}
 			
 			this.ud("#reflect").execute(sel);
