@@ -223,8 +223,6 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
 				}
 				sidebar.update(function() {
 					var tabs = me.down("devtools/Workspace<>:root:selected #left-sidebar-tabs");
-					// var tab = tabs._controls.filter(_ => _ instanceof Control)[index];
-					// tab.setSelected(true);
 					tabs._controls.forEach((tab, i) => tab.setSelected(i === index));
 					tabs._controls[index].update(() => focusSidebar(ws, sidebar));
 				});		
@@ -329,6 +327,19 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
 				keyCode: 18, type: "keyup",
 				callback: function(evt) {
 					if(evt.code !== "AltRight") return;
+					if(focused) {
+						if(ctrlctrl.getVisible()) ctrlctrl.hide(); 
+						else ctrlctrl.show();
+					} else {
+						focused = require("vcl/Control").focused || 1;
+						me.setTimeout("ctrlctrl", () => focused = null, 250);
+					}
+				}
+			});
+			HotkeyManager.register({
+				keyCode: 16, type: "keyup",
+				callback: function(evt) {
+					if(evt.code !== "ShiftRight") return;
 					if(focused) {
 						if(ctrlctrl.getVisible()) ctrlctrl.hide(); 
 						else ctrlctrl.show();
