@@ -133,7 +133,7 @@ function common(tab) {
 		executesAction: "onDblClick",
 		onNodeCreated() {
 			this.up().readStorage("editors-tabs", (state) => {
-				state && state.selected && this.getControl(state.selected).setSelected(true);
+				state && state.selected && this.getControl(state.selected)?.setSelected(true);
 			});
 		},
 		onChange(newTab, oldTab) {
