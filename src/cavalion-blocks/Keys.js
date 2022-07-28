@@ -55,7 +55,6 @@ var getKeyName = (key) => {
 				name = String.format("%s%s", modifiers, name || "");
 
 				// this.print(e.type, {event: e, name: name || e.code, code_: e.code, key: e.key, keyCode: e.keyCode});
-				
 				// if(modifiers.length === 0) return; 
 				
 				var toast = this.vars("toast");
@@ -67,7 +66,7 @@ var getKeyName = (key) => {
 					this.vars("toast", toast);
 				}
 				
-				var st = (id) => this.setTimeout(id || "remove", () => toast.remove(), 1250);
+				var st = (id) => this.setTimeout(id || "remove", () => toast && toast.remove(), 1250);
 				
 				if(e.type !== "keydown") {
 					this.removeVar("toast");
