@@ -2,6 +2,11 @@
 
 /*-
 
+### 2022/07/26
+
+* Documenting backticks behaviour, for images and for links
+* Enhancing backticks behaviour for links so that "stuff and printed in console"
+
 ### 2022/04/24
 
 * Linking vcl-comps: [](())
@@ -27,27 +32,116 @@
 * Adding support for clicking anchors (`#CVLN-20210102-2`)
 */
 
-var on = require("on");
-var markdown = require("markdown");
-var Component = require("vcl/Component");
-var HE = require("util/HtmlElement");
-var resolveUri_comps = require("vcl/Factory").resolveUri;
-var resolveUri_blocks = require("blocks/Factory").resolveUri;
+const on = require("on");
+const markdown = require("markdown");
+const Component = require("vcl/Component");
+const HE = require("util/HtmlElement");
+const resolveUri_comps = require("vcl/Factory").resolveUri;
+const resolveUri_blocks = require("blocks/Factory").resolveUri;
 
-var isUpperCase = (s) => s.toUpperCase() === s;
-var e_v_a_l = (s) => {
-	var E;
-	return window[(E = "e") + 'val'](js.sf("({" + 
-		"f:function (app, ws, ed, v, l) { return `%s`; }, " + 
-		"i:function (img, app, ws, ed, v, l) { return `%s`; } " + 
-	"})", s, s));
-};
-
-function editorNeeded(control, evt) {
-	if(evt.metaKey === true) {
-		return control.up("devtools/Workspace<>:root").down("#editor-needed");
+function render() {
+	var value = this.getValue();
+	
+// #CVLN-20200906-3
+	var impl;
+	if((impl = this.vars(["onGetRenderValue"]))) {
+		value = impl(value, this);
 	}
-	return control.udr("#editor-needed");
+	if((impl = this.vars(["onRender"]))) {
+		return impl(value, this);
+	}
+	
+	var root = markdown.toHTMLTree(value);
+	var resource = this.vars(["resource"]);
+	this.up().vars("root", markdown.toHTMLTree(value));//[].concat(root));
+    this.up().qsa("#output").forEach(_ => {
+    	_.setContent(markdown.renderJsonML(root));
+    	_.update(function() {
+    		var node = this.nodeNeeded(), me = this;
+    		
+    		node.qsa("a").forEach(a => {
+    			if(a.title && a.title.startsWith("`") && a.title.endsWith("`")) {
+					var params = [
+						this.app(), 
+						this.up("devtools/Workspace<>:root"), 
+						this.up("devtools/Editor<>:root"),
+						(a, b, c, d) => this.vars.apply(this, [a, b, c, d].filter(a => a)),
+						window.locale,
+						(a, b, c, d) => this.print.apply(this, [a, b, c, d].filter(a => a))];
+
+    				a.title = e_v_a_l(
+    					a.title.substring(1, a.title.length - 1))
+    						.f.apply(this, params);
+    			}
+    		});
+    		
+		    node.qsa("img").forEach(img => {
+		    	var src = js.get("attributes.src.value", img) || "";
+		    	if(src.indexOf(":") === -1) { // relative image src
+		    		img.src = "/home/" + js.up(resource.uri) + "/" + src;
+		    	}
+		    });
+
+		    on(node.qsa("img"), "load", function(img, r) {
+		    	img = this; r = window.devicePixelRatio || 1;
+	    		if(img.style.maxWidth === "") {
+	    			r = img['@?x'] || r;
+    				img.style.maxWidth = js.sf("%dpx", (img.naturalWidth / r));
+	    		}
+		    });
+		    
+		    node.qsa("img").forEach(function(img) {
+		    	var r = window.devicePixelRatio > 1 ? 2 : 2, title, imgs;
+		    	if(img.naturalWidth && img.src.indexOf("?2x") !== -1) {
+		    		img.style.widthWhenHovered = img.naturalWidth / r + "px";
+		    	}
+		    	if(img.title.match(/^@([0-9]*[.])?[0-9]+/)) {
+		    		imgs = img.title.split(' ');
+		    		img['@?x'] = parseFloat(imgs.shift().substring(1))
+		    		
+		    		while(imgs.length && !imgs[0].startsWith('`')) {
+		    			HE.addClass(img, imgs.shift());
+		    		}
+		    		
+		    		img.title = imgs.join(' ');
+		    	}
+		    	
+		    	if(img.title.startsWith('`') && img.title.endsWith('`')) {
+					var backtick_params = [
+						img,
+						me.app(), 
+						me.up("devtools/Workspace<>:root"), 
+						me.up("devtools/Editor<>:root"),
+						(i, a, b, c, d) => me.vars.apply(me, [i, a, b, c, d].filter(a => a)),
+						window.locale,
+						(i, a, b, c, d) => me.print.apply(me, [i, a, b, c, d].filter(a => a))];
+
+		    		imgs = img.title.split('`');
+		    		img.title = imgs.pop();
+		    		imgs = e_v_a_l(imgs[1]).i.apply(me, backtick_params).split(";");
+		    		
+		    		if(imgs.length === 1) { // only classes
+		    			HE.addClasses(imgs.pop());
+		    		}
+
+		    		if(imgs.length) { // mixin on img.style
+    					js.mixIn(img.style, js.str2obj(imgs.join(";")));
+		    		}
+		    	}
+		    });
+		    
+			var insertA = (H) => {
+				var a = document.createElement("A");
+				a.id = H.textContent.toLowerCase().split(" ").join("-");
+				a.href = "#" + H.textContent.toLowerCase().split(" ").join("-");
+				H.appendChild(a);
+				return a.href;
+			};
+			
+			"h1,h2,h3,h4,h5".split(",").forEach(H => node.qsa(H).map(insertA));
+		    
+    	}.bind(_));
+    });
 }
 document.addEventListener("click", (evt) => {
 // #CVLN-20210102-2
@@ -62,7 +156,7 @@ document.addEventListener("click", (evt) => {
 		var href = js.get("attributes.href.value", anchor) || "";
         var blocks, blocks_vars, comps, comps_vars;
         var backticks = false;
-        
+
         if(href.startsWith("javascript:")) {
         	return;
         }
@@ -72,6 +166,7 @@ document.addEventListener("click", (evt) => {
         	href = href.substring(1, href.length - 1);
         }
         
+		var print_console = href === ("${p(:)}");
         if(href === "[]") {
         	href = "[:]";
         }
@@ -111,6 +206,7 @@ document.addEventListener("click", (evt) => {
 			href = href.substring("comps:".length);
 			comps = true;
 		}
+		
 
 		var startsWithProtocol = href.match("^[/]*[^:]*://");
 		if(!startsWithProtocol || href.split(":").length > 2) {
@@ -125,7 +221,7 @@ document.addEventListener("click", (evt) => {
 		}
 			
 		evt.preventDefault();
-
+		
 		if(href === "") {
 			href = anchor.textContent;
 		} else if(href === ":") {
@@ -143,11 +239,22 @@ document.addEventListener("click", (evt) => {
 			control.up("devtools/Workspace<>:root"), 
 			control.up("devtools/Editor<>:root"),
 			(a, b, c, d) => control.vars.apply(control, [a, b, c, d].filter(a => a)),
-			window.locale];
+			window.locale,
+			(a, b, c, d) => control.print.apply(control, [a, b, c, d].filter(a => a))];
+
 		if(backticks) {
 			href = e_v_a_l(href).f.apply(control, backtick_params);
 			blocks_vars = e_v_a_l(blocks_vars).f.apply(control, backtick_params);
 			comps_vars = e_v_a_l(comps_vars).f.apply(control, backtick_params);
+		}
+
+		if(print_console) {
+			if(!evt.metaKey) {
+				control	.up("devtools/Workspace<>:root")
+						.qs("#left-sidebar-tabs > vcl/ui/Tab[control=console]")
+						.selectVisible();
+			}
+			return; // bail-out (#CVLN-20210102-2)
 		}
 
 		// so the rules apply these anchors as well
@@ -239,102 +346,27 @@ document.addEventListener("click", (evt) => {
 	}
 });
 
-function render() {
-	var value = this.getValue();
-	
-// #CVLN-20200906-3
-	var impl;
-	if((impl = this.vars(["onGetRenderValue"]))) {
-		value = impl(value, this);
+const editorNeeded = (control, evt) => {
+	if(evt.metaKey === true) {
+		return control.up("devtools/Workspace<>:root").down("#editor-needed");
 	}
-	if((impl = this.vars(["onRender"]))) {
-		return impl(value, this);
-	}
-	
-	var root = markdown.toHTMLTree(value);
-	var resource = this.vars(["resource"]);
-	this.up().vars("root", markdown.toHTMLTree(value));//[].concat(root));
-    this.up().qsa("#output").forEach(_ => {
-    	_.setContent(markdown.renderJsonML(root));
-    	_.update(function() {
-    		var node = this.nodeNeeded(), me = this;
-    		
-    		node.qsa("a").forEach(a => {
-    			if(a.title && a.title.startsWith("`") && a.title.endsWith("`")) {
-					var params = [this.app(), this.up("devtools/Workspace<>:root"), 
-						this.up("devtools/Editor<>:root")];
-    				a.title = e_v_a_l(a.title.substring(1, a.title.length - 1)).f.apply(this, params);
-    			}
-    		});
-    		
-		    node.qsa("img").forEach(img => {
-		    	var src = js.get("attributes.src.value", img) || "";
-		    	if(src.indexOf(":") === -1) { // relative image src
-		    		img.src = "/home/" + js.up(resource.uri) + "/" + src;
-		    	}
-		    });
-
-		    on(node.qsa("img"), "load", function(img, r) {
-		    	img = this; r = window.devicePixelRatio || 1;
-	    		if(img.style.maxWidth === "") {
-	    			r = img['@?x'] || r;
-// me.print("setting maxWidth", js.sf("%dpx", (img.naturalWidth / r)));
-    				img.style.maxWidth = js.sf("%dpx", (img.naturalWidth / r));
-	    		}
-
-		    });
-		    
-		    node.qsa("img").forEach(function(img) {
-		    	// HE.addClass(img, "centered");
-		    	
-		    	var r = window.devicePixelRatio > 1 ? 2 : 2, title, imgs;
-		    	if(img.naturalWidth && img.src.indexOf("?2x") !== -1) {
-		    		img.style.widthWhenHovered = img.naturalWidth / r + "px";
-		    	}
-		    	if(img.title.match(/^@([0-9]*[.])?[0-9]+/)) {
-		    		imgs = img.title.split(' ');
-		    		img['@?x'] = parseFloat(imgs.shift().substring(1))
-		    		img.title = imgs.join(' ');
-		    	}
-		    	
-		    	if(img.title.startsWith('`') && img.title.endsWith('`')) {
-					var backtick_params = [
-						img,
-						me.app(), 
-						me.up("devtools/Workspace<>:root"), 
-						me.up("devtools/Editor<>:root"),
-						(i, a, b, c, d) => me.vars.apply(me, [i, a, b, c, d].filter(a => a)),
-						window.locale];
-
-		    		imgs = img.title.split('`');
-		    		img.title = imgs.pop();
-		    		imgs = e_v_a_l(imgs[1]).i.apply(me, backtick_params).split(";");
-		    		
-		    		if(imgs.length === 1) { // only classes
-		    			HE.addClasses(imgs.pop());
-		    		}
-
-		    		if(imgs.length) { // mixin on img.style
-    					js.mixIn(img.style, js.str2obj(imgs.join(";")));
-		    		}
-		    	}
-		    });
-		    
-			var insertA = (H) => {
-				var a = document.createElement("A");
-				a.id = H.textContent.toLowerCase().split(" ").join("-");
-				a.href = "#" + H.textContent.toLowerCase().split(" ").join("-");
-				H.appendChild(a);
-				return a.href;
-			};
-			
-			"h1,h2,h3,h4,h5".split(",").forEach(H => node.qsa(H).map(insertA));
-		    
-    	}.bind(_));
-    });
-}        	
+	return control.udr("#editor-needed");
+}
+const update_shrink = (me, value) => me.ud("#output").syncClass("shrink", value);
+const isUpperCase = (s) => s.toUpperCase() === s;
+const e_v_a_l = (s) => {
+	var E;
+	return window[(E = "e") + 'val'](js.sf("({" + 
+		"f:function (app, ws, ed, v, l, p) { return `%s`; }, " + 
+		"i:function (img, app, ws, ed, v, l, p) { return `%s`; } " + 
+	"})", s, s));
+};
 
 var Handlers = {
+    onResize() {
+    	var cs = this.getComputedStyle();
+		this.ud("#output").syncClass("shrink", parseInt(cs.width, 10) < 900);
+    },
 	"#output onDblClick": function(evt) {
     	if(evt.metaKey === true) {
 		    this._node.qsa("img").forEach(function(img) {
@@ -378,12 +410,16 @@ var Handlers = {
     		this.up().readStorage("source-visible", (visible) => {
     			if(typeof visible === "boolean") {
     				this.setState(visible);
+    				update_shrink(this, visible);
+    				// this.ud("#output").syncClass("shrink", visible);
     			} else if(visible === undefined && (
     					resource.uri.split("/").pop() === ".md" ||
     					isUpperCase(resource.name.split(".md")[0])
     				)
     			) {
     				this.setState(false);
+    				update_shrink(this, false);
+    				// this.ud("#output").syncClass("shrink", false);
     			}
     		});
         },
@@ -394,7 +430,9 @@ var Handlers = {
         		var ace = this.ud("#ace");
         		ace.setFocus();
         		// this.nextTick(() => ace.focus());
+        		// this.ud("#output").toggleClass("shrink");
         	}
+			update_shrink(this, state);
         	this.up().writeStorage("source-visible", this.getState());
         	
         }
@@ -403,7 +441,8 @@ var Handlers = {
     	align: "client", 
     	css: {
 /*- TODO should be centralized */
-			"": "margin-left:auto;margin-right:auto;width:900px;",
+			"": "margin-left:auto;margin-right:auto;",
+			':not(.shrink)': "width:900px;",
 		    "background-color": "rgba(240,240,240,1)", 
 		    "border-left": "1px solid silver",
 		    "border-right": "1px solid silver",
@@ -411,7 +450,7 @@ var Handlers = {
 		    "font-size": "12pt",
 		    'img': {
 		    	'': "width:75%; transition: width 1s ease 0s, box-shadow 1s ease 0s;",
-		    	':not(.virgin)': "display:block;margin:auto;",
+		    	':not(.inline)': "display:block;margin:auto;",
 		    	'&:hover': "width: 100%; box-shadow: rgb(0 0 0 / 40%) 0px 1px 2px 0px;",// max-height: 600px;",
 		    },
 		    padding: "10px",
@@ -419,6 +458,7 @@ var Handlers = {
 		    // "img:hover": "width:100%;max-width:600px;",
 		    "code": "border-radius:3px;font-size: 10pt;background-color:white;padding:2px;line-height:12pt;",
 	    },
+	    classes: "shrink",
 	    
 	    onMouseMove(evt) {
 	    	
