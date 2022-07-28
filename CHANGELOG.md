@@ -1,3 +1,15 @@
+### `2022/07/28` - 1.0.75
+
+* 9a40b7d - fixes a crashing issue when a form could not be closed
+* aae9402 - adds the double ShiftRight keyboard shortcut for CtrlCtrl-pane
+* 40895e7 - fixes an crashing issue where _node was accessed while not being available yet (should use nodeNeeded() instead
+* e1464ea - enhances image styling and classifications in Markdown code, introduces `${p(:)}` which greatly enhances possibilities with links and backticks Markdown code, constifies vars
+* 5c6e43b - fixes an crashing issue where the selected control (ie. file or folder) was not available upon restoring state
+* f2f0275 - fixes an issue where toasts could no longer be removed
+* c309900 - reflect now returns a Promise
+* 03b52ce - #q.placeholder reflects location in tree (more or less
+* daf0f45 - enhances CSV generation, now conserving column headers and order
+
 ### `2022/06/27` - 1.0.74
 
 * 0ceb90d - refactoring Cmd+.
@@ -55,7 +67,7 @@
 
 ### `2022/04/18` - 1.0.65
 
-* eaeca9f - (HEAD -> master) making background transparent where possible - preparing for embedding in Docs-like environment
+* eaeca9f - making background transparent where possible - preparing for embedding in Docs-like environment
 * 5606ae4 - adding support for glassy iframes
 * e648b3b - 1st commit - adding support for .markdown-extensioned files
 * 50e1f1a - adding support for .markdown-extensioned files - chaning behaviour of rendered images
@@ -68,7 +80,7 @@
 
 ### `2022/04/06` - 1.0.63
 
-* 46fe995 - (HEAD -> master) 1st commit
+* 46fe995 - 1st commit
 * 8416504 - adding Ctrl+Shift+E alias for ...+S, macbook doesn't support the S it seems
 * eb1dd78 - making linking to blocks less buggy
 * 8cf5390 - commiting progress / developing / updating / bugfix in Editor<md> for linking to blocks
