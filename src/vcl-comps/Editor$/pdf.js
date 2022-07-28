@@ -1,7 +1,7 @@
 var Handlers = {
     "#iframe onResize"() { this.setState("invalidated"); },
 	"#iframe onRender"() {
-		if(this._node.childNodes.length) {
+		if(this._node && this._node.childNodes.length) {
 			var cs = this.getComputedStyle();
 		    // this._node.childNodes[0].style.width = "0";
 		    this._node.childNodes[0].style.height = "0";
