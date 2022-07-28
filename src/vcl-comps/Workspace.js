@@ -371,9 +371,11 @@ var Utils = {
     		tabs._controls.filter(_ => _ !== selected)
     			.filter(_ => evt.altKey === true || _.vars(["resource.type"]) === "File")
     			.forEach(function(tab) {
-					tabs.print("closing", tab);
-	    			tab._control.destroy();	
-	    			tab._control = null;
+					// tabs.print("closing", tab);
+					if(tab._control) {
+		    			tab._control.destroy();	
+		    			tab._control = null;
+					}
 	    			tab.destroy();
 	    			// tab.update(function() { tab.destroy(); });
 	    		});
@@ -508,7 +510,7 @@ var Utils = {
     		ws.vars(this._name, state);
     	}
     }],
-    
+
     ["vcl/ui/Panel", ("left-sidebar"), { align: "left", css: "border-right: 1px solid gray;", width: 375, visible: false }, [
     	
         ["vcl/ui/Tabs", ("left-sidebar-tabs"), [
