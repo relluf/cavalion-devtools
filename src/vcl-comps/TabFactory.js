@@ -14,7 +14,7 @@ function Tab_oncloseclick() {
 
 function FormContainer_dispatchChildEvent(component, name, evt, f, args) {
 	if(name.indexOf("form") === 0&& name === "formclose") {
-		component._owner.destroy();
+		component._owner?.destroy();
 	}
 	return this.inherited(arguments);
 }
