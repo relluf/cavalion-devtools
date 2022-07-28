@@ -317,7 +317,7 @@ var Factories = {
 			var root = this._owner;
 			var value = sel[sel.length - 1];
 			
-			Promise.resolve(value).then(value => {
+			return Promise.resolve(value).then(value => {
 // console.log("#reflect value", value);
 				this.vars("value", value);
 				
