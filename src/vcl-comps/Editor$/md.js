@@ -450,7 +450,7 @@ var Handlers = {
 		    "font-size": "12pt",
 		    'img': {
 		    	'': "width:75%; transition: width 1s ease 0s, box-shadow 1s ease 0s;",
-		    	':not(.inline)': "display:block;margin:auto;",
+		    	':not(.inline)': "display:block; margin:auto;",
 		    	'&:hover': "width: 100%; box-shadow: rgb(0 0 0 / 40%) 0px 1px 2px 0px;",// max-height: 600px;",
 		    },
 		    padding: "10px",
