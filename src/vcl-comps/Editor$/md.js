@@ -97,7 +97,7 @@ function render() {
 		    	}
 		    	if(img.title.match(/^@([0-9]*[.])?[0-9]+/)) {
 		    		imgs = img.title.split(' ');
-		    		img['@?x'] = parseFloat(imgs.shift().substring(1))
+		    		img['@?x'] = parseFloat(imgs.shift().substring(1));
 		    		
 		    		while(imgs.length && !imgs[0].startsWith('`')) {
 		    			HE.addClass(img, imgs.shift());
