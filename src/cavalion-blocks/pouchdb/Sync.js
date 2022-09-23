@@ -129,6 +129,7 @@ push_options = {}, pull_options = {};
 			this.print("push_options", push_options);
 			this.print("pull_options", pull_options);
 			this.print("sync_options", sync_options);
+			this.print("make sure CORS is enabled and connect over HTTPS")
 		}
 	}]
 ]];
