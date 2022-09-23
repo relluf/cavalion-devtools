@@ -24,6 +24,7 @@ var hotkeys = {
 
 	"Ctrl+W": "editor-close",
 	"Shift+Ctrl+S": "editor-switch-favorite",
+	"Ctrl+S": "editor-switch-favorite",
 	"Alt+Shift+Ctrl+S": "editor-switch-favorite",
 	"Shift+Ctrl+W": "editors-close-all", //less-one ;-)
 	"Alt+Shift+Ctrl+W": "editors-close-all", //less-one ;-)

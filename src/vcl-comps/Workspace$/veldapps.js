@@ -18,6 +18,7 @@ var PouchDB = require("pouchdb");
 			// "Dropbox-veldapps/INDEX.md;;File",
 			"Workspaces/veldapps.com/Veldoffice/veldoffice-js",
 			"Workspaces/veldapps.com/Veldoffice/veldoffice-js/src/veldapps.com;veldapps-js",
+			"Workspaces/veldapps.com/veldapps-leaflet-js",
 			"Workspaces/veldapps.com/veldapps-xml",
 			"Workspaces/veldapps.com/veldapps-imbro",
 			"Workspaces/veldapps.com/veldapps-imsikb",
