@@ -1535,7 +1535,7 @@ function setup_koppejan(vars) {
 	var slope_variant = 2;
 	var rlines = [];
 
-	// serie2 references only the (7) points where y2 are set, and will it's z10, z100, z1000, z10000 values will be calculated later on (refrerences the last measurements of each stage)
+	// serie2 references only the (7) points where y2 are set, and will its z10, z100, z1000, z10000 values will be calculated later on (references the last measurements of each stage)
 	serie2 = vars.stages.map(stage => stage.measurements[stage.measurements.length - 1]);
 	serie2.forEach(m => m.y2 = m[key_as]); // koppejan
 
@@ -1742,7 +1742,7 @@ function setup_koppejan(vars) {
 			var H = vars.Hi;
 	
 			var Cp = 1 / (((serie2[st + 1].ez1 - serie2[st + 0].ez1) / H) / d);
-			var Cs = 1 / (((serie2[st + 1].ez10 - serie2[st + 0].ez10) / H) / d - (1 / Cp));
+			var Cs = 1 / (((serie2[st + 1].ez10 - serie2[st + 0].ez10) / H) / d) - (1 / Cp);
 			var C = (1 / ((serie2[st + 1].y - serie2[st + 0].y) / H)) * d;
 			var C10 = (1 / ((serie2[st + 1].y - serie2[st + 0].y) / H)) * d10;
 	
@@ -1856,7 +1856,7 @@ function setup_stages_2(vars, only_this_stage) {
 			Cr (primaire herbelasting): Cr = -Δe / log ((σ'v + Δσ'v)/σ'v)
 			- Δe= e2 - e1: change in void ratio 
 			- σ'v: vertical effective stress before load increment (kPa)
-			- σ'v + Δσ'v: vertical effective stress after load increment Δσ'v (kPa)"
+			- σ'v + Δσ'v: vertical effective stress after load increment Δσ'v (kPa)
 			
 			GEGEVENS (Data from reload e-log p segment)
 			- e1= 1.3241
@@ -2255,7 +2255,7 @@ function setup_variables_2(vars, headerValue) {
 					name = "a";
 				} else if(name === "a" && stage.effective > Pg) {
 					name = "b";
-				} else if(name === "b" && stage.target > vars.stages[i + 1].target) {
+				} else if(/*name === "b" &&*/ stage.target > vars.stages[i + 1].target) {
 					name = "asw";
 				} else if(name === "asw") {
 					name = "ar";
