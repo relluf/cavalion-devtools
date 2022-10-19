@@ -1,9 +1,12 @@
+### `2022/10/19` - 1.0.77
+
+* #VA-20221010-1 - restores adjustment "haakje terug Jaap"
+
 ### `2022/10/18` - 1.0.76
 
 * 2cefc19 - VA-20221010-1
 * fe71194 - restores the series with the verschoven zetting - which were accidently committed away
-* 2fba8a5 - (origin/master, origin/HEAD) add Ctrl+S => #editor-switch-favorite
-* 3bc0a45 - adds Ctrl+S => #editor-switch-favorite
+* 2fba8a5 - adds Ctrl+S => #editor-switch-favorite
 * 539bc16 - cleans up some messy code
 * 114a745 - adds an extra usage hint
 * a947dc2 - updates css for inline images
