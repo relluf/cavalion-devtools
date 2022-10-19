@@ -1742,7 +1742,7 @@ function setup_koppejan(vars) {
 			var H = vars.Hi;
 	
 			var Cp = 1 / (((serie2[st + 1].ez1 - serie2[st + 0].ez1) / H) / d);
-			var Cs = 1 / (((serie2[st + 1].ez10 - serie2[st + 0].ez10) / H) / d) - (1 / Cp);
+			var Cs = 1 / (((serie2[st + 1].ez10 - serie2[st + 0].ez10) / H) / d - (1 / Cp));
 			var C = (1 / ((serie2[st + 1].y - serie2[st + 0].y) / H)) * d;
 			var C10 = (1 / ((serie2[st + 1].y - serie2[st + 0].y) / H)) * d10;
 	
@@ -2253,10 +2253,10 @@ function setup_variables_2(vars, headerValue) {
 			return vars.stages.slice(0, vars.stages.length - 1).map((stage, i) => {
 				if(name === undefined) {
 					name = "a";
-				} else if(name === "a" && stage.effective > Pg) {
-					name = "b";
 				} else if(/*name === "b" &&*/ stage.target > vars.stages[i + 1].target) {
 					name = "asw";
+				} else if(name === "a" && stage.effective > Pg) {
+					name = "b";
 				} else if(name === "asw") {
 					name = "ar";
 				} else if(name === "ar") {
