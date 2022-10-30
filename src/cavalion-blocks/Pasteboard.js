@@ -111,7 +111,7 @@ function handler(evt, owner) {
 	["Executable", ("toggles-visible"), {
 		state: false,
 		visible: "state",
-		hotkey: "Alt+Cmd+V|Alt+V",
+		hotkey: "Alt+Cmd+V",
 		on(evt) { this.toggle(); }		
 	}],
 	["Container", ("preview"), {
