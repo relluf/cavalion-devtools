@@ -77,6 +77,11 @@ function print(comp, msg, value) {
     	if(uri.indexOf(PATH) !== -1) {
     		uri = "$HOME/" + uri.substring(uri.indexOf(PATH) + PATH.length);
     	}
+		var x = uri.split("/"); // #CVLN-20221028-4
+		if(x[x.length - 2].endsWith("<>")) {
+			x[x.length - 2] = js.sf("%s<%s>", x[x.length - 2].split("<")[0], x.pop());
+			uri = x.join("/");
+		}
     	sourceUri = String.format("$HOME/%s", sourceUri);
 
         function f() { scope.instantiate.execute({ uri: uri, sourceUri: sourceUri }); }
