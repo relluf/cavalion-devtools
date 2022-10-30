@@ -2,6 +2,13 @@
 
 /*-
 
+### 2022/10/29
+
+* Improves console.print-click, while Cmd no console.show
+* Betters exception handling
+* Adds a shortcut for ${p(:)} ${p(:)} ${p(:)}
+	=> [expression](`$!`)
+
 ### 2022/07/26
 
 * Documenting backticks behaviour, for images and for links
@@ -164,9 +171,13 @@ document.addEventListener("click", (evt) => {
         if(href.startsWith("`") && href.endsWith("`")) {
         	backticks = true;
         	href = href.substring(1, href.length - 1);
+	        // #VA-20221029-1
+	        if(href === "!") {
+	        	href = "${p(:)}";
+	        }
         }
-        
-		var print_console = href === ("${p(:)}");
+
+		var show_console = href.match(/\$\{p\(.*\:\)\}$/);
         if(href === "[]") {
         	href = "[:]";
         }
@@ -207,7 +218,6 @@ document.addEventListener("click", (evt) => {
 			comps = true;
 		}
 		
-
 		var startsWithProtocol = href.match("^[/]*[^:]*://");
 		if(!startsWithProtocol || href.split(":").length > 2) {
 			if(href.charAt(0) === "#") {
@@ -248,7 +258,7 @@ document.addEventListener("click", (evt) => {
 			comps_vars = e_v_a_l(comps_vars).f.apply(control, backtick_params);
 		}
 
-		if(print_console) {
+		if(show_console) {
 			if(!evt.metaKey) {
 				control	.up("devtools/Workspace<>:root")
 						.qs("#left-sidebar-tabs > vcl/ui/Tab[control=console]")
@@ -355,10 +365,11 @@ const editorNeeded = (control, evt) => {
 const update_shrink = (me, value) => me.ud("#output").syncClass("shrink", value);
 const isUpperCase = (s) => s.toUpperCase() === s;
 const e_v_a_l = (s) => {
-	var E;
+	// #VA-20221029-1
+	var E, s = js.sf("try { return `%s`; } catch(e) { alert(e.message); throw p(e); } ", s);
 	return window[(E = "e") + 'val'](js.sf("({" + 
-		"f:function (app, ws, ed, v, l, p) { return `%s`; }, " + 
-		"i:function (img, app, ws, ed, v, l, p) { return `%s`; } " + 
+		"f: (app, ws, ed, v, l, p) => { %s }, " + 
+		"i: (img, app, ws, ed, v, l, p) => { %s } " + 
 	"})", s, s));
 };
 
