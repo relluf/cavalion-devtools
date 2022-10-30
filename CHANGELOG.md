@@ -1,11 +1,14 @@
+### `2022/10/30` - 1.0.78
+
+* #VA-20221029-1 - Improves the use of backticks
+
 ### `2022/10/19` - 1.0.77
 
-* #VA-20221010-1 - restores adjustment "haakje terug Jaap"
+* #VA-20221010-1 - Restores adjustment "haakje terug Jaap" (Editor/Renderer<gds>)
 
 ### `2022/10/18` - 1.0.76
 
-* 2cefc19 - VA-20221010-1
-* fe71194 - restores the series with the verschoven zetting - which were accidently committed away
+* #VA-20221010-1 - Restores the series with the verschoven zetting - which were accidently committed away
 * 2fba8a5 - adds Ctrl+S => #editor-switch-favorite
 * 539bc16 - cleans up some messy code
 * 114a745 - adds an extra usage hint
