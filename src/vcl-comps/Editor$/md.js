@@ -177,7 +177,7 @@ document.addEventListener("click", (evt) => {
 	        }
         }
 
-		var show_console = href.match(/\$\{p\(.*\:\)\}$/);
+		var show_console = href.match(/\$\{p\(.*\)\}$/);
         if(href === "[]") {
         	href = "[:]";
         }
