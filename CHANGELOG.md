@@ -1,6 +1,7 @@
-### `2022/10/30` - 1.0.78
+### `2022/10/30` - 1.0.79
 
 * #VA-20221029-1 - Improves the use of backticks
+* 87b9b4f - detects whether to automagically show the workspace console even better
 
 ### `2022/10/19` - 1.0.77
 
