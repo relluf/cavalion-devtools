@@ -46,6 +46,9 @@ const HE = require("util/HtmlElement");
 const resolveUri_comps = require("vcl/Factory").resolveUri;
 const resolveUri_blocks = require("blocks/Factory").resolveUri;
 
+// CVLN-20221106-1, CVLN-20220418-1
+js.dt = (a) => a === undefined ? new Date() : new Date(a);
+
 function render() {
 	var value = this.getValue();
 	
@@ -72,9 +75,9 @@ function render() {
 						this.app(), 
 						this.up("devtools/Workspace<>:root"), 
 						this.up("devtools/Editor<>:root"),
-						(a, b, c, d) => this.vars.apply(this, [a, b, c, d].filter(a => a)),
+						(a, b, c, d) => this.vars.apply(this, [a, b, c, d].filter(a => a !== undefined)),
 						window.locale,
-						(a, b, c, d) => this.print.apply(this, [a, b, c, d].filter(a => a))];
+						(a, b, c, d) => this.print.apply(this, [a, b, c, d].filter(a => a !== undefined))];
 
     				a.title = e_v_a_l(
     					a.title.substring(1, a.title.length - 1))
@@ -119,9 +122,9 @@ function render() {
 						me.app(), 
 						me.up("devtools/Workspace<>:root"), 
 						me.up("devtools/Editor<>:root"),
-						(i, a, b, c, d) => me.vars.apply(me, [i, a, b, c, d].filter(a => a)),
+						(i, a, b, c, d) => me.vars.apply(me, [i, a, b, c, d].filter(a => a !== undefined)),
 						window.locale,
-						(i, a, b, c, d) => me.print.apply(me, [i, a, b, c, d].filter(a => a))];
+						(i, a, b, c, d) => me.print.apply(me, [i, a, b, c, d].filter(a => a !== undefined))];
 
 		    		imgs = img.title.split('`');
 		    		img.title = imgs.pop();
@@ -248,9 +251,9 @@ document.addEventListener("click", (evt) => {
 			control.app(), 
 			control.up("devtools/Workspace<>:root"), 
 			control.up("devtools/Editor<>:root"),
-			(a, b, c, d) => control.vars.apply(control, [a, b, c, d].filter(a => a)),
+			(a, b, c, d) => control.vars.apply(control, [a, b, c, d].filter(a => a !== undefined)),
 			window.locale,
-			(a, b, c, d) => control.print.apply(control, [a, b, c, d].filter(a => a))];
+			(a, b, c, d) => control.print.apply(control, [a, b, c, d].filter(a => a !== undefined))];
 
 		if(backticks) {
 			href = e_v_a_l(href).f.apply(control, backtick_params);
