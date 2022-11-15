@@ -31,6 +31,7 @@ function zoomLevel() {
 	classes: "right",
 	css: {
 		"": {
+			// "pointer-events": "none",
 			"flex-shrink": "0",
 			"box-shadow": "0 0 20px 10px rgba(0,0,0,.2)",
 			"width": "90%",//WIDTH + "px",
@@ -55,7 +56,7 @@ function zoomLevel() {
 		"&.glassy-overlay > .wrapper.no-margin": "margin:0;",
 		"&.right": "right: 5%; transform-origin: top right;",
 		"&.left": "left: 5%; transform-origin: top left;",
-		"&:not(:hover)": "transform: translate3d(75%, 0, 0);"
+		"&:not(:hover)": "margin-left:1px; transform: translate3d(75%, 0, 0);"
 	},
 
 	onLoad() {
@@ -66,8 +67,13 @@ function zoomLevel() {
 	        	var zoomed = this.hasOwnProperty("_zoom");
 	        	var style = this._node.style;
 	        	if(zoomed) {
-	        		// var cs = this.getComputedStyle();
-	    			style.transform = String.format("scale3d(%s, %s, 1)", this._zoom, this._zoom);
+	        		var cs = this.getComputedStyle();
+	        		//this.print("cs-transform", cs.transform);
+	        		if(parseInt(cs.marginLeft, 10) === 1) {
+	    				style.transform = String.format("scale3d(%s, %s, 1)", this._zoom, this._zoom);
+	        		} else {
+	    				style.transform = String.format("translate3d(75%, 0, 0) scale3d(%s, %s, 1)", this._zoom, this._zoom);
+	        		}
 	        	} else {
 	        		style.transform = "";
 	        	}
@@ -122,6 +128,24 @@ this.setTimeout("move", () => {
 }, 1000);
 		
 		return this.inherited(arguments);
-	}
+	},
+	// onMouseOut() {
+	// 	this.print("out");
+	// 	while(this.hasClass("hovered")) this.removeClass("hovered");
+	// },
+	// onMouseOver() {
+	// 	this.print("over");
+	// 	if(!this.hasClass("hovered")) {
+	// 		this.addClass("hovered");
+	// 	}
+	// },
+	// onMouseMove() {
+	// 	this.print("move");
+	// 	if(!this.hasClass("hovered")) {
+	// 		this.addClass("hovered");
+	// 	}
+	// },
+	
+	vars: {'frame-src': "/home/Workspaces/veldapps.com/V7/src" }
 	
 }];

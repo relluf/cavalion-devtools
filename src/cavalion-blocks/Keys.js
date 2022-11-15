@@ -53,8 +53,15 @@ var getKeyName = (key) => {
 				
 				name = name.replace(/Digit/, "");
 				name = String.format("%s%s", modifiers, name || "");
+				
+				var N = this.vars("N") || (e.type === "keyup" ? 1 : 0);
+				
+				if(e.type === "keyup") N--; 
+				else if(e.type === "keydown") N++;
+				
+				this.vars("N", N);
 
-				// this.print(e.type, {event: e, name: name || e.code, code_: e.code, key: e.key, keyCode: e.keyCode});
+				// this.print(js.sf("%s-%d", e.type, N), {event: e, name: name || e.code, code_: e.code, key: e.key, keyCode: e.keyCode});
 				// if(modifiers.length === 0) return; 
 				
 				var toast = this.vars("toast");
@@ -66,7 +73,7 @@ var getKeyName = (key) => {
 					this.vars("toast", toast);
 				}
 				
-				var st = (id) => this.setTimeout(id || "remove", () => toast && toast.remove(), 1250);
+				var st = (id) => setTimeout(() => toast && toast.remove(), 1250);
 				
 				if(e.type !== "keydown") {
 					this.removeVar("toast");
