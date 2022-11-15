@@ -456,7 +456,7 @@ var Utils = {
         }
     }],
     ["vcl/Action", ("editor-switch-favorite"), {
-    	on() {
+    	on(evt) {
     		var ws = this.up("devtools/Workspace<>:root");
     		var ed = ws.qsa("devtools/Editor<>:root:visible").map(_ => _.down("#ace"));
     		// if(!ed.length) return;
@@ -479,6 +479,9 @@ var Utils = {
     			.concat(tab_uris.map(tab => tab[1]))
     			.filter((s, i, a) => a.indexOf(s) === i);
     		
+    		if(evt?.ctrlKey === true && favs.length === 0) {//indexOf(".md") === -1) {
+    			favs.push(".md");
+    		}
     		if(!favs.length) return;
     		
     		var state = ws.vars(this._name) || {};
