@@ -1,3 +1,10 @@
+### `2022/11/15` - 1.0.80
+
+* Fixes a bug where null, 0 and false where treated as undefined
+* Fixes a bug where not characters would be available to type in a search field
+* Improves/updates editor-switch-favorite
+* Iframe: Develops glassiness and animations Keys: fixes some bug where toasts would not disappear (correctly)
+
 ### `2022/10/30` - 1.0.79
 
 * #VA-20221029-1 - Improves the use of backticks
