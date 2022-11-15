@@ -111,7 +111,7 @@ var nameOf = (resource) => resource.uri.split("/").pop();
         if (name.indexOf("key") === 0) {
             var scope = this.scope();
             if (component === scope.input) {
-                if ([13, 27, 33, 34, 38, 40].indexOf(evt.keyCode) !== -1) {
+                if ([13, 27, 38, 40].indexOf(evt.keyCode) !== -1) {
                     var list = scope.list, input = scope.input;
                     if(evt.keyCode === 13 && list.getSelection().length === 0 && list.getCount()) {
                         list.setSelection([0]);

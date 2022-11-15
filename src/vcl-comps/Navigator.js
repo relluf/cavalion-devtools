@@ -152,7 +152,7 @@ function onNodesNeeded(parent) {
             if(component !== scope.tree && !scope.tree.isParentOf(component) && name === "keyup" && evt.keyCode === evt.KEY_F5) {
             	scope.tree.refresh();
             } else if (component === scope['search-input']) {
-                if ([13, 27, 33, 34, 38, 40].indexOf(evt.keyCode) !== -1) {
+                if ([13, 27, 38, 40].indexOf(evt.keyCode) !== -1) {
                     var list = scope['search-list'];
                     if(evt.keyCode === 13 && list.getSelection().length === 0 && list.getCount()) {
                         list.setSelection([0]);
