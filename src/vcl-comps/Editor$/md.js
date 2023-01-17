@@ -456,7 +456,7 @@ var Handlers = {
     	css: {
 /*- TODO should be centralized */
 			"": "margin-left:auto;margin-right:auto;",
-			':not(.shrink)': "width:900px;",
+			':not(.shrink)': "width:795px;",
 		    "background-color": "rgba(240,240,240,1)", 
 		    "border-left": "1px solid silver",
 		    "border-right": "1px solid silver",
