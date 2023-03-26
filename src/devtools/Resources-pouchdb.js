@@ -51,12 +51,20 @@ define(function(require) {
  			});
 		},
 		get: function(uri_) {
-			uri = uri_.split("/");
+			var uri = uri_.split("/");
 			return getDb(uri.shift()).get(uri.join("/")).then(function(res) {
 				var resource = js.get("devtools:resource", res);
 				if(resource) {
 					resource.revision = res._rev;
-					return resource;	
+					resource.uri = uri_;
+					return resource;
+					// return {
+					// 	uri: uri_,
+					// 	name: uri_.split("/").pop(),
+					// 	revision: res._rev,
+					// 	// contentType: "application/json",
+					// 	text: js.b(JSON.stringify(resource.text))
+					// };
 				}
 				return {
 					uri: uri_,
