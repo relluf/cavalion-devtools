@@ -46,6 +46,7 @@ const HE = require("util/HtmlElement");
 const resolveUri_comps = require("vcl/Factory").resolveUri;
 const resolveUri_blocks = require("blocks/Factory").resolveUri;
 
+
 // CVLN-20221106-1, CVLN-20220418-1
 js.dt = (a) => a === undefined ? new Date() : new Date(a);
 
@@ -166,7 +167,7 @@ document.addEventListener("click", (evt) => {
 		var href = js.get("attributes.href.value", anchor) || "";
         var blocks, blocks_vars, comps, comps_vars;
         var backticks = false;
-
+        
         if(href.startsWith("javascript:")) {
         	return;
         }
@@ -221,8 +222,8 @@ document.addEventListener("click", (evt) => {
 			comps = true;
 		}
 		
-		var startsWithProtocol = href.match("^[/]*[^:]*://");
-		if(!startsWithProtocol || href.split(":").length > 2) {
+		var swp = startsWithProtocol(href);//.match("^[/]*[^:]*://");
+		if(!swp || href.split(":").length > 2) {
 			if(href.charAt(0) === "#") {
 				if(!href.endsWith(":")) {
 					return;
@@ -244,7 +245,8 @@ document.addEventListener("click", (evt) => {
 		}
 
 		if(href.startsWith("://")) {
-			href = js.sf("pouchdb://%s/%s", Component.storageDB.name, href.substring(3) || anchor.textContent);
+			var pre = blocks ? "/cavalion-blocks" : comps ? "/vcl-comps" : "";
+			href = js.sf("pouchdb://%s%s/%s", Component.storageDB.name, pre, href.substring(3) || anchor.textContent);
 		}
 		
 		var backtick_params = [
@@ -306,8 +308,10 @@ document.addEventListener("click", (evt) => {
 				uri = js.normalize(base, href);
 			} else if(href.startsWith("/")) {
 				uri = href.substring(1);
-			} else {
+			} else if(!swp) { // does not start with protocol
 				uri = "Library/cavalion-blocks/" + href;
+			} else {
+				uri = href;
 			}
 			
 			tab = editorNeeded(control, evt).execute({
@@ -324,8 +328,10 @@ document.addEventListener("click", (evt) => {
 				uri = js.normalize(base, href);
 			} else if(href.startsWith("/")) {
 				uri = href.substring(1);
-			} else {
+			} else if(!swp) { // does not start with protocol
 				uri = "Library/vcl-comps/" + href;
+			} else {
+				uri = href;
 			}
 			
 			tab = editorNeeded(control, evt).execute({
@@ -339,8 +345,8 @@ document.addEventListener("click", (evt) => {
 				selected: true
 			});
 		} else {
-			startsWithProtocol = href.match("^[/]*[^:]*://");
-			if(!startsWithProtocol) {
+			swp = startsWithProtocol(href);//.match("^[/]*[^:]*://");
+			if(!swp) {
 				uri = js.normalize(base, href.charAt(0) === "/" ? href.substring(1) : ("./" + href));
 			} else {
 				uri = href;
@@ -375,6 +381,7 @@ const e_v_a_l = (s) => {
 		"i: (img, app, ws, ed, v, l, p) => { %s } " + 
 	"})", s, s));
 };
+const startsWithProtocol = (url) => url.match(/^[^\s]*:\/\//) !== null;
 
 var Handlers = {
     onResize() {
@@ -467,7 +474,7 @@ var Handlers = {
 		    	':not(.inline)': "display:block; margin:auto;",
 		    	'&:hover': "width: 100%; box-shadow: rgb(0 0 0 / 40%) 0px 1px 2px 0px;",// max-height: 600px;",
 		    },
-		    padding: "10px",
+		    padding: "10px 50px",
 		    "a": "text-decoration:underline;color:blue;",
 		    // "img:hover": "width:100%;max-width:600px;",
 		    "code": "border-radius:3px;font-size: 10pt;background-color:white;padding:2px;line-height:12pt;",
