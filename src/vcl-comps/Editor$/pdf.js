@@ -28,7 +28,8 @@ var Handlers = {
 				.link(this.vars(["resource.uri"]))
 				.then(url => {
 					// TODO setContent without immediate update
-					scope.iframe._content = js.sf("<iframe src=\"%s?raw=1\"></iframe>", url, Date.now());
+					var post = url.startsWith("/office-rest/action/documenten/view?id=") ? "" : "?raw=1";
+					scope.iframe._content = js.sf("<iframe src=\"%s%s\"></iframe>", url, post, Date.now());
 					scope.iframe.recreateNode();
 				    scope.loading.show();
 					
@@ -39,6 +40,18 @@ var Handlers = {
 					};
 				});
 				
+        },
+        onExecute_fetch_arrayBuffer: function() {
+			fetch("path/to/pdf.pdf")
+			  .then(response => response.arrayBuffer())
+			  .then(arrayBuffer => {
+			    var blob = new Blob([arrayBuffer], { type: "application/pdf" });
+			    var link = document.createElement("a");
+			    link.href = window.URL.createObjectURL(blob);
+			    link.download = "pdf.pdf";
+			    link.click();
+			  });
+        	
         }
     }],
     ["#ace", {visible: false}],
