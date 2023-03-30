@@ -33,9 +33,16 @@ function isResourceSupported(resource) {
 		return this.inherited(arguments);
 	}
 }, [
-	[("#tree"), {}, [
+	[("#tree"), {
+			css: {
+				// ".{Node} .icon": "vertical-align: bottom;"	,
+				".{Node} .icon": "vertical-align: top; padding-top: 2px;"	
+			},
+	}, [
 		[("Node"), "root-documents", {
-			text: locale("-documents"),
+			// classes: "root-invisible", expanded: true,
+			// text: js.sf("<input type='checkbox'> %s", locale("OpenLayers-documents")),
+			text: locale("OpenLayers-documents"),
 			expandable: true,
 			index: 0,
 			onKeyDown(evt) {
@@ -71,5 +78,7 @@ function isResourceSupported(resource) {
 				}
 			}
 		}] // devtools-resources
-	]]
+	]],
+	
+	["#root-layers", { classes: "root-invisible", expanded: true }]
 ]];
