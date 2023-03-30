@@ -1,10 +1,12 @@
 "use papaparse/papaparse, lib/node_modules/regression/dist/regression";
 "use strict";
 
+var regression = require("lib/node_modules/regression/dist/regression");
+var js = require("js");
+
 var Button = require("vcl/ui/Button");
 var Tab = require("vcl/ui/Tab");
 var Control = require("vcl/Control");
-
 
 /*-
 	* `#VA-20230130-1` 
@@ -17,66 +19,6 @@ var Control = require("vcl/Control");
 	- "entry point": vcl/Action#refresh.on
 
 */
-	
-function bjerrum_e_variables(vars) {
-	var onder = js.get("overrides.bjerrum_e.label-onder", vars) || "1-2";
-	var boven = js.get("overrides.bjerrum_e.label-boven", vars) || "3-4";
-	
-	var o = js.get("overrides.bjerrum_e.onder", vars) || "nog te bepalen";
-	var b = js.get("overrides.bjerrum_e.boven", vars) || "nog te bepalen";
-
-	return [
-		{ name: js.sf("Trap %s", onder), unit: "", symbol: js.sf("Cc(%s)", onder), value: o },
-		{ name: js.sf("Trap %s", boven), unit: "", symbol: js.sf("Cr(%s)", boven), value: o },
-	];
-	
-}
-function bjerrum_r_variables(vars) {
-	var onder = js.get("overrides.bjerrum_r.label-onder", vars) || "1-2";
-	var boven = js.get("overrides.bjerrum_r.label-boven", vars) || "3-4";
-	
-	var o = js.get("overrides.bjerrum_r.onder", vars) || "nog te bepalen";
-	var b = js.get("overrides.bjerrum_r.boven", vars) || "nog te bepalen";
-
-	return [
-		{ name: js.sf("Trap %s", onder), unit: "", symbol: js.sf("CR(%s)", onder), value: o },
-		{ name: js.sf("Trap %s", boven), unit: "", symbol: js.sf("RR(%s)", boven), value: o },
-	];
-	
-}
-function isotachen_variables(vars) {
-	var onder = js.get("overrides.isotachen.label-onder", vars) || "1-2";
-	var boven = js.get("overrides.isotachen.label-boven", vars) || "3-4";
-	
-	var o = js.get("overrides.isotachen.onder", vars) || "nog te bepalen";
-	var b = js.get("overrides.isotachen.boven", vars) || "nog te bepalen";
-
-	return [
-		{ name: "a onder pg", unit: "", symbol: js.sf("a(%s)", onder), value: o },
-		{ name: "b boven pg", unit: "", symbol: js.sf("b(%s)", boven), value: o }
-	];
-}
-function koppejan_variables(vars) {
-	var onder = js.get("overrides.koppejan.label-onder", vars) || "1-2";
-	var boven = js.get("overrides.koppejan.label-boven", vars) || "3-4";
-	
-	var o = js.get("overrides.koppejan.onder", vars) || "nog te bepalen";
-	var b = js.get("overrides.koppejan.boven", vars) || "nog te bepalen";
-
-	return [
-		{ name: js.sf("C Trap %s", onder), unit: "", symbol: onder, value: o.C },
-		{ name: js.sf("C10 Trap %s", onder), unit: "", symbol: onder, value: o.C10 },
-		{ name: js.sf("Cp Trap %s", onder), unit: "", symbol: onder, value: o.Cp },
-		{ name: js.sf("Cs Trap %s", onder), unit: "", symbol: onder, value: o.Cs },
-		{ name: js.sf("C' Trap %s", boven), unit: "", symbol: boven, value: o.C },
-		{ name: js.sf("C10' Trap %s", boven), unit: "", symbol: boven, value: o.C10 },
-		{ name: js.sf("Cp' Trap %s", boven), unit: "", symbol: boven, value: o.Cp },
-		{ name: js.sf("Cs' Trap %s", boven), unit: "", symbol: boven, value: o.Cs }
-	];
-}
-
-var js = require("js");
-var regression = require("lib/node_modules/regression/dist/regression");
 
 var key_s = "Stage Number";
 var key_t = "Time since start of stage (s)";
@@ -2094,7 +2036,7 @@ function setup_stages_2(vars, only_this_stage) {
 		boven: koppejan("boven")
 	});
 }
-function setup_variables_2(vars, headerValue) {
+function setup_parameters(vars, headerValue) {
 	vars.categories = [{
 		name: "Project",
 		items: [
@@ -2364,6 +2306,63 @@ function setup_variables_2(vars, headerValue) {
 		- Samendrukkingsparameters
 			- Samendrukkingsconstant C > σ’p tussen Trap 5 en 6
 */
+}
+
+function bjerrum_e_variables(vars) {
+	var onder = js.get("overrides.bjerrum_e.label-onder", vars) || "1-2";
+	var boven = js.get("overrides.bjerrum_e.label-boven", vars) || "3-4";
+	
+	var o = js.get("overrides.bjerrum_e.onder", vars) || "nog te bepalen";
+	var b = js.get("overrides.bjerrum_e.boven", vars) || "nog te bepalen";
+
+	return [
+		{ name: js.sf("Trap %s", onder), unit: "", symbol: js.sf("Cc(%s)", onder), value: o },
+		{ name: js.sf("Trap %s", boven), unit: "", symbol: js.sf("Cr(%s)", boven), value: o },
+	];
+	
+}
+function bjerrum_r_variables(vars) {
+	var onder = js.get("overrides.bjerrum_r.label-onder", vars) || "1-2";
+	var boven = js.get("overrides.bjerrum_r.label-boven", vars) || "3-4";
+	
+	var o = js.get("overrides.bjerrum_r.onder", vars) || "nog te bepalen";
+	var b = js.get("overrides.bjerrum_r.boven", vars) || "nog te bepalen";
+
+	return [
+		{ name: js.sf("Trap %s", onder), unit: "", symbol: js.sf("CR(%s)", onder), value: o },
+		{ name: js.sf("Trap %s", boven), unit: "", symbol: js.sf("RR(%s)", boven), value: o },
+	];
+	
+}
+function isotachen_variables(vars) {
+	var onder = js.get("overrides.isotachen.label-onder", vars) || "1-2";
+	var boven = js.get("overrides.isotachen.label-boven", vars) || "3-4";
+	
+	var o = js.get("overrides.isotachen.onder", vars) || "nog te bepalen";
+	var b = js.get("overrides.isotachen.boven", vars) || "nog te bepalen";
+
+	return [
+		{ name: "a onder pg", unit: "", symbol: js.sf("a(%s)", onder), value: o },
+		{ name: "b boven pg", unit: "", symbol: js.sf("b(%s)", boven), value: o }
+	];
+}
+function koppejan_variables(vars) {
+	var onder = js.get("overrides.koppejan.label-onder", vars) || "1-2";
+	var boven = js.get("overrides.koppejan.label-boven", vars) || "3-4";
+	
+	var o = js.get("overrides.koppejan.onder", vars) || "nog te bepalen";
+	var b = js.get("overrides.koppejan.boven", vars) || "nog te bepalen";
+
+	return [
+		{ name: js.sf("C Trap %s", onder), unit: "", symbol: onder, value: o.C },
+		{ name: js.sf("C10 Trap %s", onder), unit: "", symbol: onder, value: o.C10 },
+		{ name: js.sf("Cp Trap %s", onder), unit: "", symbol: onder, value: o.Cp },
+		{ name: js.sf("Cs Trap %s", onder), unit: "", symbol: onder, value: o.Cs },
+		{ name: js.sf("C' Trap %s", boven), unit: "", symbol: boven, value: o.C },
+		{ name: js.sf("C10' Trap %s", boven), unit: "", symbol: boven, value: o.C10 },
+		{ name: js.sf("Cp' Trap %s", boven), unit: "", symbol: boven, value: o.Cp },
+		{ name: js.sf("Cs' Trap %s", boven), unit: "", symbol: boven, value: o.Cs }
+	];
 }
 
 /* Trendline Editing */
@@ -2709,6 +2708,7 @@ function isEditableTrendLine(tl) {
 	// return tl.dashLength === 0 && (tl.lineColor == "red" || tl.lineColor === "green");
 }
 
+
 ["", { handlers: handlers }, [
 
     [("#refresh"), {
@@ -2759,9 +2759,6 @@ function isEditableTrendLine(tl) {
 		/*- use overrides immediately (if any) */	
 			vars.overrides = this.vars(["overrides"]);
 		
-		/*- TODO switch between types of GDS files */	
-		
-	
 		/*- setup dataset and variables */
 			setup_measurements_1(vars, Parser.parse(measurements.join("\n"), options).data);
 			setup_variables_1(vars, headerValue);
@@ -2775,23 +2772,23 @@ function isEditableTrendLine(tl) {
 				setup_isotachen(vars);
 				setup_koppejan(vars);
 				setup_stages_2(vars);
-				setup_variables_2(vars, headerValue);
+				setup_parameters(vars, headerValue);
 			} else {
+				console.warn("why are you instantianting me?");
 				vars.parameters	= [];
 			}
 
-			this.ud("#array-measurements").setArray(vars.measurements);
-			this.ud("#array-variables").setArray(vars.headers.concat(vars.parameters));
+			this.udr("#array-measurements").setArray(vars.measurements);
+			this.udr("#array-variables").setArray(vars.headers.concat(vars.parameters));
 			
-			var me = this;
-			vars.parameters.update = function update_parameters() {
+			var update = (vars.parameters.update = () => {
 				setup_stages_2(vars);
-				setup_variables_2(vars, headerValue);
-				me.ud("#array-variables").setArray(vars.headers.concat(vars.parameters));
-				vars.parameters.update = update_parameters;
-			};
+				setup_parameters(vars, headerValue);
+				this.udr("#array-variables").setArray(vars.headers.concat(vars.parameters));
+				vars.parameters.update = update;
+			});
 			
-			var edit = this.ud("#edit-graph-stage"), popup = this.ud("#popup-edit-graph-stage");
+			var edit = this.udr("#edit-graph-stage"), popup = this.udr("#popup-edit-graph-stage");
 			popup.destroyControls();
 			vars.stages.forEach((stage, index) => {
 				new Button({
@@ -2827,7 +2824,7 @@ function isEditableTrendLine(tl) {
     	visible: false,
     	on(evt) {
 			var vars = this.vars(["variables"]), am, node, chart;
-    		var graph = this.ud("#graphs > :visible"), state;
+    		var graph = this.ud("#graphs > :visible[groupIndex=-1]"), state;
     		var stage = evt && evt.component.vars("stage");
 
     		am = (evt && evt.am) || graph.getNode().down(".amcharts-main-div");
