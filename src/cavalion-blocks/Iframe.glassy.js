@@ -146,6 +146,6 @@ this.setTimeout("move", () => {
 	// 	}
 	// },
 	
-	vars: {'frame-src': "/home/Workspaces/veldapps.com/V7/src" }
+	// vars: {'frame-src': "/home/Workspaces/veldapps.com/V7/src" }
 	
 }];

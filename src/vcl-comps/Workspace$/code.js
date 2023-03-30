@@ -3,6 +3,7 @@
 	// localStorage.setItem("cavalion-js-path", "/home/Workspaces/cavalion.org/cavalion-js/src/")
 	// localStorage.setItem("cavalion-vcl-path", "/home/Workspaces/cavalion.org/cavalion-vcl/src/")
 	// localStorage.setItem("cavalion-blocks-path", "/home/Workspaces/cavalion.org/cavalion-blocks/src/")
+	// localStorage.setItem("cavalion-devtools-path", "/home/Workspaces/cavalion.org/cavalion-devtools/src/")
 	// localStorage.setItem("veldapps-v7-path", "/home/Workspaces/veldapps.com/V7/src/")
 	// localStorage.setItem("veldoffice-js-path", "/home/Workspaces/veldapps.com/Veldoffice/veldoffice-js/src/")
 
