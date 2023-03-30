@@ -171,9 +171,9 @@ var xsTypes = {};
 			var parser = {
 				root: root, xmlns: xmlns, schema: schema_id, ns_prefix: ns_prefix,
 				
-				included_stypes: {}, included_ctypes: {}, included_elems: {},
-				included_groups: {}, included_imps: {}, included_attrs: {},
-				included_agroups: {},
+				included_stypes: [], included_ctypes: [], included_elems: [],
+				included_groups: [], included_imps: [], included_attrs: [],
+				included_agroups: [],
 				
 				stamp: function(xsel) {
 					if(!js.get(at__ + ".parser", xsel)) {
@@ -317,7 +317,7 @@ var xsTypes = {};
 					this.inheritGroup(xselem, xselem, "root");
 				},
 				parseComplexType: function(xselem, i) {
-					if(xselem['@_name'] === undefined) debugger;
+					// if(xselem['@_name'] === "InvestigatedIntervalType") debugger;
 					this.ctypes_map[xmlns[''] + ":" + xselem['@_name']] = xselem;
 					// js.set(at__ + ".source", "complexType", xselem);
 					// if(xselem[at__] === undefined) {
@@ -347,6 +347,7 @@ var xsTypes = {};
 								this.log(xselem, sf("@_type %s not found (291)", xselem['@_type']));
 							}
 						} else if(xselem[sf("%scomplexType", ns_prefix)]) {
+// me.print("parseElement - inherit complexType", xselem['@_name']);
 							this.inheritType(xselem, xselem[sf("%scomplexType", ns_prefix)], "inline?");	
 						} else {
 							me.print("parseElement.notHandled", xselem);
@@ -497,7 +498,12 @@ var xsTypes = {};
 							if(!type['@_name']) type['@_name'] = js.sf("autogen_%s", xsel_name);
 							this.log(xselem, info['type-resolved'] = this.parseComplexType(type, -1) || type);
 							// info.type = ref;
+						} else if((ref = js_getXs("%scomplexType.%ssimpleContent.%srestriction", xsel))) {
+							if(!type['@_name']) type['@_name'] = js.sf("autogen_%s", xsel_name);
+							this.log(xselem, info['type-resolved'] = this.parseComplexType(ref, -1) || ref);
+							// this.log(xselem, ["not understood-1", xsel, xsel_name]);
 						}
+						
 						
 							// this.log(xselem, "LOOKIE-LOOKIE-1");
 							// this.log(xselem, ["not understood-1", xsel, xsel_name]);
