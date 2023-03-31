@@ -38,6 +38,10 @@ const handlers = {
         	
         	this.setTimeout("render", () => {
 
+        		var renderer = this.ud("#renderer");
+
+        		const owner = this._owner;
+        		const lines = this.getLines();
         		const refresh = () => {
 	        		if(this.getLines().length) {
 	        			renderer.qs("#refresh").execute();
@@ -45,9 +49,6 @@ const handlers = {
 						// TODO emiting that event from here is just weird
 	        		}
         		};
-        		
-        		var lines = this.getLines();
-        		var renderer = this.ud("#renderer");
         		
         		if(renderer === null) { // dynamically determine actual Renderer<>
         			var type = guess(lines);
@@ -59,12 +60,12 @@ const handlers = {
         				.then(r => {
         					renderer = r;
         					
-        					r.setName(type);
+        					r.addClass("gds-" + type);
         					r.setParent(this.ud("#container-renderer"));
-        					r.setOwner(this.getOwner());
+        					r.setOwner(owner);
         					r.qs("#panel-edit-graph").bringToFront();
 
-							this.print("renderer instantiated", r);
+							r.print("instantiated", r);
         					
         					refresh();
         				});
