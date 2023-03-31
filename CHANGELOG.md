@@ -1,3 +1,18 @@
+### `2023/03/30` - 1.0.82
+
+* Adds Renderer<>/Util module;
+* Refactores Editor<gds> and Renderer<gds> in order to support so called "settlement"- and "triaxial" test type automatically
+
+
+### `2023/03/26` - 1.0.81
+
+* 1291ab7 - develops VA-20230130-1
+* ef04825 - first commit - starting development reporting triaxial tests from GDS-files
+* b4f381d - removed (obsolete code)
+* 992f002 - adds code for fetching PDF document
+* 9a1dacc - fixes linking to :// fixes using the startsWithProtocol function adds some more padding
+* dce4c7d - fixes the polluting the global namespace
+
 ### `2022/11/15` - 1.0.80
 
 * Fixes a bug where null, 0 and false where treated as undefined
