@@ -1,12 +1,14 @@
-"use papaparse/papaparse, lib/node_modules/regression/dist/regression";
-"use strict";
+"use ./Util, locale!./locales/nl, vcl/ui/Button, vcl/ui/Tab, papaparse/papaparse, amcharts, amcharts.serial, amcharts.xy, lib/node_modules/regression/dist/regression, ";
 
-var regression = require("lib/node_modules/regression/dist/regression");
-var js = require("js");
+const regression = require("lib/node_modules/regression/dist/regression");
+const js = require("js");
 
-var Button = require("vcl/ui/Button");
-var Tab = require("vcl/ui/Tab");
-var Control = require("vcl/Control");
+const Util = require("./Util");
+
+const Button = require("vcl/ui/Button");
+const Tab = require("vcl/ui/Tab");
+const Control = require("vcl/Control");
+
 
 /*-
 	* `#VA-20230130-1` 
@@ -19,14 +21,6 @@ var Control = require("vcl/Control");
 	- "entry point": vcl/Action#refresh.on
 
 */
-
-var key_s = "Stage Number";
-var key_t = "Time since start of stage (s)";
-var key_T = "Time since start of test (s)";
-var key_d = "Axial Displacement (mm)";
-var key_as = "Axial Stress (kPa)";
-var key_st = "Stress Target (kPa)";
-var treatZeroAs = 0.0001;
 
 function makeChart(c, opts) {
 	
@@ -134,23 +128,6 @@ function makeChart(c, opts) {
 	opts.immediate ? render.apply(c, [opts || {}]) : c.nextTick(() => render.apply(c, [opts || {}]));
 }
 
-/* Handy Dandy */
-var cp = (obj) => {
-	if(obj instanceof Array) {
-		return obj.map(_ => cp(_));
-	}
-	if(obj !== null && typeof obj === "object") {
-		var newObj = {};
-		Object.keys(obj).forEach(key => newObj[key] = cp(obj[key]));
-		obj = newObj;
-	}
-	return obj;
-};
-var parseValue = (value) => isNaN(value.replace(",", ".")) ? value : parseFloat(value.replace(",", "."));
-var removeQuotes = (str) => str.replace(/"/g, "");
-var removeTrailingColon = (s) => s.replace(/\:$/, "");
-var sort_numeric = (i1, i2) => parseFloat(i1) < parseFloat(i2) ? -1 : 1;
-
 /* Other */
 function getSelectedGraph(cmp) {
 	var graph;
@@ -166,21 +143,10 @@ function getSelectedGraph(cmp) {
 }
 
 /* Event Handlers */
-var handlers = {
+const handlers = {
 	/* Event Handlers */
-	// "loaded": function root_loaded() {
-	// 	var editor, me = this, root = this.up("devtools/Editor<vcl>");
-	// 	if(root) {
-	// 		/*- DEBUG: hook into the 1st Editor<gds> we can find (if any) in order to tweak/fiddle code */
-	// 		if((editor = root.app().down("devtools/Editor<gds>:root"))) {
-	// 			var previous_owner = me._owner;
-	// 			me.setOwner(editor);
-	// 			me.on("destroy", () => me.setOwner(previous_owner));
-	// 		}
-	//  	}
-	 	
-	//  	logger = this;
-	// },
+	'loaded'() { this.print("Util", Util); },
+	
 	"#tabs-sections onChange": function tabs_change(newTab, curTab) {
 		this.ud("#bar").setVisible(newTab && (newTab.vars("bar-hidden") !== true));
 	},
@@ -260,14 +226,14 @@ var handlers = {
 				makeChart(this, {
 					immediate: true,
 					node: this.getChildNode(st),
-					trendLines: cp(stage.casagrande.trendLines || []),
+					trendLines: Util.cp(stage.casagrande.trendLines || []),
 				    valueAxes: [{
 				        id: "y1", position: "left", reversed: true,
-						guides: cp(stage.casagrande.guides.filter(guide => guide.position === "left" || guide.position === "right"))
+						guides: Util.cp(stage.casagrande.guides.filter(guide => guide.position === "left" || guide.position === "right"))
 					}, {
 						id: "x1", position: "bottom",
 						title: js.sf("Trap %s: zetting [µm] / tijd [minuten] → ", st + 1),
-						guides: cp(stage.casagrande.guides.filter(guide => guide.position === "top" || guide.position === "bottom")),
+						guides: Util.cp(stage.casagrande.guides.filter(guide => guide.position === "top" || guide.position === "bottom")),
 						logarithmic: true
 					}]
 				});
@@ -310,10 +276,10 @@ var handlers = {
 					immediate: true,
 					legend: false,
 					node: this.getChildNode(st),
-					trendLines: cp(stage.taylor.trendLines || []),
+					trendLines: Util.cp(stage.taylor.trendLines || []),
 				    valueAxes: [{
 				        id: "y1", position: "left", reversed: true,
-						guides: cp(stage.taylor.guides || [])
+						guides: Util.cp(stage.taylor.guides || [])
 					}, {
 						title: js.sf("Trap %s: zetting [µm] / tijd [√ minuten] → ", st + 1),
 						position: "bottom"
@@ -356,14 +322,14 @@ var handlers = {
 				makeChart(this, {
 					immediate: true,
 					node: this.getChildNode(st),
-					trendLines: cp(stage.isotachen.trendLines || []),
+					trendLines: Util.cp(stage.isotachen.trendLines || []),
 				    valueAxes: [{
 				        id: "y1", position: "left", reversed: true,
-						guides: cp(stage.isotachen.guides.filter(guide => guide.position === "left" || guide.position === "right"))
+						guides: Util.cp(stage.isotachen.guides.filter(guide => guide.position === "left" || guide.position === "right"))
 					}, {
 						id: "x1", position: "bottom",
 						title: js.sf("Trap %s: natuurlijke rek [-] / tijd [minuten] → ", st + 1),
-						guides: cp(stage.isotachen.guides.filter(guide => guide.position === "top" || guide.position === "bottom")),
+						guides: Util.cp(stage.isotachen.guides.filter(guide => guide.position === "top" || guide.position === "bottom")),
 						logarithmic: true
 					}]
 				});
@@ -601,7 +567,7 @@ var handlers = {
 			})));
 		
 			var serie2 = vars.koppejan.serie2;
-			var trendLines = cp(vars.koppejan.trendLines);
+			var trendLines = Util.cp(vars.koppejan.trendLines);
 			var LLi_1 = vars.koppejan.LLi_1;
 			
 			this.vars("am", { series: series, data: vars.measurements.slice(1) });
@@ -744,161 +710,6 @@ function calc_T(d50, dA, dB, tA, tB) {
 }
 
 /* Setup (must be called in same order) */
-function setup_measurements_1(vars, measurements) {
-	vars.measurements = measurements.filter(_ => _.length).map(values => {
-		var obj = {};
-		vars.columns.forEach((key, index) => obj[key] = parseValue(values[index]));
-		
-		obj.stage = Math.round(obj[key_s] > 1 && obj[key_s] < 2 ? 10 * (obj[key_s] - 1) : obj[key_s]);
-		obj.seconds = obj[key_t];
-		obj.minutes = obj.seconds / 60;
-		obj.hours = obj.seconds / (60 * 60);
-		obj.days = obj.seconds / (24 * 60 * 60);
-		obj.secondsT = obj[key_T];
-		obj.daysT = obj.secondsT / (24 * 60 * 60);
-		obj.z = obj[key_d];
-		
-		obj.minutes_sqrt = Math.sqrt(obj.minutes);
-		obj.minutes_log10 = Math.log10(obj.minutes || treatZeroAs);
-		obj.days_log10 = Math.log10(obj.days || treatZeroAs);
-
-		return obj;
-	});
-	
-	if(measurements.length && !vars.measurements[0].hasOwnProperty(key_as)) {
-		if(confirm(js.sf("NB: De data is niet compleet.\n\nWilt u het missende gegeven '%s' afleiden van '%s'?", key_as, key_st))) {
-			vars.measurements.forEach(m => (m[key_as] = m[key_st]));
-		}
-	}
-}
-function setup_variables_1(vars, headerValue) {
-	vars.G = 9.81 * 1000;
-	vars.pw = 1.00; //(assumed value; note that water density may vary due to temperature)
-/*- read variables from header information */
-	vars.ps = headerValue("Specific Gravity (kN");
-	vars.H = headerValue("Initial Height (mm)");
-	vars.D = headerValue("Initial Diameter (mm)");
-	vars.m = headerValue("Initial mass (g)");
-	vars.md = headerValue("Initial dry mass (g)");
-	vars.mf = headerValue("Final Mass");
-	vars.mdf = headerValue("Final Dry Mass");
-	vars.temperature = headerValue("Temperatuur") || 10;
-/*- initialize and calculate some more variables (see documentation `#VA-20201218-3`) */
-	vars.V = Math.PI * (vars.D/2) * (vars.D/2) * vars.H;
-	vars.y = vars.m / (Math.PI / 4 * vars.D * vars.D * vars.H) * vars.G;
-	vars.yd = vars.md / (Math.PI / 4 * vars.D * vars.D * vars.H) * vars.G;
-	vars.w0 = (vars.m - vars.md) / vars.md * 100;
-	vars.pd = vars.yd / (vars.G/1000);
-	vars.e0 = (vars.ps / vars.pd) - 1;
-	vars.Sr = (vars.w0 * vars.ps) / (vars.e0 * vars.pw);
-	vars.dH = calc_dH(vars);
-/*- initial vars */
-	vars.Hi = vars.H;
-	vars.Vi = vars.V;
-	vars.yi = vars.y;
-	vars.ydi = vars.yd;
-	vars.pdi = vars.pd;
-	vars.ei = vars.e0;
-	vars.Sri = vars.Sr;
-/*- final vars */
-	vars.Hf = vars.H - vars.dH;
-	vars.Vf = Math.PI * (vars.D/2) * (vars.D/2) * vars.Hf;
-	vars.yf = vars.mf / (Math.PI / 4 * vars.D * vars.D * vars.Hf) * vars.G;
-	vars.ydf = vars.mdf / (Math.PI / 4 * vars.D * vars.D * vars.Hf) * vars.G;
-	vars.pdf = vars.ydf / (vars.G/1000);
-	vars.ef = (vars.ps / vars.pdf) - 1;
-	vars.wf = (vars.mf - vars.mdf) / vars.mdf * 100;
-	vars.Srf = (vars.wf * vars.ps) / (vars.ef * vars.pw);
-}
-function setup_measurements_2(vars) {
-
-/*- lineaire en natuurlijke rek */
-	var H0 = vars.measurements[0].z; // always 0?
-	vars.measurements.forEach(obj => {
-		obj.EvC = (obj.z - H0) / vars.H;
-		obj.EvH = -Math.log(1 - obj.EvC);
-	});
-	
-	
-	// 
-}
-function setup_stages_1(vars) {
-	var measurements = vars.measurements;
-	var length = measurements.length;
-	var n_stages = Math.floor((measurements[length - 1][key_s] - 1) * 10);
-
-	function e_(stage) {
-		/*-
-			Hs = H0/(1 + e0)
-			ef = (Hf - Hs ) / Hs"	
-			e0 = ρs/ρd - 1
-			
-			-e0: initial void ratio (-)
-			-ef: void ratio at the end of each load stage (-)
-			-H0: initial height of specimen (mm)
-			-Hs: height of solids (mm)
-			-ρs: particle density (density of solid particles) (Mg/m3)
-			-ρd: dry particle density (Mg/m3)"
-			
-				H0= 20.20 mm		ρs=  2.65 Mg/m3
-				γd = 10.21 kN/m3 (calculated previously)
-				ρd=  γd/9.81
-
-				ρd=  10.21 / 9.81 = 1.04 Mg/m3
-				e0= 2.65/1.04 - 1 = 1.5481
-				
-				Hs= 20.20 / (1 + 1.5481) = 7.9275 mm
-				
-				Bij eind Trap 3:  Gecorrigeerd totaal vervorming: 0.8082 mm
-				Hf= 20.20 - 0.8082 = 19.3918 mm 	ef= (19.3918 - 7.9275) / 13.42 = 0.8543
-		*/
-		var H = stage.Hf;
-		var yd = vars.md / (Math.PI / 4 * vars.D * vars.D * H) * vars.G;
-		var pd = yd / (vars.G / 1000);
-		return vars.ps / pd - 1;
-	}
-	function mv_(stage) {
-		/*- 
-			mv = ((Hi - Hf) / Hi) * (1000 / (σ'v2 - σ'v1))	
-			
-			"-mv: coefficient of volume compressibility (Mpa-1)
-			-Hi: height of specimen at start of load stage
-			-Hf: height of specimen at end of load stage
-			-σ'v2: vertical effective stress after load increment (kPa)
-			-σ'v1: vertical effective stress before load increment (kPa)"			
-		*/
-		
-		var index = vars.stages.indexOf(stage);
-		if(index === vars.stages.length - 1) return NaN;
-		
-		var Hi = stage.Hf, Hf = vars.stages[index + 1].Hf;
-		var ov1 = stage.effective, ov2 = vars.stages[index + 1].effective;
-		
-		return ((Hi - Hf) / Hi) * (1000 / (ov2 - ov1));
-	}
-
-	vars.stages = [];
-	for(var st = 1; st <= n_stages; ++st) {
-		var ms = measurements.filter(_ => _.stage === st), _;
-		if(ms.length > 0) {
-			vars.stages.push({
-				measurements: ms, 
-				Hi: vars.H - ms[0][key_d],
-				Hf: vars.H - ms[ms.length - 1][key_d],
-				target: ms[ms.length - 1][key_st],
-				effective: ms[ms.length - 1][key_as]
-			});
-		}
-	}
-	
-	vars.stages.forEach((stage, i) => {
-		stage.i = i;
-		stage.e0 = e_(stage);
-		stage.mv = mv_(stage);
-		stage.EvC = stage.measurements[stage.measurements.length - 1].EvC;
-		stage.EvH = stage.measurements[stage.measurements.length - 1].EvH;
-	});
-}
 function setup_casagrande(vars) {
 	var x = "minutes", y = "y_casagrande";
 /*- setup for minutes and recalculate derivatives */
@@ -1446,21 +1257,21 @@ function setup_isotachen(vars) {
 function setup_koppejan(vars) { 
 	/*- initialize y attribute */
 	vars.measurements.forEach(m => {
-		m.x2 = m[key_as];
-		m.y = (m.y_koppejan = m[key_d]); // reset because of Taylor/CG
+		m.x2 = m[Util.key_as];
+		m.y = (m.y_koppejan = m[Util.key_d]); // reset because of Taylor/CG
 		m.trap = "Trap-" + m.stage;
 	});
 	
 	/*- ignore the 1st ... */
 	var measurements = vars.measurements.slice(1);
 
-	var serie2, slopes = [], x = key_t, y = key_d;
+	var serie2, slopes = [], x = Util.key_t, y = Util.key_d;
 	var slope_variant = 2;
 	var rlines = [];
 
 	// serie2 references only the (7) points where y2 are set, and will its z10, z100, z1000, z10000 values will be calculated later on (references the last measurements of each stage)
 	serie2 = vars.stages.map(stage => stage.measurements[stage.measurements.length - 1]);
-	serie2.forEach(m => m.y2 = m[key_as]); // koppejan
+	serie2.forEach(m => m.y2 = m[Util.key_as]); // koppejan
 
 	/*- determine for each stage its slope-info (rc, np) - based on measurements 
 		(which are "verschoven" already based upon previous rc/np/stage) */
@@ -1497,7 +1308,7 @@ function setup_koppejan(vars) {
 				
 				var t = obj.daysT; // time in days since begin of Test (> t1)
 				// record stage_time in attribute x[stage_number] so that it can be used to plot the extrapolated stages 
-				obj['x' + (s + 3)] = (t - t1) || treatZeroAs;
+				obj['x' + (s + 3)] = (t - t1) || Util.treatZeroAs;
 				
 				// superpositiebeginsel: vz2(ta-t1) = z1(ta-t1) + z2(ta-t1).
 				obj.z1 = slope.np + slope.rc * Math.log10(t); // previous stages extrapolated
@@ -1599,7 +1410,7 @@ function setup_koppejan(vars) {
 					points[0].x, points[0].y_koppejan, points[1].x, points[1].y_koppejan, 
 					points[2].x, points[2].y_koppejan, points[3].x, points[3].y_koppejan);
 		} else {
-			serie2.forEach(m => m.y = (m.y_koppejan = m[key_d])); // reset
+			serie2.forEach(m => m.y = (m.y_koppejan = m[Util.key_d])); // reset
 			LLi_1 = log_line_intersect(
 					serie2[0].x2, serie2[0].y_koppejan, serie2[1].x2, serie2[1].y_koppejan, 
 					serie2[2].x2, serie2[2].y_koppejan, serie2[3].x2, serie2[3].y_koppejan);
@@ -1653,7 +1464,7 @@ function setup_koppejan(vars) {
 		
 		/*- calculate Cp, Cs, C, C10, ...  */
 	
-		var cp, Pg = LLi_1.sN1N2.x, sig = key_as;
+		var cp, Pg = LLi_1.sN1N2.x, sig = Util.key_as;
 		vars.stages.forEach((stage, st) => {
 			/* 1. 1/Cp = d Ev / ln( ov + dov / ov )	*/
 			stage.koppejan = slopes[st];
@@ -2044,7 +1855,7 @@ function setup_parameters(vars, headerValue) {
 			{ name: "Locatie", value: headerValue("Job Location", false)  },
 			{ name: "Aantal trappen", value: vars.stages.length },
 			{ name: "Proef periode", value: js.sf("%s - %s", headerValue("Date Test Started", false), headerValue("Date Test Finished", false)) },
-			{ name: "Beproevingstemperatuur", value: headerValue("Sample Date") || ""},
+			{ name: "Beproevingstemperatuur", value: headerValue("Temperatuur") || ""},
 			{ name: "Opmerking van de proef", value: "" },
 			// { name: "Opdrachtgever", value: "" },
 			// { name: "Opdrachtnemer", value: "" },
@@ -2217,7 +2028,7 @@ function setup_parameters(vars, headerValue) {
 			var Pg = vars.koppejan.LLi_1.sN1N2.x;
 			var slopes = vars.koppejan.slopes;
 			var serie2 = vars.koppejan.serie2;
-			var sig = key_st;
+			var sig = Util.key_st;
 
 			var unload = 0, pre, post, reload = 0;
 			return slopes.map((o, index) => { 
@@ -2308,6 +2119,7 @@ function setup_parameters(vars, headerValue) {
 */
 }
 
+/* TODO refactor variables => parameters? */
 function bjerrum_e_variables(vars) {
 	var onder = js.get("overrides.bjerrum_e.label-onder", vars) || "1-2";
 	var boven = js.get("overrides.bjerrum_e.label-boven", vars) || "3-4";
@@ -2366,7 +2178,7 @@ function koppejan_variables(vars) {
 }
 
 /* Trendline Editing */
-var TrendLine_Mouse_Handlers = {
+const TrendLine_Mouse_Handlers = {
 	mousemove(graph, trendLine, evt) {
 		var moved = graph.vars("last-cursor-moved");
 		if(!moved) return;
@@ -2438,7 +2250,7 @@ var TrendLine_Mouse_Handlers = {
 		
 	}
 };
-var TrendLine_KeyUp_Handlers = {
+const TrendLine_KeyUp_Handlers = {
 	Space(graph, trendLine, evt) {
 		var vars = graph.vars(["variables"]);
 		if(!vars.editor || !vars.editor.chart) return;
@@ -2701,106 +2513,27 @@ function handleTrendLineEvent(graph, trendLine, evt) {
 
 	return r;
 }
-// function cursorMoved(evt) { Control.findByNode(evt.chart.node).vars("last-cursor-moved", evt); }
 function cursorMoved(evt) { this.vars("last-cursor-moved", evt); }
 function isEditableTrendLine(tl) {
 	return tl.editable;
 	// return tl.dashLength === 0 && (tl.lineColor == "red" || tl.lineColor === "green");
 }
 
-
 ["", { handlers: handlers }, [
 
     [("#refresh"), {
-		on: function() {
-			var Parser = require("papaparse/papaparse");
-			var options = this.vars(["options"]) || {
-				// delimiter: "",	// auto-detect
-				// newline: "",	// auto-detect
-				// quoteChar: '"',
-				// escapeChar: '"',
-				// header: false,
-				// dynamicTyping: false,
-				// preview: 0,
-				// encoding: "",
-				// worker: false,
-				// comments: false,
-				// step: undefined,
-				// complete: undefined,
-				// error: undefined,
-				// download: false,
-				// skipEmptyLines: false,
-				// chunk: undefined,
-				// fastMode: undefined,
-				// beforeFirstChunk: undefined,
-				// withCredentials: undefined
-			};
-			var vars = this.up().vars("variables", {});
-			var headerValue = (key, parse/*default true*/) => {
-				key = key.toLowerCase();
-				key = (vars.headers.filter(_ => _.name.toLowerCase().startsWith(key))[0] || {});
-				return parse === false ? key.raw : key.value;
-			};
-		
-		/*- parse lines => headers, columns and measurements */		
-			var ace = this.udr("#ace");
-			var lines = ace.getLines().filter(_ => _.length); if(lines.length < 2) return; //can't be good
-			var headers = lines.filter(_ => _.split("\"").length < 15);
-			var measurements = lines.filter(_ => _.split("\"").length > 15);
-	
-		/*- parse columns */
-			vars.columns = measurements.shift().split(",").map(removeQuotes);
-		
-		/*- parse headers */	
-			vars.headers = headers.map(_ => _.split("\",\"")).filter(_ => _.length === 2)
-				.map(_ => [removeTrailingColon(_[0].substring(1)), _[1].substring(0, _[1].length - 2)])
-				.map(_ => ({category: "Header", name: _[0], value: parseValue(_[1]), raw: _[1]}));
-			
-		/*- use overrides immediately (if any) */	
-			vars.overrides = this.vars(["overrides"]);
-		
-		/*- setup dataset and variables */
-			setup_measurements_1(vars, Parser.parse(measurements.join("\n"), options).data);
-			setup_variables_1(vars, headerValue);
-			setup_measurements_2(vars);
-			setup_stages_1(vars);
-
-			if(headers.length >= 22 && headers.length <= 23) {
+		vars: {
+			setup() {
+				var vars = this.up().vars("variables");
+				
 				setup_casagrande(vars);
 				setup_taylor(vars);
 				setup_bjerrum(vars);
 				setup_isotachen(vars);
 				setup_koppejan(vars);
 				setup_stages_2(vars);
-				setup_parameters(vars, headerValue);
-			} else {
-				console.warn("why are you instantianting me?");
-				vars.parameters	= [];
+				setup_parameters(vars, vars.headerValue);
 			}
-
-			this.udr("#array-measurements").setArray(vars.measurements);
-			this.udr("#array-variables").setArray(vars.headers.concat(vars.parameters));
-			
-			var update = (vars.parameters.update = () => {
-				setup_stages_2(vars);
-				setup_parameters(vars, headerValue);
-				this.udr("#array-variables").setArray(vars.headers.concat(vars.parameters));
-				vars.parameters.update = update;
-			});
-			
-			var edit = this.udr("#edit-graph-stage"), popup = this.udr("#popup-edit-graph-stage");
-			popup.destroyControls();
-			vars.stages.forEach((stage, index) => {
-				new Button({
-					action: edit, parent: popup,
-					content: js.sf("Trap %d", index + 1), 
-					selected: "never", vars: { stage: index }
-				});
-			});
-			
-			this.ud("#graphs").getControls().forEach(c => c.setState("invalidated", true));
-			
-			this.print("parsed", { stages: vars.stages, variables: vars, measurements: measurements });
 		}
     }],
     [("#reflect-overrides"), {

@@ -1,9 +1,7 @@
-"use js, vcl/ui/Button, vcl/ui/Tab, papaparse/papaparse, amcharts, amcharts.serial, amcharts.xy, lib/node_modules/regression/dist/regression, locale!./locales/nl";
+"use ./Util, locale!./locales/nl, vcl/ui/Button, vcl/ui/Tab, papaparse/papaparse, amcharts, amcharts.serial, amcharts.xy, lib/node_modules/regression/dist/regression, ";
 
 define("devtools/Renderer<gds>.parseValue", () => (value) => isNaN(value.replace(",", ".")) ? value : parseFloat(value.replace(",", ".")));
 
-
-"use strict";
 
 /*-
 	* `#VA-20201218-3` Main issue
@@ -17,14 +15,15 @@ define("devtools/Renderer<gds>.parseValue", () => (value) => isNaN(value.replace
 	- "entry point": vcl/Action#refresh.on
 */
 
-var js = require("js");
+const js = require("js");
+const Util = require("./Util");
 
-var Button = require("vcl/ui/Button");
-var Tab = require("vcl/ui/Tab");
-var Control = require("vcl/Control");
+const Button = require("vcl/ui/Button");
+const Tab = require("vcl/ui/Tab");
+const Control = require("vcl/Control");
 
 /* Some styles and class */
-var css = {
+const css = {
 		"a": "visibility:hidden;",
 		".multiple > div": "width:48%;height:48%;display:inline-block;" + 
 			"border: 1px dashed black;" +
@@ -37,7 +36,24 @@ var css = {
 		"&.pdf.generate .multiple > div": "height: 470px; width:850px; position:absolute;top:0;left:0;",
 		// ".amcharts-main-div": "border: 3px solid transparent;"
 	};
-var logger; 
+
+/* Event Handlers */
+const handlers = {
+	/* Event Handlers */
+	"loaded": function root_loaded() {
+		var editor, me = this, root = this.up("devtools/Editor<vcl>");
+		if(root) {
+			/*- DEBUG: hook into the 1st Editor<gds> we can find (if any) in order to tweak/fiddle code */
+			if((editor = root.app().down("devtools/Editor<gds>:root"))) {
+				var previous_owner = me._owner;
+				me.setOwner(editor);
+				me.on("destroy", () => me.setOwner(previous_owner));
+			}
+	 	}
+	 	
+	 	logger = this;
+	}
+};
 
 /* Other */
 function getSelectedGraph(cmp) {
@@ -65,23 +81,7 @@ function match(obj, q) {
 	return false;
 }
 
-/* Event Handlers */
-var handlers = {
-	/* Event Handlers */
-	"loaded": function root_loaded() {
-		var editor, me = this, root = this.up("devtools/Editor<vcl>");
-		if(root) {
-			/*- DEBUG: hook into the 1st Editor<gds> we can find (if any) in order to tweak/fiddle code */
-			if((editor = root.app().down("devtools/Editor<gds>:root"))) {
-				var previous_owner = me._owner;
-				me.setOwner(editor);
-				me.on("destroy", () => me.setOwner(previous_owner));
-			}
-	 	}
-	 	
-	 	logger = this;
-	}
-};
+var logger; 
 
 ["", { handlers: handlers }, [
 	
@@ -94,7 +94,87 @@ var handlers = {
     	selected: "state"
     }],
     ["vcl/Action", ("refresh"), {
-		on_shouldbeoverridden(evt) { /* ... */ }
+		on() {
+			var Parser = require("papaparse/papaparse");
+			var options = this.vars(["options"]) || {
+				// delimiter: "",	// auto-detect
+				// newline: "",	// auto-detect
+				// quoteChar: '"',
+				// escapeChar: '"',
+				// header: false,
+				// dynamicTyping: false,
+				// preview: 0,
+				// encoding: "",
+				// worker: false,
+				// comments: false,
+				// step: undefined,
+				// complete: undefined,
+				// error: undefined,
+				// download: false,
+				// skipEmptyLines: false,
+				// chunk: undefined,
+				// fastMode: undefined,
+				// beforeFirstChunk: undefined,
+				// withCredentials: undefined
+			};
+			var vars = this.up().vars("variables", {});
+			var headerValue = (key, parse/*default true*/) => {
+				key = key.toLowerCase();
+				key = (vars.headers.filter(_ => _.name.toLowerCase().startsWith(key))[0] || {});
+				return parse === false ? key.raw : key.value;
+			};
+		
+		/*- parse lines => headers, columns and measurements */		
+			var ace = this.udr("#ace");
+			var lines = ace.getLines().filter(_ => _.length); if(lines.length < 2) return; //can't be good
+			var headers = lines.filter(_ => _.split("\"").length < 15);
+			var measurements = lines.filter(_ => _.split("\"").length > 15);
+	
+		/*- parse columns */
+			vars.columns = measurements.shift().split(",").map(Util.removeQuotes);
+			vars.headerValue = headerValue;
+		
+		/*- parse headers */	
+			vars.headers = headers.map(_ => _.split("\",\"")).filter(_ => _.length === 2)
+				.map(_ => [Util.removeTrailingColon(_[0].substring(1)), _[1].substring(0, _[1].length - 2)])
+				.map(_ => ({category: "Header", name: _[0], value: Util.parseValue(_[1]), raw: _[1]}));
+			
+		/*- use overrides immediately (if any) */	
+			vars.overrides = this.vars(["overrides"]);
+		
+		/*- setup dataset and variables */
+			Util.setup_measurements_1(vars, Parser.parse(measurements.join("\n"), options).data);
+			Util.setup_variables_1(vars, headerValue);
+			Util.setup_measurements_2(vars);
+			Util.setup_stages_1(vars);
+			
+			this.applyVar("setup"); // calls vars.on if it exists
+			
+			this.udr("#array-measurements").setArray(vars.measurements);
+			this.udr("#array-variables").setArray(vars.headers.concat(vars.parameters));
+	
+			var update = (vars.parameters.update = () => {
+				setup_stages_2(vars);
+				setup_parameters(vars, vars.headerValue);
+				this.udr("#array-variables").setArray(vars.headers.concat(vars.parameters));
+				vars.parameters.update = update;
+			});
+			
+			var edit = this.udr("#edit-graph-stage"), popup = this.udr("#popup-edit-graph-stage");
+			popup.destroyControls();
+			vars.stages.forEach((stage, index) => {
+				new Button({
+					action: edit, parent: popup,
+					content: js.sf("Trap %d", index + 1), 
+					selected: "never", vars: { stage: index }
+				});
+			});
+			
+			this.ud("#graphs").getControls().forEach(c => c.setState("invalidated", true));
+			
+			this.print("parsed", { stages: vars.stages, variables: vars, measurements: vars.measurements });
+		
+		}
     }],
 
     ["vcl/Action", ("toggle-edit-graph"), {
