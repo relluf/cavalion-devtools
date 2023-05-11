@@ -3,7 +3,6 @@
 * Adds Renderer<>/Util module;
 * Refactores Editor<gds> and Renderer<gds> in order to support so called "settlement"- and "triaxial" test type automatically
 
-
 ### `2023/03/26` - 1.0.81
 
 * 1291ab7 - develops VA-20230130-1

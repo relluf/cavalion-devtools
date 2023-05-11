@@ -2,6 +2,10 @@
 
 const Parser = require("papaparse/papaparse");
 
+const gdsKey = (name, obj) => {
+	if(obj.hasOwnProperty(name)) return name;
+	return Object.keys(obj).filter(k => k.startsWith(name))[0];
+};
 const guess = (lines) => {
 	
 	lines = lines.filter(_ => _.length);
@@ -17,17 +21,53 @@ const guess = (lines) => {
 	
 	return "triaxial";
 };
+const match = (obj, q) => {
+	q = q.toLowerCase();	
+	if(typeof obj ==="string") {
+		return obj.toLowerCase().includes(q);
+	}
+	for(var k in obj) {
+		if(js.sf("%n", obj[k]).toLowerCase().includes(q)) {
+			return true;
+		}
+	}
+	return false;
+};
 const css = {
 	"#bar": "text-align: center;",
 	"#bar > *": "margin-right:5px;",
 	"#bar input": "font-size:12pt;width:300px;max-width:50%; border-radius: 5px; border-width: 1px; padding: 2px 4px; border-color: #f0f0f0;",
-	"#bar #left": "float:left;", "#bar #right": "float:right;"
+	"#bar #left": "float:left;", "#bar #right": "float:right;",
+	"#bar .button": {
+		'': "float: right; margin:6px 6px 0 0;",
+		'&:hover': "background-color: #f0f0f0; cursor: pointer;",
+		'&:active': "color: rgb(56, 121, 217);"
+	}
 };
 const handlers = {
 	"#tabs-sections onChange": function tabs_change(newTab, curTab) {
 		this.ud("#bar").setVisible(newTab && (newTab.vars("bar-hidden") !== true));
+		this.print("onchange", [newTab, curTab]);
 	}
 };
+
+const escape = (s) => js.sf("\"%s\"", ("" + s).replace(/"/g, "\\\""));
+
+const downloadCSV = (arr, filename) => {
+	const headers = Object.keys(arr[0]);
+	const data = [headers.map(s => escape(s))].concat(arr.map(o => headers.map(h => escape(o[h]))));
+	const csv = data.map(row => row.join(',')).join('\n');
+	const blob = new Blob([csv], { type: 'text/csv' });
+	const url = URL.createObjectURL(blob);
+	const link = document.createElement('a');
+	link.href = url;
+	link.download = filename;
+	document.body.appendChild(link);
+	link.click();
+	document.body.removeChild(link);
+	URL.revokeObjectURL(url);
+};
+
 
 ["", { css: css, handlers: handlers }, [
     [("#ace"), { 
@@ -101,17 +141,31 @@ const handlers = {
     }],
 
 	["vcl/data/Array", ("array-measurements"), {
+		onActiveChanged() {
+			this.print("onActiveChanged", arguments);	
+		},
 		onGetAttributeValue: function(name, index, value) { 
 			return (this._arr[index] || {})[name]; 
 		},
 		onFilterObject(obj) {
 			var q = this.vars("q");
 			if(!q) return false;
-			return q.split(/\s/).filter(q => q.length > 0).some(q => !match(obj, q));
-		},
-		onUpdate() {
-			// this.ud("#list-status").render();
-		},
+			
+			var parts = q.split(/(?<!\\)\s/).map(
+					s => s.split(/(?<!\\)\=/).map(s => String.unescape(s)));
+			
+			while(parts.length) {
+				var part = parts.pop();
+				if(part.length === 2) {
+					var k = gdsKey(part[0], obj), v = part[1].trim().toLowerCase();
+					if(obj.hasOwnProperty(k) && js.sf("%s", obj[k]).toLowerCase().indexOf(v) !== -1) {
+						return false;
+					}
+				}
+			}
+			
+			return true;//!parts.length ? false : !match(obj, parts[0]);
+		}
 	}],
 	["vcl/data/Array", ("array-variables"), {
 		onFilterObject(obj) {
@@ -127,16 +181,45 @@ const handlers = {
 		["vcl/ui/Tab", { text: "Grafieken", control: "container-renderer", selected: true, vars: { 'bar-hidden': true }} ],
 	]],
 	["vcl/ui/Bar", ("bar"), { visible: false }, [
+		["vcl/ui/Element", ("csv"), {
+			classes: "button",
+			content: "<i class='fa fa-download'></i>",
+			onTap() {
+				const arr = this.udr("#array-variables").getArray();
+				downloadCSV(arr, "variables.csv");
+			}
+		}],
 		["vcl/ui/Input", ("q"), { 
 			placeholder: "Filter", 
 			onChange() { 
 				this.setTimeout("updateFilter", () => {
+					var value = this.getValue(), attrs;
+					
+					if(value.startsWith("|")) {
+						attrs = value.split(/(?<!\\)\|/);
+						value = attrs.pop();
+					}
+					
+					if(attrs) {
+						this.ud("#measurements")._columns.map(
+							column => column.setVisible(attrs.filter(a => a).some(a => 
+								column._attribute.includes(a))));
+					}
+					
+					var previous = this.vars("previous");
+					if(previous && previous.value === value) {
+						return;
+					}
+					
+					this.vars("previous", { name: value, value: value, time: Date.now() });
+
 					var a1 = this.udr("#array-variables");
 					var a2 = this.ud("#array-measurements");
-					a1.vars("q", this.getValue());
+					a1.vars("q", value);
 					a1.updateFilter();
 
-					a2.vars("q", this.getValue());
+					a2.vars("q", value);
+					a2.updateFilter();
 				}, 250); 
 			} 
 		}],

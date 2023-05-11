@@ -68,18 +68,6 @@ function getSelectedGraph(cmp) {
 		multiple: graph.hasClass("multiple")
 	};
 }
-function match(obj, q) {
-	q = q.toLowerCase();	
-	if(typeof obj ==="string") {
-		return obj.toLowerCase().includes(q);
-	}
-	for(var k in obj) {
-		if(js.sf("%n", obj[k]).toLowerCase().includes(q)) {
-			return true;
-		}
-	}
-	return false;
-}
 
 var logger; 
 
@@ -154,8 +142,8 @@ var logger;
 			this.udr("#array-variables").setArray(vars.headers.concat(vars.parameters));
 	
 			var update = (vars.parameters.update = () => {
-				setup_stages_2(vars);
-				setup_parameters(vars, vars.headerValue);
+				Util.setup_stages_2(vars);
+				Util.setup_variables_1(vars, vars.headerValue);
 				this.udr("#array-variables").setArray(vars.headers.concat(vars.parameters));
 				vars.parameters.update = update;
 			});
@@ -259,13 +247,10 @@ var logger;
 			}
     	}
     }],
-    ["vcl/Action", ("reflect-overrides"), {
-		on_shouldbeoverridden(evt) { /* ... */ }
-    }],
+    ["vcl/Action", ("reflect-overrides"), {}],
 
     ["vcl/ui/Popup", ("popup-edit-graph-stage"), { 
     	autoPosition: false,
-		origin: "bottom-right",
 		classes: "mw",
 		css: {
 			".{Button}": "white-space: nowrap;",
