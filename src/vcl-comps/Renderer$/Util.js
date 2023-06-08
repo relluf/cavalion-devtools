@@ -210,6 +210,8 @@ define(Util => {
 	/*- initialize and calculate some more variables (see documentation `#VA-20201218-3`) */
 		vars.V = Math.PI * (vars.D/2) * (vars.D/2) * vars.H;
 
+		vars.t = vars.headerValue("Membrane Thickness");
+		
 		vars.y = vars.m / (Math.PI / 4 * vars.D * vars.D * vars.H) * vars.G;
 		vars.yd = vars.md / (Math.PI / 4 * vars.D * vars.D * vars.H) * vars.G;
 		vars.w0 = (vars.m - vars.md) / vars.md * 100;

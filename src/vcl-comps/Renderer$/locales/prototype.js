@@ -189,21 +189,31 @@ define((require) => ({
 				"-max_NN":					{	'': "Mohr-Coulomb parameters bij NN % axiale rek" }
 			}
 		},
+		"Consolidation": {
+			"-type":							"Consolidatietype",
+			"-types": { ".options": [[			"Isotroop", "Anisotroop", "SHANSEP" ]] },
+		},
+		"EHSR": {
+			"-max":	{
+				'':								"EHSR-max",
+				".default":						"20",
+				".hint":						"",
+				".unit":						"-"
+			}
+		},
 		"FilterPaper": {
 			"-loadCarried": {
 				"": "Kfp",
 				".hint": "Load (when fully mobilized) carried by filter paper covering a unit length of the specimen perimeter",
-				".unit": "kPa/mm"
+				".unit": "kPa/mm",
+				".default": "0.5"
 			},
 			"-perimeterCovered": {
 				"": "Pfp",
 				".hint": "Fraction of perimeter covered by the filter paper (up to 50%)",
-				".unit": "%"
+				".unit": "%",
+				".default": "0.5"
 			}
-		},
-		"Consolidation": {
-			"-type":							"Consolidatietype",
-			"-types": { ".options": [[			"Isotroop", "Anisotroop", "SHANSEP" ]] },
 		},
 		"MembraneCorr": {
 			"-tm":								"tm",

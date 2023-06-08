@@ -286,6 +286,8 @@ function setup_measurements(vars) {
 	const O = 2 * Math.PI * r;
 	
 	vars.stages.forEach(stage => stage.measurements.map((mt, index, arr) => {
+		
+		mt.ROS = GDS.rateOfStrain(arr, index);
 
 		mt.txVC = GDS.valueOf(mt, "Volume Change") * -1;
 		mt.txPWPR = GDS.valueOf(mt, "PWP Ratio");
@@ -294,10 +296,14 @@ function setup_measurements(vars) {
 		mt.txDS = GDS.valueOf(mt, "Deviator Stress"); //qs_r
 		mt.txWO = GDS.valueOf(mt, "Excess PWP");
 		mt.txEHSR = GDS.valueOf(mt, "Eff. Stress Ratio");
-		mt.txDSQ = GDS.valueOf(mt, "Deviator Stress"); //qs_r
+		if(mt.txEHSR < (vars.txEHSR_max || 20) && mt.txEHSR >= 0) {
+			mt.txEHSR_clipped = mt.txEHSR;
+		}
 		mt.txSS = GDS.valueOf(mt, "Eff. Cambridge p'");
 		mt.txSS_2 = GDS.valueOf(mt, "Mean Stress s/Eff. Axial Stress 2");
 		if(stage === vars.stages.SH) {
+	 		mt.Ev_s = GDS.valueOf(mt, "Axial Displacement") / vars.stages.CO.Hf * 100;
+
 			// Filter Paper Correction
 			mt.d_o1_fp = (() => {
 			
@@ -312,13 +318,12 @@ function setup_measurements(vars) {
 		
 				var E1 = GDS.valueOf(mt, "Axial Strain") / 100;
 
-		 		if(mt.Evs < 2) {
+		 		if(mt.Ev_s < 2) {
 		 			return E1 * vars.Kfp * vars.Pfp * O / (0.02 * Ac);
 		 		}
 		 		
 		 		return E1 * vars.Kfp * vars.Pfp * O / Ac;
 			})();
-
 			// Membrane Correction [CO, SH] – ISO/TS 17892-9 
 			mt.d_o1_m = (() => {
 				/*-	vertical:	(∆σ1)m = (4*t*E) / D1 [ (ε1)m + ((εvol)m / 3)]
@@ -355,7 +360,6 @@ function setup_measurements(vars) {
 				
 				return (4 * t * E) / D1 * ( Evol_m / 3 );
 			})();
-			
 			// Membrane Correction [SH] – based on ASTM D4767-11/NEN 5117 and Greeuw et al.
 			mt.d_o1_m_alt = (() => {
 				/*-	(∆σ1)m = α*(4*t*E*εv;s / (D1 × 100))
@@ -375,16 +379,15 @@ function setup_measurements(vars) {
 
 				var breakpoint = 2, a = vars.alpha, b = vars.beta, t = vars.t;
 				var E = vars.Em, D1 = vars.D;
+				var Ev_k = vars.Evk;
+				var Ev_s = mt.Ev_s;
 				
-				return mt.Evs < breakpoint ?
-					a * (4 * t * E * mt.Ev_k / (D1 * 100)) :
-					b * (4 * t * E * mt.Ev_k / (D1 * 100));
+				return Ev_s < Ev_k ?
+					a * (4 * t * E * Ev_s / (D1 * 100)) :
+					a * (4 * t * E * Ev_s / (D1 * 100)) + b * (4 * t * E * (Ev_s - Ev_k) / (D1 * 100));
 
 			})();
 
-			mt.ROS = GDS.rateOfStrain(arr, index);
-	 		mt.Ev_s = GDS.valueOf(mt, "Axial Displacement") / vars.stages.CO.Hf * 100;
-	 	
 	 		mt.qs_r = mt.txDS;
 	 		mt.qs_c = mt.qs_r - (mt.d_o1_fp) - (mt.d_o1_m);
 	 		
@@ -460,8 +463,8 @@ to look whether or not the pressures are maintained.  */
 				/* Shear Stress (q) (kPa):  t = (σ′1 − σ′3) / 2 */
 				return (mt.o_1 - mt.o_3) / 2;
 			})();
-		}
 
+		}
 	}));
 }
 function setup_parameters(vars) {
@@ -501,8 +504,6 @@ function setup_parameters(vars) {
 		return r;
 	};
 	
-	vars.t = vars.headerValue("Membrane Thickness", true);
-
 /*- E8: A0 = π/4 * D0^2 */
 	vars.A = vars.Ai = Math.PI / 4 * vars.D * vars.D;	
 	vars.mi = vars.m;
@@ -862,12 +863,6 @@ function renderChart(vars, seriesTitle, valueAxisTitle, valueField, categoryFiel
     this._node.innerHTML = content.join("");
     this.vars("rendering", true);
 
-    // √ three files
-    // √ combine all measurements
-    // √ create new dataset with the 3 value fields
-    // filter out the right dataset per graph
-    // √ create series object, use 3 colors
-
     const index = {};
     sampleMeasurements.forEach((arr, i) => {
     	return arr.forEach(mt_s => {
@@ -885,10 +880,6 @@ function renderChart(vars, seriesTitle, valueAxisTitle, valueField, categoryFiel
 		(st, i) => all.filter(
 				mt => js.get(js.sf("mt_1.Stage Number"), mt) == (i + 1)));
 
-this.print("index", index);
-this.print("all", stageMeasurements);
-this.print("stageMeasurements", stageMeasurements);
-
     const render = () => {
         const stage = vars.stages[st];
         const series = sampleMeasurements.map((mts, i) => ({
@@ -904,8 +895,6 @@ this.print("stageMeasurements", stageMeasurements);
         });
         this.vars("am-" + st, this.vars("am"));
 
-this.print("series-" + st, series);
-        
         makeChart(this, {
             immediate: true,
             node: this.getChildNode(st),
@@ -962,12 +951,12 @@ const handlers = {
 	},
 	
 	'#bar-user-inputs onLoad'() { 
-		this.print("onLoad");
+		// this.print("onLoad");
 		this.nextTick(() => this.nodeNeeded());
 		this.nextTick(() => this.ud("#refresh").execute());
 	},
 	"#bar-user-inputs onNodeCreated"() {
-		this.print("onNodeCreated");
+		// this.print("onNodeCreated");
 
 		this.setParent(this.udr("#bar").getParent());
 		this.setIndex(1);
@@ -1011,12 +1000,6 @@ const handlers = {
 			options: options, 
 			value: stages.indexOf(stages.SH)
 		});
-
-this.print("set-options", {
-			options: options, 
-			value: stages.indexOf(definedOr(stages.SH, stages.length - 1))
-})
-
 	},
 	"#bar-user-inputs onDispatchChildEvent"(component, name, evt, f, args) {
 		if(name === "change") {
@@ -1028,9 +1011,22 @@ this.print("set-options", {
 		    		delete vars.stages.SA;
 		    		delete vars.stages.CO;
 		    		delete vars.stages.SH;
-					
+
 					this.ud("#refresh").execute();
+
+					["1", "2", "3"]
+						.map(i => this.ud("#select-sample-" + i))
+						.forEach((select, i) => {
+							var value = js.$[select.getValue()];
+							if(value && (value = value.vars("control").qs("#renderer"))) {
+								value = js.get("categories", value.vars(["variables"]));
+								js.set("overrides.sample" + i, value, vars);
+							}
+						});
+						
+					this.print("overrides", vars.overrides);
 				}
+
 
 			}, 250);
 		}
@@ -1125,20 +1121,20 @@ this.print("set-options", {
 	"#graph_EffectiveHighStressRatio onRender"() {
 	    var vars = this.vars(["variables"]) || { stages: [] };
 	    var selected = [vars.stages.length];
-	
+	    
 	    renderChart.call(this, vars, 
 	    	locale("Graph:EffectiveHighStressRatio.title.stage-F"), 
 	    	locale("Graph:EffectiveHighStressRatio.title.stage-F"), 
-	    	"txEHSR", "Axial Strain (%)", selected, false, false);
+	    	"txEHSR_clipped", "Axial Strain (%)", selected, false, false);
 	},
 	"#graph_DeviatorStressQ onRender"() {
 	    var vars = this.vars(["variables"]) || { stages: [] };
-	    var selected = [vars.stages.length - 1];
+	    var selected = [vars.stages.length];
 	
 	    renderChart.call(this, vars, 
 	    	locale("Graph:DeviatorStressQ.title.stage-F"), 
 	    	locale("Graph:DeviatorStressQ.title.stage-F"), 
-	    	"qs_c", "txEHSR", selected);
+	    	"ds_q", "mes_p_", selected, false, false);
 	},
 	"#graph_ShearStress onRender"() {
 	    var vars = this.vars(["variables"]) || { stages: [] };
@@ -1147,7 +1143,8 @@ this.print("set-options", {
 	    renderChart.call(this, vars, 
 	    	locale("Graph:ShearStress.title.stage-F"), 
 	    	locale("Graph:ShearStress.title.stage-F"), 
-	    	"txDS", "txSS", selected, false, false);
+	    	"ens_s_", "ss_t", selected, false, false);
+	    	// "txDS", "txSS", selected, false, false);
 	}
 };
 
@@ -1166,9 +1163,60 @@ this.print("set-options", {
 		]
 	}
 }, [
+	["vcl/Action", ("generate_here"), {
+        content: locale("-/Generate"),
+    	on(evt) {
+			const refresh = (node) => { // HACKER-THE-HACK but seems to work nicely
+				node.setTimeout("refresh", () => {
+					const naam = node.vars("instance").getAttributeValue("naam");
+					const tree = node.getTree();
+					const sel = tree.getSelection();
+					
+					this.setState("invalidated");
+					this.app().toast({content: js.sf("%s wordt geladen...", naam), classes: "glassy fade"})
+					tree.setSelection([node]);
+					tree.setTimeout("restore", () => {
+						this.execute(evt);
+						tree.setSelection(sel);
+					}, 500);
+				}, 500);
+			}
+			const nodes = [
+		    	js.$[this.ud("#select-sample-1").getValue()], 
+		    	js.$[this.ud("#select-sample-2").getValue()], 
+		    	js.$[this.ud("#select-sample-3").getValue()]
+		    ];
+		    const sampleMeasurements = nodes
+		    	.map(node => node && node.qs("#array-measurements"))
+		    	.map(arr => arr && arr.getArray())
+		    	.filter(arr => arr);
+
+		    if(sampleMeasurements[0][0].txVC === undefined) {
+		    	return refresh(nodes[0]);
+		    }
+		    if(sampleMeasurements[1][0].txVC === undefined) {
+		    	return refresh(nodes[1]);
+		    }
+		    if(sampleMeasurements[2][0].txVC === undefined) {
+		    	return refresh(nodes[2]);
+		    }
+
+			const vars = this.vars(["variables"]);
+			["1", "2", "3"]
+				.map(i => this.ud("#select-sample-" + i))
+				.forEach((select, i) => {
+					var value = js.$[select.getValue()];
+					if(value && (value = value.vars("control").qs("#renderer"))) {
+						value = js.get("categories", value.vars(["variables"]));
+						js.set("overrides.sample" + i, value, vars);
+					}
+				});
+				
+			this.udr("#generate").execute(evt);
+    	}
+	}],
 	
 	[("#options"), [
-		
         ["vcl/ui/Group", ("group_title"), {}, [
             ["vcl/ui/Element", {
                 classes: "header",
@@ -1190,10 +1238,7 @@ this.print("set-options", {
         ["vcl/ui/Group", ("group_buttons"), {
             css: "padding-top:8px;"
         }, [
-            ["vcl/ui/Button", ("button_generate"), {
-                action: "#generate", // will be resolved by code in Tabs<Document>
-                content: "Genereren..."
-            }]
+            ["vcl/ui/Button", ("button_generate"), { action: "generate_here" }]
         ]],
         ["vcl/ui/Group", { classes: "seperator" }],
         ["vcl/ui/Group", ("group_layout"), {}, [
@@ -1256,7 +1301,12 @@ this.print("set-options", {
     		setup() {
 				const vars = this.vars(["variables"]), n = vars.stages.length;
 				const sacosh = {SA: n - 3, CO: n - 2, SH: n - 1};
-				
+
+				["Kfp", "Pfp", "tm", "Em", "Evk", "alpha", "beta", "txEHSR_max"]
+					.forEach(key => {
+						vars[key] = parseFloat(this.ud("#input-" + key).getValue())
+					});
+
 				if(!Object.keys(sacosh).every(k => {
 					if(isNaN(sacosh[k] = parseInt(this.ud("#select-stage-" + k).getValue(), 10))) {
 
@@ -1270,15 +1320,10 @@ this.print("set-options", {
 					return true;
 				})) return this.ud("#bar-user-inputs").render();
 				
-				["Kfp", "Pfp", "tm", "Em", "Evk", "alpha", "beta"]
-					.forEach(key => {
-						vars[key] = parseFloat(this.ud("#input-" + key).getValue())
-					});
-				
     			setup_stages(vars, sacosh);
     			setup_measurements(vars);
     			setup_parameters(vars);
-    		}
+    		},
 	    } 
     }],
     [("#reflect-overrides"), {
@@ -1290,9 +1335,6 @@ this.print("set-options", {
     			if(!vars.overrides) return;
     			delete vars.overrides;
     		}
-			vars.stages.forEach(stage => stage.update("all"));
-			vars.koppejan.update();
-			vars.parameters.update();
 			this.ud("#graphs").getControls().map(c => c.render)();
     	}
     }],
@@ -1362,10 +1404,23 @@ this.print("set-options", {
 	    		options: locale("Consolidation-types.options")
 	    	}],
 	    	["vcl/ui/Element", { 
+	    		content: locale("EHSR-max") + ":",
+	    		// hint: locale("EHSR-max.hint")
+	    	}],
+	    	["vcl/ui/Input", ("input-txEHSR_max"), { 
+	    		value: locale("EHSR-max.default")
+	    		// hint: locale("EHSR-max.hint")
+	    	}],
+	    	["vcl/ui/Element", { 
+	    		content: js.sf("(%H)", locale("EHSR-max.unit")),
+	    		// hint: locale("EHSR-max.hint")
+	    	}],
+	    	["vcl/ui/Element", { 
 	    		content: locale("FilterPaper-loadCarried") + ":",
 	    		// hint: locale("FilterPaper-loadCarried.hint")
 	    	}],
 	    	["vcl/ui/Input", ("input-Kfp"), { 
+	    		value: locale("FilterPaper-loadCarried.default")
 	    		// hint: locale("FilterPaper-loadCarried.hint")
 	    	}],
 	    	["vcl/ui/Element", { 
@@ -1377,6 +1432,7 @@ this.print("set-options", {
 	    		// hint: locale("FilterPaper-perimeterCovered.hint")
 	    	}],
 	    	["vcl/ui/Input", ("input-Pfp"), {
+	    		value: locale("FilterPaper-perimeterCovered.default")
 	    		// hint: locale("FilterPaper-perimeterCovered.hint")    		
 	    	}],
 	    	["vcl/ui/Element", { 
