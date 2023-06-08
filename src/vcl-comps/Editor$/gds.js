@@ -45,13 +45,12 @@ const css = {
 	}
 };
 const handlers = {
-	"#tabs-sections onChange": function tabs_change(newTab, curTab) {
+	"#tabs-sections onChange"(newTab, curTab) {
 		this.ud("#bar").setVisible(newTab && (newTab.vars("bar-hidden") !== true));
 		this.print("onchange", [newTab, curTab]);
 	},
-	
-	"onActivate"() {
-		return this.inherited(arguments);
+	"#tabs-sections onDblClick"() {
+		this.udr("#menubar").dispatch("dblclick", {});
 	}
 };
 
