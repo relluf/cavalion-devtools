@@ -115,13 +115,17 @@ var q$ = require("jquery");
             });
         	var uri = this.vars(["resource.uri"]);
             var data = this._owner.vars("data") || this.vars(["devtools/Editor<html>://" + uri]);
-            
-            try {
-        		scope.preview.setContent(Template7.compile(evt.value)(data));
-            } catch(e) {
-            	this.print(e);
-            	scope.preview.setContent(js.sf("<div style='padding:8px;background-color:red;color:white;font-weight:bold;'>%H</div>%s", e.message, evt.value));
-            }
+
+			if(typeof Template7 !== "undefined") {
+	            try {
+	        		scope.preview.setContent(Template7.compile(evt.value)(data));
+	            } catch(e) {
+	            	this.print(e);
+	            	scope.preview.setContent(js.sf("<div style='padding:8px;background-color:red;color:white;font-weight:bold;'>%H</div>%s", e.message, evt.value));
+	            }
+			} else {
+        		scope.preview.setContent(evt.value);
+			}
         	
         	/* restore scrollTop positions */
         	try { 
