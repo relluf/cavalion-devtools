@@ -2046,6 +2046,116 @@ function isEditableTrendLine(tl) {
 		]
 	}
 }, [
+	
+    [("#options"), [
+        ["vcl/ui/Group", ("group_title"), {}, [
+            ["vcl/ui/Element", {
+                classes: "header",
+                content: "Titel"
+            }],
+            ["vcl/ui/Input", "option_title", {
+                // placeholder: "schaal 1:{schaal}"
+            }]
+        ]],
+        ["vcl/ui/Group", ("group_description"), {}, [
+            ["vcl/ui/Element", {
+                classes: "header",
+                content: "Opmerking"
+            }],
+            ["vcl/ui/Input", "option_description", {
+                placeholder: ""
+            }]
+        ]],
+        ["vcl/ui/Group", ("group_buttons"), {
+            css: "padding-top:8px;"
+        }, [
+            ["vcl/ui/Button", ("button_generate"), {
+                action: "#generate", // will be resolved by code in Tabs<Document>
+                content: "Genereren..."
+            }]
+        ]],
+        ["vcl/ui/Group", { classes: "seperator" }],
+        ["vcl/ui/Group", ("group_state"), {}, [
+            ["vcl/ui/Element", {
+                classes: "header",
+                content: "Staat van het monster"
+            }],
+            ["vcl/ui/Input", "option_state", {
+                // placeholder: "schaal 1:{schaal}"
+            }]
+        ]],
+        ["vcl/ui/Group", ("group_preparation"), {}, [
+            ["vcl/ui/Element", {
+                classes: "header",
+                content: "Preparatiemethode"
+            }],
+            ["vcl/ui/Input", "option_preparation", {
+                placeholder: ""
+            }]
+        ]],
+        ["vcl/ui/Group", { classes: "seperator" }],
+        ["vcl/ui/Group", ("group_layout"), {}, [
+			["vcl/ui/Element", {
+				classes: "header",
+				content: "Opmaak"
+			}],
+			["vcl/ui/Select", ("option_layout"), {
+				options: [
+					{ value: "2", content: "Standaard" },
+				],
+				value: "2"
+			}]
+        ]],
+        ["vcl/ui/Group", ("group_orientation"), {}, [
+            ["vcl/ui/Element", {
+                classes: "header",
+                content: "Orientatie"
+            }],
+            ["vcl/ui/Select", "orientation", {
+                // enabled: false,
+                options: ["Staand (A4)"]
+            }]
+        ]],
+        ["vcl/ui/Group", ("group_locale"), {}, [
+            ["vcl/ui/Element", {
+                classes: "header",
+                content: "Taal"
+            }],
+            ["vcl/ui/Select", "locale", {
+                options: [{
+                    value: "nl_NL",
+                    content: "Nederlands (NL)"
+                // },
+                // {
+                //     value: "en_UK",
+                //     content: "English (UK)"
+                }]
+            }]
+        ]],
+        ["vcl/ui/Group", { classes: "seperator" }],
+        ["vcl/ui/Group", ("group_options"), {}, [
+            ["vcl/ui/Group", [
+	            ["vcl/ui/Checkbox", "option_footer", {
+	            	classes: "block",
+	            	label: "Voettekst weergeven",
+	            	checked: true,
+	            	// onChange: Handlers['option_footer.onChange']
+	            }],
+	            // ["vcl/ui/Checkbox", "option_onlyExceedance", {
+	            // 	classes: "block",
+	            // 	label: "Enkel 'grondwatermonitor-gesignaleerde' parameters tonen",
+	            // 	checked: !true,
+	            // 	enabled: false,
+	            // 	onChange: Handlers['option_onlyExceedance.onChange']
+	            // }),
+	            ["vcl/ui/Checkbox", "option_logo", {
+	            	classes: "block",
+	            	label: "Logo weergeven",
+	            	checked: true, visible: false
+	            }]
+			]]
+		]]
+    ]],
 
     [("#refresh"), {
 		vars: {

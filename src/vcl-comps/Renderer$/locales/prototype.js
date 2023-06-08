@@ -38,27 +38,30 @@ define((require) => ({
 			},
 			"PorePressureDissipation": {
 				"":								"Poriëndrukdissipatie",
-				".title.stage-F":				"Trap %d: poriëndrukdissipatie [%%] / tijd [minuten] →"
+				".title.stage-F":				"Trap %d: poriëndrukdissipatie [%%] / tijd [minuten] →",
+				options: [ // ?
+					{ id: "", title: "volumeverandering [cm3] / tijd [√ minuten] →" }
+				]
 			},
 			"DeviatorStress": {
-				"":								"Deviatorspanning", // Schuifspanning
+				"":								"Deviatorspanning",
 				".title.stage-F":				"Trap %d: deviatorspanning [kPa] / axiale rek [%%] →"
 			},
 			"WaterOverpressure": {
 				"":								"Wateroverdruk",
-				".title.stage-F":				"Trap %d: Wateroverdruk [kPa] / axiale rek [%%] →"
+				".title.stage-F":				"Trap %d: wateroverdruk [kPa] / axiale rek [%%] →"
 			},
 			"EffectiveHighStressRatio": {
 				"":								"Effectieve hoogspannigsverhouding",
 				".title.stage-F":				"Trap %d: hoofdspanningsverhouding [-] / axiale rek [%%] →"
 			},
-			"ShearStress": {
-				"":								"Schuifspanning",
-				".title.stage-F":				"Trap %d: schuifspanning [kN/m2] / effectieve spanning [kN/m2] →"
-			},
 			"DeviatorStressQ": {
 				"":								"Deviatorspanning (q)",
 				".title.stage-F":				"Trap %d: deviatorspanning q [kPa] / gem. eff. spanning p' [kPa] →"
+			},
+			"ShearStress": {
+				"":								"Schuifspanning",
+				".title.stage-F":				"Trap %d: schuifspanning [kN/m2] / effectieve spanning [kN/m2] →"
 			}
 		},
 		"Section:": {
@@ -69,7 +72,7 @@ define((require) => ({
 				"-borehole":				{	'': "Boring" },
 				"-sample":					{	'': "Monster" },
 				"-specimen":				{	'': "Diepte",						'.unit': "m-mv" },
-				"-date":					{	'': "Datum",						'.unit': "dd/mm/yyyy" },
+				"-date":					{	'': "Datum",						'.unit': "dd/mm/jjjj" },
 				"-commotion":				{	'': "Beroering" }
 			},
 			"Project": {
@@ -136,20 +139,20 @@ define((require) => ({
 				"-bAfterSaturation":		{	'': "B-factor na verzadiging" }
 			},
 			"Consolidation": {
-				".title":						"Consolidatie",
-				"-effectiveCellPressure":	{	'': "Effectieve celdruk",			'.unit': "kPa",			'.symbol': "stages.CO.o3" },
+				".title":							"Consolidatie",
+				"-effectiveCellPressure":	{	'': "Effectieve celdruk",			'.unit': "kPa",			'.symbol': "stages.CO.o_3" },
 				"-cellPressure":			{	'': "Celdruk",						'.unit': "kPa" },
-				"-backPressure":			{	'': "Achterdruk",					'.unit': "kPa" },
+				"-backPressure":			{	'': "Achterdruk",					'.unit': "kPa" }, //tegendruk, binnendruk
 				"-poreWaterOverpressure":	{	'': "Poriënwateroverdruk",			'.unit': "kPa" },
 				"-finalPoreWaterPressure":	{	'': "Finale poriënwaterduk",		'.unit': "kPa" },
 				"-consolidatedVolume":		{	'': "Geconsolideerd volume",		'.unit': "cm3",			'.symbol': "stages.CO.V" },
 				"-consolidatedHeight":		{	'': "Geconsolideerde hoogte",		'.unit': "mm",			'.symbol': "stages.CO.H" },
 				"-consolidatedArea":		{	'': "Geconsolideerde oppervlakte",	'.unit': "mm2",			'.symbol': "stages.CO.A" },
 				"-volumetricStrain":		{	'': "Volumetrische rek",			'.unit': "%",			'.symbol': "stages.CO.Evol" },
-				"-verticalStrain":			{	'': "Verticale rek",				'.unit': "%",			'.symbol': "stages.CO.H" },
+				"-verticalStrain":			{	'': "Verticale rek",				'.unit': "%",			'.symbol': "stages.CO.EvT" },
 				"-volumeCompressibility":	{	'': "Volume samendrukbaarheid",		'.unit': "m2/kN",		'.symbol': "stages.CO.mvT" },
 				"-consolidationCoefficient":{	'': "Consolidatiecoëfficient",		'.unit': "m2/s",		'.symbol': "stages.CO.cvT" },
-				"-effectiveVerticalStress":	{	'': "Effectieve verticale spanning",'.unit': "kPa",			'.symbol': "stages.CO.o1" },
+				"-effectiveVerticalStress":	{	'': "Effectieve verticale spanning",'.unit': "kPa",			'.symbol': "stages.CO.o_1" },
 				"-k0AfterConsolidation":	{	'': "K0-factor na consolidatie",	'.unit': "-",			'.symbol': "stages.CO.K0" },
 				"-consolidationType":		{	'': "Type consolidatie" }
 			},
@@ -164,7 +167,7 @@ define((require) => ({
 				".title":						"Afschuiffase",
 				"-cellPressure":			{	'': "Initiële celdruk", 			'.unit': "kPa" },
 				"-poreWaterPressure":		{	'': "Initiële poriënwaterdruk", 	'.unit': "kPa" },
-				"-strainRate":				{	'': "Reksnelheid", 					'.unit': "%/hr" },
+				"-strainRate":				{	'': "Reksnelheid", 					'.unit': "%/hr"},
 
 				"-maxDeviatorStress":		{	'': "Maximale deviatorspanning" }, 
 				"-maxPrincipalStressRatio": {	'':	"Maximale hoofdspanningsverhouding", _: " (σ'1/σ'3)" },
@@ -172,9 +175,9 @@ define((require) => ({
 
 				"-axialStrain": 			{	'': "Axiale rek",					'.unit': "%",		'.symbol': ".ar" },
 				"-deviatorStressCorrected": {	'': "Deviatorspanning (gecorr.)",	'.unit': "kPa",		'.symbol': ".q_corr" },
-				"-effectiveHorizontalStress":{	'': "Effectieve horizontale spanning",'.unit': "kPa",	'.symbol': ".o3" },
-				"-effectiveVerticalStress":	{	'': "Effectieve verticale spanning",'.unit': "kPa",		'.symbol': ".o1" },
-				"-sigma1/3":				{	'': "σ'1/σ'3",						'.unit': "-",		'.symbol': ".o13" },
+				"-effectiveHorizontalStress":{	'': "Effectieve horizontale spanning",'.unit': "kPa",	'.symbol': ".o_3" },
+				"-effectiveVerticalStress":	{	'': "Effectieve verticale spanning",'.unit': "kPa",		'.symbol': ".o_1" },
+				"-sigma1/3":				{	'': "σ'1/σ'3",						'.unit': "-",		'.symbol': ".o_1o_3" },
 				"-es":						{	'': "s'",							'.unit': "kPa",		'.symbol': ".es" },// 43.82 54.31 90.96
 				"-te":						{	'': "t'",							'.unit': "kPa",		'.symbol': ".te" },// 45.18 44.16 67.55
 				"-phi": 					{	'': "φ'",							'.unit': "degs",	'.symbol': ".phi" },
@@ -197,6 +200,33 @@ define((require) => ({
 				".hint": "Fraction of perimeter covered by the filter paper (up to 50%)",
 				".unit": "%"
 			}
+		},
+		"Consolidation": {
+			"-type":							"Consolidatietype",
+			"-types": { ".options": [[			"Isotroop", "Anisotroop", "SHANSEP" ]] },
+		},
+		"MembraneCorr": {
+			"-tm":								"tm",
+			"-Em":								"Em",
+			"-Evk":								"Evk",
+			"-alpha":							"α",
+			"-beta":							"β",
+			
+			"-tm.unit":							"mm",
+			"-Em.unit":							"kPa",
+			"-Evk.unit":						"%",
+			"-alpha.unit":						"-",
+			"-beta.unit":						"-",
+
+			"-tm.default":						"0.35",
+			"-Em.default":						"1650",
+			"-Evk.default":						"0.03",
+			"-alpha.default":					"0.75",
+			"-beta.default":					"0.13",
+			
+		},
+		"Sample": {
+			'':									"Monster"
 		}
 	}
 	

@@ -31,9 +31,10 @@ const css = {
 			"min-width:300px;min-height:300px;",
 		// "> :not(.multiple)": "margin:5px;",
 		"&.pdf > :not(.multiple)": "margin:5px;width: 850px; height: 470px; background-color: rgba(56, 121, 217, 0.075); border: 3px dashed rgb(56, 121, 217);",
+		"&.pdf.generate .multiple > div": "height: 470px; width:850px; position:absolute;top:0;left:0;",
 		"&.pdf .multiple > div.selected": "background-color: rgba(56, 121, 217, 0.075); border: 3px dashed rgb(56, 121, 217);",
 		"div.editing": "background-color: #f0f0f0; border: 3px dashed orange;top:0;left:0;right:0;bottom:0;z-index:1;position:absolute;width:auto;height:auto;margin:5px;",
-		"&.pdf.generate .multiple > div": "height: 470px; width:850px; position:absolute;top:0;left:0;",
+		"div.selected": "background-color: rgba(56, 121, 217, 0.075); border: 3px dashed rgb(56, 121, 217);"
 		// ".amcharts-main-div": "border: 3px solid transparent;"
 	};
 
@@ -259,87 +260,20 @@ var logger;
 		}
     }],
 
-	// ["vcl/ui/Panel", ("container-graphs"), { align: "client", visible: false }, [
-		["vcl/ui/Tabs", ("tabs-graphs"), {}, []],
-		["vcl/ui/Panel", ("graphs"), { 
-			align: "client", css: css, tabIndex: 1,
-			
-			// onDispatchChildEvent(child, name, evt, f, args) {
-			// 	var mouse = name.startsWith("mouse");
-			// 	var click = !mouse && name.endsWith("click");
-			// 	var vars = this.vars(["variables"]), am, stage, control, method, chart;
-
-			// 	if(click || mouse) {
-			// 		am = evt.target.up(".amcharts-main-div", true);
-			// 		if(!am) return;
-
-			// 		control = evt.component || require("vcl/Control").findByNode(am);
-			// 		if(!control || control.vars("rendering") === true) return;
-					
-			// 		var stages = vars.stages;
-			// 		if(vars.editing) {
-			// 			if(!vars.editing.parentNode) {
-			// 				delete vars.editing;
-			// 			} else {
-			// 				stage = Array.from(vars.editing.parentNode.childNodes).indexOf(vars.editing);
-			// 			}
-			// 		}
-			// 		if(name === "click") {
-			// 			/* focus, clear overrides */
-			// 			if(stage !== undefined) {
-			// 				chart = (control.vars("am-" + stage) || control.vars("am")).chart;
-			// 				var trendLines = chart.trendLines;
-			// 				if(trendLines.selected) {
-			// 					trendLines.selected.lineThickness = 1;
-			// 					trendLines.selected.draw();
-			// 					delete trendLines.selected;
-			// 				}
-			// 			}
-			// 			this.focus();
-						
-			// 			if(vars.editor) {
-			// 				vars.editor.handle(evt);
-			// 			}
-							
-			// 		} else if(name === "dblclick") {
-			// 			evt.am = am;
-			// 			this.ud("#toggle-edit-graph").execute(evt);
-			// 		} else if(vars.editor) {
-			// 			vars.editor.handle(evt);
-			// 		} else if(mouse && vars.editing) {
-			// 			var trendLine = vars.etl && vars.etl.chart.trendLines.selected;
-			// 			if(trendLine) {
-			// 				handleTrendLineEvent(evt.component, trendLine, evt);
-			// 			}
-			// 		}
-			// 	}
-			// },
-			// onKeyDown(evt) { 
-			// 	var control = evt.component || require("vcl/Control").findByNode(evt.target);
-			// 	if(!control || control.vars("rendering") === true) return;
-
-			// 	var trendLine = this.vars(["variables.etl.chart.trendLines.selected"]);
-			// 	handleTrendLineEvent(control, trendLine, evt);
-			// },
-			// onKeyUp(evt) { 
-			// 	var control = evt.component || require("vcl/Control").findByNode(evt.target);
-			// 	if(!control || control.vars("rendering") === true) return;
-				
-			// 	var trendLine = this.vars(["variables.etl.chart.trendLines.selected"]);
-			// 	handleTrendLineEvent(control, trendLine, evt);
-			// }
-
-		}, [
-			["vcl/ui/Panel", ("panel-edit-graph"), {
-				align: "top", autoSize: "height", groupIndex: 1,
-				// action: "toggle-edit-graph", executeAction: "on",
-				css: {
-					"": "padding:8px;text-align:center;",
-					">*": "margin-right: 4px;" ,
-					"input": "text-align:center;width:40px;border-radius: 5px; border-width: 1px; border-color: rgb(240, 240, 240); padding: 2px 4px;"
-			    },
-				visible: false
-			}]
-		]]
-	// ]]
+	["vcl/ui/Group", ("options"), { visible: false }],
+	
+	["vcl/ui/Tabs", ("tabs-graphs"), {}, []],
+	["vcl/ui/Panel", ("graphs"), { 
+		align: "client", css: css, tabIndex: 1
+	}, [
+		["vcl/ui/Panel", ("panel-edit-graph"), {
+			align: "top", autoSize: "height", groupIndex: 1,
+			css: {
+				"": "padding:8px;text-align:center;",
+				">*": "margin-right: 4px;" ,
+				"input": "text-align:center;width:40px;border-radius: 5px; border-width: 1px; border-color: rgb(240, 240, 240); padding: 2px 4px;"
+		    },
+			visible: false
+		}]
+	]]
 ]];

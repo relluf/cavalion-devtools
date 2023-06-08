@@ -48,6 +48,10 @@ const handlers = {
 	"#tabs-sections onChange": function tabs_change(newTab, curTab) {
 		this.ud("#bar").setVisible(newTab && (newTab.vars("bar-hidden") !== true));
 		this.print("onchange", [newTab, curTab]);
+	},
+	
+	"onActivate"() {
+		return this.inherited(arguments);
 	}
 };
 
@@ -75,7 +79,6 @@ const downloadCSV = (arr, filename) => {
     	action: "toggle-source",
     	executesAction: "none",
         onChange() {
-        	
         	this.setTimeout("render", () => {
 
         		var renderer = this.ud("#renderer");
@@ -161,6 +164,8 @@ const downloadCSV = (arr, filename) => {
 					if(obj.hasOwnProperty(k) && js.sf("%s", obj[k]).toLowerCase().indexOf(v) !== -1) {
 						return false;
 					}
+				} else {
+					return !match(obj, part);
 				}
 			}
 			
@@ -185,8 +190,16 @@ const downloadCSV = (arr, filename) => {
 			classes: "button",
 			content: "<i class='fa fa-download'></i>",
 			onTap() {
-				const arr = this.udr("#array-variables").getArray();
-				downloadCSV(arr, "variables.csv");
+				// const arr = this.udr("#array-variables").getArray();
+				const tab = this.ud("#tabs-sections").getSelectedControl(1);
+				const list = tab.getControl();
+
+				if(list instanceof req("vcl/ui/List")) {
+					const arr = list.getSource();
+					const name = arr.getName().split("-").pop();
+					
+					downloadCSV(arr.getArray(), name + ".csv");
+				}
 			}
 		}],
 		["vcl/ui/Input", ("q"), { 

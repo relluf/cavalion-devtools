@@ -70,7 +70,7 @@ function setup_stages(vars, sacosh) {
 
 	});
 	js.mi((vars.stages.CO), {
-		o3: (() => {
+		o_3: (() => {
 			/*- Effectieve celdruk: σ'3 = σc - ub
 	
 				σ'3= effectieve celdruk voor consolidatiefase (effective consolidation pressure) (kPa)
@@ -84,17 +84,18 @@ function setup_stages(vars, sacosh) {
 				defined by the test schedule and the calculation allows for verification.
 				
 			*/
-			var mt = vars.stages.CO.measurements[0];
+			var N =  vars.stages.CO.measurements.length - 1;
+			var mt = vars.stages.CO.measurements[N];
 			
 			var r = GDS.valueOf(mt, "Eff. Radial Stress");
 			var oc = GDS.valueOf(mt, "Radial Pressure");
 			var ub = GDS.valueOf(mt, "Back Pressure");
 			
-			console.log(js.sf("o3: %s === %s", oc - ub, r));
+			// console.log(js.sf("o_3: %s === %s", oc - ub, r));
 			
-			return r;
+			return oc- ub;
 		})(),
-		o1: (() => {
+		o_1: (() => {
 			/*-	σ'1= σ'3 + q
 			
 				σ'1= vertical effective stress at the end of consolidation (kPa)
@@ -116,17 +117,7 @@ function setup_stages(vars, sacosh) {
 				V0: volume van proefstuk voor test (mm3)
 			
 			*/
-			return vars.V - vars.stages.CO.dV;
-		})(),
-		Evol: (() => {
-			/*- εvol;c = ΔVc/V0 x 100
-			
-				εvol;c: volumetrische rek na consolidatie (%)
-				ΔVc: volumeverandering in proefstuk na consolidatie (mm3)
-				V0: volume van proefstuk voor test (mm3)
-				
-			*/
-			return vars.stages.CO.dV / vars.V * 100;
+			return (vars.V - vars.stages.CO.dV) / 1000;
 		})(),
 		H: (() => {
 			/*-	Hc = H0 - ΔHc
@@ -138,6 +129,26 @@ function setup_stages(vars, sacosh) {
 			*/
 			
 			return vars.H - vars.stages.CO.dH;
+		})(),
+		cvT: (() => {
+			/*-	cv;20 = 0.848 * L2 * fT / t90x
+			
+				-L: length of drainage path = 0.5*H (half of the specimen height of drainage from both ends) (m)
+				-t90: time to 90% primary consolidation (s)
+				-fT: temperature correction factor."
+			*/
+		})(),
+	});
+	js.mi((vars.stages.CO), {
+		Evol: (() => {
+			/*- εvol;c = ΔVc/V0 x 100
+			
+				εvol;c: volumetrische rek na consolidatie (%)
+				ΔVc: volumeverandering in proefstuk na consolidatie (mm3)
+				V0: volume van proefstuk voor test (mm3)
+				
+			*/
+			return (vars.stages.CO.dV / vars.V) * 100;
 		})(),
 		mvT: (() => {
 			/*- mv = ΔVc/V0 / (ui - uc) x 1000
@@ -152,25 +163,16 @@ function setup_stages(vars, sacosh) {
 			var st = vars.stages.CO;
 			return (st.dV / vars.V) / (st.ui - st.uf) * 1000;
 		})(),
-		cvT: (() => {
-			/*-	cv;20 = 0.848 * L2 * fT / t90x
-			
-				-L: length of drainage path = 0.5*H (half of the specimen height of drainage from both ends) (m)
-				-t90: time to 90% primary consolidation (s)
-				-fT: temperature correction factor."
-			*/
-		})(),
 		EvT: (() => {
 			/*-	εv;c = ΔHc / H0 x 100
 
 				εv;c = verticale rek na consolidatie (%)
 				Hc : proefstukshoogte na consolidatie (mm)
-				H0 : initiële proegstukshoogte (mm)
+				H0 : initiële proefstukshoogte (mm)
 				ΔHc: proefstukshoogteverandering tijdens consolidatie (mm) (verticale vervorming)
 			*/
-		})()
-	});
-	js.mi((vars.stages.CO), {
+			return vars.stages.CO.dH / vars.H * 100;
+		})(),
 		A: (() => {
 			/*- Ac = (V0 - ΔVc) / (H0 - ΔHc)
 			
@@ -193,7 +195,7 @@ function setup_stages(vars, sacosh) {
 				σ'1= effective vertical pressure (kPa)"
 			*/
 			var st = vars.stages.CO;
-			return st.o3 / st.o1;
+			return st.o_3 / st.o_1;
 		})()
 	});
 
@@ -224,13 +226,13 @@ function setup_stages(vars, sacosh) {
 				
 				return q - dq_filter + dq_membrane;
 			})(),
-			o3: GDS.valueOf(mt, "Eff. Radial Stress")
+			o_3: GDS.valueOf(mt, "Eff. Radial Stress")
 		};
 		
-		r.o1 = r.o3 / r.q_corr;
-		r.o13 = r.o1 / r.o3;
-		r.es = (r.o1 + r.o3) / 2;
-		r.te = (r.o1 - r.o3) / 2;
+		r.o_1 = r.o_3 / r.q_corr;
+		r.o_1o_3 = r.o_1 / r.o_3;
+		r.es = (r.o_1 + r.o_3) / 2;
+		r.te = (r.o_1 - r.o_3) / 2;
 		r.phi = 1; // TODO
 		r.ce = 2; // TODO
 		r.e50und = (() => {
@@ -264,10 +266,10 @@ function setup_stages(vars, sacosh) {
 
 		// Mohr-Coulomb Parameters bij Max Hoofdspanningsverhouding σ'1/σ'3
 		// max o1 - Called from calculation section; field "Axial Strain (%)", corresponding to max effective stress ratio σ'1/σ'3.
-		max_o13: values(maxOf(vars.stages.SH, "Eff. Stress Ratio")),
+		max_o_1o_3: values(maxOf(vars.stages.SH, "Eff. Stress Ratio")),
 		
 		// Mohr-Coulomb Parameters bij NN % Axiale Rek
-		// max o3 - Called from calculation section; field "Axial Strain (%)". User-defined strain value for which values and parameters will be reported.
+		// max o_3 - Called from calculation section; field "Axial Strain (%)". User-defined strain value for which values and parameters will be reported.
 		max_NN: values(vars.stages.SH.measurements[222])
 	});
 }
@@ -280,22 +282,24 @@ function setup_measurements(vars) {
 */
 
 	const Ac = js.get("stages.CO.A", vars);
-	const r = Math.sqrt(Ac / Math.pi);
+	const r = Math.sqrt(Ac / Math.PI);
 	const O = 2 * Math.PI * r;
 	
 	vars.stages.forEach(stage => stage.measurements.map((mt, index, arr) => {
 
 		mt.txVC = GDS.valueOf(mt, "Volume Change") * -1;
-		mt.txPPD = GDS.valueOf(mt, "Pore Pressure");
 		mt.txPWPR = GDS.valueOf(mt, "PWP Ratio");
-		
+		// axial strain
+		// pore pressure
+		mt.txDS = GDS.valueOf(mt, "Deviator Stress"); //qs_r
+		mt.txWO = GDS.valueOf(mt, "Excess PWP");
+		mt.txEHSR = GDS.valueOf(mt, "Eff. Stress Ratio");
+		mt.txDSQ = GDS.valueOf(mt, "Deviator Stress"); //qs_r
+		mt.txSS = GDS.valueOf(mt, "Eff. Cambridge p'");
+		mt.txSS_2 = GDS.valueOf(mt, "Mean Stress s/Eff. Axial Stress 2");
 		if(stage === vars.stages.SH) {
-			mt.ROS = GDS.rateOfStrain(arr, index);
-			
-	 		mt.Evs = GDS.valueOf(mt, "Axial Displacement") / vars.stages.CO.Hf * 100;
-	
 			// Filter Paper Correction
-			mt.do1_fp = (() => {
+			mt.d_o1_fp = (() => {
 			
 				/*-	(∆ σ1) fp = ε1 * Kfp * Pfp * O / (0.02 * Ac)
 					             
@@ -307,18 +311,16 @@ function setup_measurements(vars) {
 				*/
 		
 				var E1 = GDS.valueOf(mt, "Axial Strain") / 100;
-				var Kfp = stage.Kfp;
-				var Pfp = stage.Pfp;
-		
+
 		 		if(mt.Evs < 2) {
-		 			return E1 * Kfp * Pfp * O / (0.02 * Ac);
+		 			return E1 * vars.Kfp * vars.Pfp * O / (0.02 * Ac);
 		 		}
 		 		
-		 		return Kfp * Pfp * O / Ac;
+		 		return E1 * vars.Kfp * vars.Pfp * O / Ac;
 			})();
 
 			// Membrane Correction [CO, SH] – ISO/TS 17892-9 
-			mt.do1_m = (() => {
+			mt.d_o1_m = (() => {
 				/*-	vertical:	(∆σ1)m = (4*t*E) / D1 [ (ε1)m + ((εvol)m / 3)]
 
 					(ε1)m: vertical strain of the membrane (expressed in decimal form).
@@ -327,10 +329,16 @@ function setup_measurements(vars) {
 					t: initial thickness of the membrane (mm)
 					E: elastic modulus for the membrane, measured in tension (kPa)					
 				*/
-
-			})();
-			mt.do3_m = (() => {
 				
+				var E1_m = 1;
+				var Evol_m = 2;
+				var D1 = vars.D;
+				var t = vars.t;
+				var E = vars.Em;
+				
+				return (4 * t * E) / D1 * ( E1_m + (Evol_m / 3) );
+			})();
+			mt.d_o3_m = (() => {
 				/*-	horizontal:	(∆σ3)m = (4*t*E) / D1 [ (εvol)m / 3]
 					
 					(ε1)m: vertical strain of the membrane (expressed in decimal form).
@@ -339,11 +347,17 @@ function setup_measurements(vars) {
 					t: initial thickness of the membrane (mm)
 					E: elastic modulus for the membrane, measured in tension (kPa)					
 				*/
+				var E1_m = 1;
+				var Evol_m = 2;
+				var D1 = vars.D;
+				var t = vars.t;
+				var E = vars.Em;
 				
+				return (4 * t * E) / D1 * ( Evol_m / 3 );
 			})();
 			
 			// Membrane Correction [SH] – based on ASTM D4767-11/NEN 5117 and Greeuw et al.
-			mt.do1_m_alt = (() => {
+			mt.d_o1_m_alt = (() => {
 				/*-	(∆σ1)m = α*(4*t*E*εv;s / (D1 × 100))
 					
 					α: correction factor (slope) for first segment of bilinear function (unitless)
@@ -359,13 +373,93 @@ function setup_measurements(vars) {
 					E: elastic modulus for the membrane, measured in tension (kPa)
 				*/
 
-				var breakpoint = 2, a  = 1, t = 3, E = 2, D1 = 2.3;
+				var breakpoint = 2, a = vars.alpha, b = vars.beta, t = vars.t;
+				var E = vars.Em, D1 = vars.D;
+				
 				return mt.Evs < breakpoint ?
-					a * (4 * t * E * mt.Evs / (D1 * 100)) :
-					a * (4 * t * E * mt.Evs / (D1 * 100));
+					a * (4 * t * E * mt.Ev_k / (D1 * 100)) :
+					b * (4 * t * E * mt.Ev_k / (D1 * 100));
 
 			})();
 
+			mt.ROS = GDS.rateOfStrain(arr, index);
+	 		mt.Ev_s = GDS.valueOf(mt, "Axial Displacement") / vars.stages.CO.Hf * 100;
+	 	
+	 		mt.qs_r = mt.txDS;
+	 		mt.qs_c = mt.qs_r - (mt.d_o1_fp) - (mt.d_o1_m);
+	 		
+	 		mt.d_u = (() => { 
+	 			/* Excess Porewater Pressure:  this is the difference between the 
+	 			porewater pressure (PWP) measurement on each data row and the base 
+	 			porewater pressure at the beginning of the shear stage 
+	 			
+	 			( ∆ u = un;s − u0;s ; 
+	 				subindex “n” represents the datarow number, 
+	 				“s” denotes the shear stage 
+	 				and “0” the value for the first data row in the shear stage
+	 			). 
+	 			*/
+	 			var pwp = GDS.valueOf(mt, "Pore Pressure");
+	 			var base = GDS.valueOf(arr[0], "Pore Pressure");
+	 			
+	 			return pwp - base;
+	 		})();
+	 		mt.o3 = (() => { 
+	 			/*- Horizontal Stress (kPa):  the total horizontal stress on each data row is, essentially,
+the registered value of the cell pressure or chamber pressure MINUS the back pressure.
+In principle, this value should not change since it is the effective pressure at which
+consolidation took place (in absence of excess pore pressure at the end of consolidation,
+the horizontal stress and the effective horizontal stress are essentially the same).
+However, it is advisable to register and calculate the horizontal stress for each data row
+to look whether or not the pressures are maintained.  */
+				var cp = GDS.valueOf(mt, "Radial Pressure");
+				var bp = GDS.valueOf(mt, "Back Pressure")
+
+				return cp - bp;
+	 		})();
+	 		mt.o1 = (() => { 
+	 			/*- Vertical Stress (kPa): σ1 = σ3 + qs;corrected */
+	 			return mt.o3 + mt.qs_c;
+	 		})();
+	 		mt.o_3 = (() => { 
+	 			/*- Horizontal Effective Stress (kPa): σ′3 = σ3 − ∆u */
+	 			return mt.o3 - mt.d_u;
+	 		})();
+	 		mt.o_1 = (() => { 
+	 			/*- Vertical Effective Stress (kPa): σ′1 = σ1 − ∆u */
+	 			return mt.o1 - mt.d_u;
+	 		})();
+	 		mt.o_1o_3 = (() => {
+	 			/* Effective Principal Stress Ratio (σ’1 / σ’3) */
+	 			return mt.o_1 / mt.o_3;
+	 		})();
+		
+			mt.mes_p_ = (() => { 
+				/* - Mean Effective Stress (p’) (kPa): 
+				
+				this is the average of the three stress directions acting in 
+				the specimen. In triaxial compression tests, this is calculated by 
+				
+				p′ = (σ′1 + 2σ′3) / 3
+				
+				Note that the effective radial (horizontal) stress is multiplied by 
+				two since it is acting around the specimen, while the effective 
+				vertical stress acts only along the axis of the specimen. */
+				
+				return (mt.o_1 + 2 * mt.o_3 ) / 3
+			})();
+			mt.ds_q = (() => {
+				/*- Deviator Stress (q) (kPa): q = σ′1 − σ′3 */
+				return mt.o_1 - mt.o_3;
+			})();
+			mt.ens_s_ = (() => {
+				/* Effective Normal Stress (s’) (kPa): s' = (σ′1 + σ′3) / 2 */
+				return (mt.o_1 + mt.o_3) / 2;
+			})();
+			mt.ss_t = (() => {
+				/* Shear Stress (q) (kPa):  t = (σ′1 − σ′3) / 2 */
+				return (mt.o_1 - mt.o_3) / 2;
+			})();
 		}
 
 	}));
@@ -406,6 +500,8 @@ function setup_parameters(vars) {
 		if(cb) cb(r);
 		return r;
 	};
+	
+	vars.t = vars.headerValue("Membrane Thickness", true);
 
 /*- E8: A0 = π/4 * D0^2 */
 	vars.A = vars.Ai = Math.PI / 4 * vars.D * vars.D;	
@@ -427,14 +523,14 @@ function setup_parameters(vars) {
 		vars.wi = (vars.mi - vars.mdi) / vars.mdi * 100;
 	}
 	
-/*-	E15: S0 = (w0 * ρs) / (e0 * ρs) */
-	vars.Sri = (vars.wi * vars.ps) / (vars.e0 * vars.ps);
-	
 /*-	E17: e0 = ρs/ρd - 1 */
 	if(isNaN(vars.ei = vars.e0)) {
 		vars.ei = vars.e0 = vars.ps / vars.pdi - 1;
 	}
 
+/*-	E15: S0 = (w0 * ρs) / (e0 * ρs) */
+	vars.Sri = (vars.wi * vars.ps) / (vars.e0 * vars.ps);
+	
 /*-	E20 wf (%) = ( mf;nat - m0;droog) / m0;droog * 100 % */
 	if(isNaN(vars.wf)) {
 		vars.wf = (vars.mf - vars.mdi) / vars.mdi * 100;
@@ -451,7 +547,7 @@ function setup_parameters(vars) {
 	const meas_b = (st, name) => GDS.valueOf(vars.stages[st].b, name);
 	const meas_0 = (st, name) => GDS.valueOf(vars.stages[st].measurements[0], name);
 	const meas_N = (st, name) => GDS.valueOf(vars.stages[st].measurements[vars.stages[st].measurements.length - 1], name);
-	
+
 	const shearItems = [
 			["axialStrain"],
 			["deviatorStressCorrected"],
@@ -473,7 +569,7 @@ function setup_parameters(vars) {
 			}
 		});
 	};
-
+	
 	vars.categories = [
 		category(("Project"), [
 			["projectcode", "Job reference"],
@@ -497,6 +593,7 @@ function setup_parameters(vars) {
 			["densityWet"],
 			["densityDry"],
 			["waterContent"],
+			["saturation"],
 			["grainDensity"],
 			["poreNumber"]
 		]),
@@ -525,9 +622,9 @@ function setup_parameters(vars) {
 		]),
 		category(("Consolidation"), [
 			["effectiveCellPressure"], 
-			["cellPressure", () => meas_0("CO", "Radial Pressure")],
-			["backPressure", () => meas_0("CO", "Back Pressure")],
-			["poreWaterOverpressure", () => meas_0("CO", "Pore Pressure")],
+			["cellPressure", () => meas_N("CO", "Radial Pressure")], 
+			["backPressure", () => meas_N("CO", "Back Pressure")],
+			["poreWaterOverpressure", () => meas_0("CO", "Pore Pressure") - meas_0("CO", "Back Pressure")],
 			["finalPoreWaterPressure", () => meas_N("CO", "Pore Pressure")],
 			["consolidatedVolume"],
 			["consolidatedHeight"],
@@ -542,14 +639,14 @@ function setup_parameters(vars) {
 		]),
 		category(("ShearPhase"), [
 			["cellPressure", () => meas_0("SH", "Radial Pressure")],
-			["poreWaterPressure", () => meas_0("CO", "Pore Pressure")],
+			["poreWaterPressure", () => meas_0("SH", "Pore Pressure")],
 			["strainRate"]
 			// ["maxDeviatorStress"],
 			// ["maxPrincipalStressRatio"],
 			// ["axialStrain2%"],
 		]),
 		category(("ShearPhase"), shearItems, adjustC("maxDeviatorStress", "max_q")),
-		category(("ShearPhase"), shearItems, adjustC("maxPrincipalStressRatio", "max_o13")),
+		category(("ShearPhase"), shearItems, adjustC("maxPrincipalStressRatio", "max_o_1o_3")),
 		category(("ShearPhase"), shearItems, adjustC("axialStrain2%", "max_NN"))
 	];
 	vars.parameters = vars.categories.map(_ => (_.items || []).map(kvp => js.mi({ category: _ }, kvp))).flat();
@@ -562,8 +659,9 @@ function makeChart(c, opts) {
 		this.print(this.vars("am"));
 		
 		var defaults = {
-		    mouseWheelZoomEnabled: true, zoomOutText: " ", 
+		    mouseWheelZoomEnabled: true, 
 		    mouseWheelScrollEnabled: false,
+		    zoomOutText: " ", 
 		    // chartScrollbar: {
 		    //     oppositeAxis: true,
 		    //     offset: 30,
@@ -620,12 +718,12 @@ function makeChart(c, opts) {
 			return js.mixIn({
 	        	type: "line", lineThickness: 2,
 		        connect: serie.connect || false,
-			    xField: serie.categoryField || "x", yField: serie.valueField || "y",
+			    xField: serie.categoryField || "x", 
+			    yField: serie.valueField || "y",
 			    yAxis: serie.yAxis || "y1"
 		    }, serie);
 		});
 		
-		// var serializing = this.vars(["pdf"]);
 		var serializing = this.ud("#graphs").hasClass("pdf");
 		
 		options.valueAxes.forEach(ax => {
@@ -639,14 +737,11 @@ function makeChart(c, opts) {
 			// ax.inside = true;
 		});
 		// options.valueAxes.forEach(ax => ax.precision = 4);
-		var emit = (a, b) => {
-			// this.print("emit: " + a, b);
-			this.emit(a, b);
-		};
+
+		var emit = (a, b) => this.emit(a, b);
 		var chart = AmCharts.makeChart(node, options);
 
 		this.vars("am.chart", chart);
-		// this.print("rendering", options);
 
 		chart.addListener("drawn", (e) => emit("rendered", [e, "drawn"]));
 		chart.addListener("dataUpdated", (e) => emit("rendered", [e, "dataUpdated"]));
@@ -658,6 +753,189 @@ function makeChart(c, opts) {
 	}
 	opts.immediate ? render.apply(c, [opts || {}]) : c.nextTick(() => render.apply(c, [opts || {}]));
 }
+function renderChart_(vars, seriesTitle, valueAxisTitle, valueField, categoryField, selected, logarithmic = false, reversed = true) {
+/*-
+	- `vars` is an object that contains various variables, including an array of stages (`vars.stages`) to iterate over.
+	- `seriesTitle` is a string that represents the title of the chart series.
+	- `valueAxisTitle` is a string that represents the title of the value axis of the chart.
+	- `valueField` is a string that specifies the field used for the values in the chart.
+	- `categoryField` is a string that specifies the field used for the categories in the chart.
+	- `selected` is an array that contains the indices of the stages to be selected.
+	- `logarithmic` is an optional boolean parameter that indicates whether the value axis should use a logarithmic scale. It defaults to `false`.
+*/
+
+    var content = [];
+    for (var st = 0; st < vars.stages.length; ++st) {
+        content.push(js.sf("<div>%s %s</div>", locale("Stage"), st));
+    }
+    this._node.innerHTML = content.join("");
+    this.vars("rendering", true);
+
+    var render = () => {
+        var stage = vars.stages[st];
+        var series = [{
+            title: js.sf(seriesTitle, st + 1),
+            valueAxis: "y1",
+            valueField: valueField,
+            categoryField: categoryField
+        }];
+        this.vars("am", {
+            series: series,
+            stage: stage,
+            data: stage.measurements
+        });
+        this.vars("am-" + st, this.vars("am"));
+        makeChart(this, {
+            immediate: true,
+            node: this.getChildNode(st),
+            valueAxes: [{
+                id: "y1",
+                position: "left",
+                reversed: reversed,
+            },
+            {
+                id: "x1",
+                position: "bottom",
+                title: js.sf(valueAxisTitle, st + 1),
+                logarithmic: logarithmic,
+                treatZeroAs: GDS.treatZeroAs
+            }]
+        });
+
+        if (++st < vars.stages.length) {
+            this.nextTick(render);
+        } else {
+            selected.forEach(selected => this.getChildNode(selected - 1).classList.add("selected"));
+            this.vars("rendering", false);
+        }
+    };
+
+    var st = 0;
+    vars.stages.length && render();
+}
+function renderChart(vars, seriesTitle, valueAxisTitle, valueField, categoryField, selected, logarithmic = false, reversed = true) {
+/*-
+	- `vars` is an object that contains various variables, including an array of stages (`vars.stages`) to iterate over.
+	- `seriesTitle` is a string that represents the title of the chart series.
+	- `valueAxisTitle` is a string that represents the title of the value axis of the chart.
+	- `valueField` is a string that specifies the field used for the values in the chart.
+	- `categoryField` is a string that specifies the field used for the categories in the chart.
+	- `selected` is an array that contains the indices of the stages to be selected.
+	- `logarithmic` is an optional boolean parameter that indicates whether the value axis should use a logarithmic scale. It defaults to `false`.
+*/
+	const refresh = (node) => { // HACKER-THE-HACK but seems to work nicely
+		node.setTimeout("refresh", () => {
+			const naam = node.vars("instance").getAttributeValue("naam");
+			const tree = node.getTree();
+			const sel = tree.getSelection();
+			
+			this.setState("invalidated");
+			this.app().toast({content: js.sf("%s wordt geladen...", naam), classes: "glassy fade"})
+			tree.setSelection([node]);
+			tree.setTimeout("restore", () => tree.setSelection(sel), 500);
+		}, 500);
+	}
+	const nodes = [
+    	js.$[this.ud("#select-sample-1").getValue()], 
+    	js.$[this.ud("#select-sample-2").getValue()], 
+    	js.$[this.ud("#select-sample-3").getValue()]
+    ];
+    const sampleMeasurements = nodes
+    	.map(node => node && node.qs("#array-measurements"))
+    	.map(arr => arr && arr.getArray())
+    	.filter(arr => arr);
+
+    if(sampleMeasurements[0][0].txVC === undefined) {
+    	return refresh(nodes[0]);
+    }
+    if(sampleMeasurements[1][0].txVC === undefined) {
+    	return refresh(nodes[1]);
+    }
+    if(sampleMeasurements[2][0].txVC === undefined) {
+    	return refresh(nodes[2]);
+    }
+
+    var content = [];
+    for (var st = 0; st < vars.stages.length; ++st) {
+        content.push(js.sf("<div>%s %s</div>", locale("Stage"), st));
+    }
+    this._node.innerHTML = content.join("");
+    this.vars("rendering", true);
+
+    // √ three files
+    // √ combine all measurements
+    // √ create new dataset with the 3 value fields
+    // filter out the right dataset per graph
+    // √ create series object, use 3 colors
+
+    const index = {};
+    sampleMeasurements.forEach((arr, i) => {
+    	return arr.forEach(mt_s => {
+    		let s = GDS.valueOf(mt_s, "Time since start of test");
+    		let mt_d = index[s] = index[s] || {};
+    		
+    		mt_d['mt_' + (i + 1)] = mt_s;
+    		mt_d[valueField + (i + 1)] = mt_s[valueField];
+    		mt_d[categoryField] = mt_s[categoryField];
+    	});
+    });
+
+	const all = Object.keys(index).map(key => index[key]);
+	const stageMeasurements = vars.stages.map(
+		(st, i) => all.filter(
+				mt => js.get(js.sf("mt_1.Stage Number"), mt) == (i + 1)));
+
+this.print("index", index);
+this.print("all", stageMeasurements);
+this.print("stageMeasurements", stageMeasurements);
+
+    const render = () => {
+        const stage = vars.stages[st];
+        const series = sampleMeasurements.map((mts, i) => ({
+            title: js.sf(seriesTitle, st + 1),
+            valueAxis: "y1",
+            valueField: valueField + (i + 1),
+            categoryField: categoryField,
+        }));
+        this.vars("am", {
+            series: series,
+            stage: stage,
+            data: stageMeasurements[st]
+        });
+        this.vars("am-" + st, this.vars("am"));
+
+this.print("series-" + st, series);
+        
+        makeChart(this, {
+            immediate: true,
+            node: this.getChildNode(st),
+            colors: ["rgb(56, 121, 217)", "red", "green"],
+            valueAxes: [{
+                id: "y1",
+                position: "left",
+                reversed: reversed,
+            }, {
+                id: "x1",
+                position: "bottom",
+                title: js.sf(valueAxisTitle, st + 1),
+                logarithmic: logarithmic,
+                treatZeroAs: GDS.treatZeroAs
+            }]
+        });
+
+        if (++st < vars.stages.length) {
+            this.nextTick(render);
+        } else {
+            selected.forEach(selected => this.getChildNode(selected - 1).classList.add("selected"));
+            this.vars("rendering", false);
+        }
+    };
+
+    var st = 0;
+    vars.stages.length && render();
+}
+
+const definedOr = (value, fallback) => typeof value === "undefined" ? fallback : value;
 
 /* Event Handlers */
 const handlers = {
@@ -683,47 +961,78 @@ const handlers = {
 		}, 750);
 	},
 	
-	"#bar-select-stages onNodeCreated"() {
+	'#bar-user-inputs onLoad'() { 
+		this.print("onLoad");
+		this.nextTick(() => this.nodeNeeded());
+		this.nextTick(() => this.ud("#refresh").execute());
+	},
+	"#bar-user-inputs onNodeCreated"() {
+		this.print("onNodeCreated");
+
 		this.setParent(this.udr("#bar").getParent());
 		this.setIndex(1);
+		
+		this.ud("#refresh-select-samples").execute();
 	},
-	"#bar-select-stages onRender"() {
+	
+	"#bar-user-inputs onRender"() {
 		var vars = this.vars(["variables"]);
-		if(vars === undefined) return;
+		if(vars === undefined) return this.print("onRender-blocked - no vars");
 		
 		var stages = this.vars("stages");
-		if(stages === vars.stages.length) return;
+		if(stages === vars.stages.length) return this.print("onRender-blocked - stages equals", vars);
 		
 		this.vars("stages", vars.stages.length);
+		stages = vars.stages;
 		
-		var stages = vars.stages;
+		if(!stages.SA) { // TODO maybe these should be read from vars
+			stages.SA = stages[stages.length - 3]
+		}
+		if(!stages.CO) {
+			stages.CO = stages[stages.length - 2]
+		}
+		if(!stages.SH) {
+			stages.SH = stages[stages.length - 1]
+		}
+
 		var options = stages.map((s, i, a) => ({
 			content: js.sf("%s %d", locale("Stage"), i + 1),
 			value: i
 		}));
 		this.ud("#select-stage-SA").set({ 
 			options: options, 
-			value: stages.indexOf(stages.SA) 
+			value: stages.indexOf(stages.SA)
 		});
 		this.ud("#select-stage-CO").set({ 
 			options: options, 
-			value: stages.indexOf(stages.CO) 
+			value: stages.indexOf(stages.CO)
 		});
 		this.ud("#select-stage-SH").set({ 
 			options: options, 
-			value: stages.indexOf(stages.SH) 
+			value: stages.indexOf(stages.SH)
 		});
+
+this.print("set-options", {
+			options: options, 
+			value: stages.indexOf(definedOr(stages.SH, stages.length - 1))
+})
+
 	},
-	
-	"#bar-select-stages onDispatchChildEvent"(component, name, evt, f, args) {
+	"#bar-user-inputs onDispatchChildEvent"(component, name, evt, f, args) {
 		if(name === "change") {
-    		var vars = this.vars(["variables"]);
-    		
-    		delete vars.stages.SA;
-    		delete vars.stages.CO;
-    		delete vars.stages.SH;
-    		
-			this.setTimeout("refresh", () => this.ud("#refresh").execute(), 250);
+			this.setTimeout("refresh", () => {
+	    		var vars = this.vars(["variables"]);
+
+				if(vars && vars.stages) {	    		
+	    			this.print("cleared vars.stages -> refresh");
+		    		delete vars.stages.SA;
+		    		delete vars.stages.CO;
+		    		delete vars.stages.SH;
+					
+					this.ud("#refresh").execute();
+				}
+
+			}, 250);
 		}
 	},
 
@@ -777,115 +1086,170 @@ const handlers = {
 			}
 		}
 	},
-	"#graph_VolumeChange onRender"() {
-		var vars = this.vars(["variables"]) || { stages: [] };
-		var selected = [3];
-
-		this.vars("rendering", true);
-
-		/*- reset */
-		var content = [], st;
-		for(st = 0; st < vars.stages.length; ++st) {
-			content.push(js.sf("<div>%s %s</div>", locale("Stage"), st));
-		}
-		this._node.innerHTML = content.join("");
-		
-		var render = () => {
-			var stage = vars.stages[st];
-			var series = [{
-				title: js.sf(locale("Graph:VolumeChange.title.stage-F"), st + 1),
-				valueAxis: "y1", valueField: "txVC", 
-				categoryField: "minutes_sqrt"
-			}];
-			this.vars("am", { series: series, stage: stage, data: stage.measurements });
-			this.vars("am-" + st, this.vars("am"));
-			makeChart(this, {
-				immediate: true, node: this.getChildNode(st),
-				// trendLines: Util.cp(stage.casagrande.trendLines || []),
-			    valueAxes: [{
-			        id: "y1", position: "left", reversed: true,
-					// guides: Util.cp(stage.casagrande.guides.filter(guide => guide.position === "left" || guide.position === "right"))
-				}, {
-					id: "x1", position: "bottom",
-					title: js.sf(locale("Graph:VolumeChange.title.stage-F"), st + 1),
-					// guides: Util.cp(stage.casagrande.guides.filter(guide => guide.position === "top" || guide.position === "bottom")),
-					// logarithmic: true
-				}]
-			});
-				
-			if(++st < vars.stages.length) {
-				this.nextTick(render);
-			} else {
-				selected.forEach(selected => this.getChildNode(selected - 1).classList.add("selected"));
-				this.vars("rendering", false);
-			}
-		};
-
-		st = 0; vars.stages.length && render();
+	"#graph_VolumeChange onRender" () {
+	    var vars = this.vars(["variables"]) || { stages: [] };
+	    var selected = [vars.stages.length - 1];
+	
+	    renderChart.call(this, vars, 
+	    	locale("Graph:VolumeChange.title.stage-F"), 
+	    	locale("Graph:VolumeChange.title.stage-F"),
+	    	"txVC", "minutes_sqrt", selected);
 	},
-	"#graph_PorePressureDissipation onRender"() {
-		var vars = this.vars(["variables"]) || { stages: [] };
-		var selected = [3];//js.get("overrides.casagrande.stage", vars) || [3];
-
-		/*- reset */
-		var content = [], st;
-		for(st = 0; st < vars.stages.length; ++st) {
-			content.push(js.sf("<div>%s %s</div>", locale("Stage"), st));
-		}
-		this._node.innerHTML = content.join("");
-		this.vars("rendering", true);
-		
-		var render = () => {
-			var stage = vars.stages[st];
-			var series = [{
-				title: js.sf(locale("Graph:PorePressureDissipation.title.stage-F"), st + 1),
-				valueAxis: "y1", valueField: "txPWPR", 
-				categoryField: "minutes"
-			}];
-			this.vars("am", { series: series, stage: stage, data: stage.measurements });
-			this.vars("am-" + st, this.vars("am"));
-			makeChart(this, {
-				immediate: true, node: this.getChildNode(st),
-				// trendLines: Util.cp(stage.casagrande.trendLines || []),
-			    valueAxes: [{
-			        id: "y1", position: "left", reversed: true,
-					// guides: Util.cp(stage.casagrande.guides.filter(guide => guide.position === "left" || guide.position === "right"))
-				}, {
-					id: "x1", position: "bottom",
-					title: js.sf(locale("Graph:PorePressureDissipation.title.stage-F"), st + 1),
-					// guides: Util.cp(stage.casagrande.guides.filter(guide => guide.position === "top" || guide.position === "bottom")),
-					logarithmic: true,
-					treatZeroAs: GDS.treatZeroAs
-				}]
-			});
-				
-			if(++st < vars.stages.length) {
-				this.nextTick(render);
-			} else {
-				selected.forEach(selected => this.getChildNode(selected - 1).classList.add("selected"));
-				this.vars("rendering", false);
-			}
-		};
-
-		st = 0; vars.stages.length && render();
+	"#graph_PorePressureDissipation onRender" () {
+	    var vars = this.vars(["variables"]) || { stages: [] };
+	    var selected = [2];
+	
+	    renderChart.call(this, vars, 
+	    	locale("Graph:PorePressureDissipation.title.stage-F"), 
+	    	locale("Graph:PorePressureDissipation.title.stage-F"), 
+	    	"txPWPR", "minutes", selected, true, false);
+	}, 
+	"#graph_DeviatorStress onRender"() {
+	    var vars = this.vars(["variables"]) || { stages: [] };
+	    var selected = [vars.stages.length];
+	
+	    renderChart.call(this, vars, 
+	    	locale("Graph:DeviatorStress.title.stage-F"), 
+	    	locale("Graph:DeviatorStress.title.stage-F"), 
+	    	"txDS", "Axial Strain (%)", selected, false, false);
+	},
+	"#graph_WaterOverpressure onRender"() {
+	    var vars = this.vars(["variables"]) || { stages: [] };
+	    var selected = [vars.stages.length - 1];
+	
+	    renderChart.call(this, vars, 
+	    	locale("Graph:WaterOverpressure.title.stage-F"), 
+	    	locale("Graph:WaterOverpressure.title.stage-F"), 
+	    	"txWO", "Axial Strain (%)", selected);
+	},
+	"#graph_EffectiveHighStressRatio onRender"() {
+	    var vars = this.vars(["variables"]) || { stages: [] };
+	    var selected = [vars.stages.length];
+	
+	    renderChart.call(this, vars, 
+	    	locale("Graph:EffectiveHighStressRatio.title.stage-F"), 
+	    	locale("Graph:EffectiveHighStressRatio.title.stage-F"), 
+	    	"txEHSR", "Axial Strain (%)", selected, false, false);
+	},
+	"#graph_DeviatorStressQ onRender"() {
+	    var vars = this.vars(["variables"]) || { stages: [] };
+	    var selected = [vars.stages.length - 1];
+	
+	    renderChart.call(this, vars, 
+	    	locale("Graph:DeviatorStressQ.title.stage-F"), 
+	    	locale("Graph:DeviatorStressQ.title.stage-F"), 
+	    	"qs_c", "txEHSR", selected);
+	},
+	"#graph_ShearStress onRender"() {
+	    var vars = this.vars(["variables"]) || { stages: [] };
+	    var selected = [vars.stages.length];
+	
+	    renderChart.call(this, vars, 
+	    	locale("Graph:ShearStress.title.stage-F"), 
+	    	locale("Graph:ShearStress.title.stage-F"), 
+	    	"txDS", "txSS", selected, false, false);
 	}
 };
 
-["", {
+[(""), {
 	handlers: handlers,
 	vars: { 
 		layout: "grafieken/documenten/Triaxiaalproef",
 		graphs: [
 			"VolumeChange",
 			"PorePressureDissipation",
-			// "DeviatorStress",
-			// "WaterOverpressure",
-			// "EffectiveHighStressRatio",
-			// "ShearStress",
-			// "DeviatorStressQ"
+			"DeviatorStress",
+			"WaterOverpressure",
+			"EffectiveHighStressRatio",
+			"DeviatorStressQ",
+			"ShearStress"
 		]
 	}
 }, [
+	
+	[("#options"), [
+		
+        ["vcl/ui/Group", ("group_title"), {}, [
+            ["vcl/ui/Element", {
+                classes: "header",
+                content: "Titel"
+            }],
+            ["vcl/ui/Input", "option_title", {
+                // placeholder: "schaal 1:{schaal}"
+            }]
+        ]],
+        ["vcl/ui/Group", ("group_description"), {}, [
+            ["vcl/ui/Element", {
+                classes: "header",
+                content: "Opmerking"
+            }],
+            ["vcl/ui/Input", "option_description", {
+                placeholder: ""
+            }]
+        ]],
+        ["vcl/ui/Group", ("group_buttons"), {
+            css: "padding-top:8px;"
+        }, [
+            ["vcl/ui/Button", ("button_generate"), {
+                action: "#generate", // will be resolved by code in Tabs<Document>
+                content: "Genereren..."
+            }]
+        ]],
+        ["vcl/ui/Group", { classes: "seperator" }],
+        ["vcl/ui/Group", ("group_layout"), {}, [
+			["vcl/ui/Element", {
+				classes: "header",
+				content: "Opmaak"
+			}],
+			["vcl/ui/Select", ("option_layout"), {
+				options: [
+					{ value: "2", content: "Standaard" },
+				],
+				value: "2"
+			}]
+        ]],
+        ["vcl/ui/Group", ("group_orientation"), {}, [
+            ["vcl/ui/Element", {
+                classes: "header",
+                content: "Orientatie"
+            }],
+            ["vcl/ui/Select", "orientation", {
+                // enabled: false,
+                options: ["Staand (A4)"]
+            }]
+        ]],
+        ["vcl/ui/Group", ("group_locale"), {}, [
+            ["vcl/ui/Element", {
+                classes: "header",
+                content: "Taal"
+            }],
+            ["vcl/ui/Select", "locale", {
+                options: [{
+                    value: "nl_NL",
+                    content: "Nederlands (NL)"
+                // },
+                // {
+                //     value: "en_UK",
+                //     content: "English (UK)"
+                }]
+            }]
+        ]],
+        ["vcl/ui/Group", { classes: "seperator" }],
+        ["vcl/ui/Group", ("group_options"), {}, [
+            ["vcl/ui/Group", [
+	            ["vcl/ui/Checkbox", "option_footer", {
+	            	classes: "block",
+	            	label: "Voettekst weergeven",
+	            	checked: true
+	            }],
+	            ["vcl/ui/Checkbox", "option_logo", {
+	            	classes: "block",
+	            	label: "Logo weergeven",
+	            	checked: true, visible: false
+	            }]
+			]]
+		]]
+	]],
 
     [("#refresh"), { 
     	vars: { 
@@ -895,14 +1259,22 @@ const handlers = {
 				
 				if(!Object.keys(sacosh).every(k => {
 					if(isNaN(sacosh[k] = parseInt(this.ud("#select-stage-" + k).getValue(), 10))) {
+
 						vars.parameters = [];
 						vars.categories = [];
+						
+						this.print("cleared parameters & categories");
 
 						return false;
 					}
 					return true;
-				})) return this.ud("#bar-select-stages").render();
-
+				})) return this.ud("#bar-user-inputs").render();
+				
+				["Kfp", "Pfp", "tm", "Em", "Evk", "alpha", "beta"]
+					.forEach(key => {
+						vars[key] = parseFloat(this.ud("#input-" + key).getValue())
+					});
+				
     			setup_stages(vars, sacosh);
     			setup_measurements(vars);
     			setup_parameters(vars);
@@ -925,42 +1297,148 @@ const handlers = {
     	}
     }],
     
-    ["vcl/ui/Bar", ("bar-select-stages"), { 
+    ["vcl/Action", ("refresh-select-samples"), {
+    	on() {
+    		let node = this.up("vcl/ui/Node-closeable");
+			let sel = this.up("vcl/ui/Node-closeable").up()
+					.qsa("vcl/ui/Node-closeable")
+					.filter(n => n.vars("instance"))
+					.map(n => ({ n: n, d: n.vars("instance") }))
+					.filter((o, i, a) => o.d.getAttributeValue && (a.map(o => o.d).indexOf(o.d) === i))
+					.filter(o => o.d.getAttributeValue && (
+						o.d.getAttributeValue("naam") || "")
+						.toLowerCase().endsWith(".gds")
+					);
+
+			for(let i = 1; i <= 3; ++i) {
+				let select = this._owner.qs("#select-sample-" + i);
+				select.setOptions(sel.map(o => ({ 
+					// value: o.d.getAttributeValue("id"), 
+					content: o.d.getAttributeValue("naam"),
+					value: o.n.hashCode()
+				})));
+				if(sel.length >= i) {
+					select.setValue(sel[i - 1].n.hashCode());
+				}
+			}
+    	}
+    }],
+    
+    ["vcl/ui/Bar", ("bar-user-inputs"), { 
     	index: 0,
     	css: {
-    		"": "text-align: center;",
+    		"": "border: 1px dashed silver; text-align: center;",
     		"*:not(.{Group})": "display: inline-block; margin: 2px;",
     		".{Input}": "max-width: 50px;"
     	}
     }, [
-    	["vcl/ui/Element", { content: locale("Stage#SA") + ":" }],
-    	["vcl/ui/Select", ("select-stage-SA"), { }],
-    	["vcl/ui/Element", { content: locale("Stage#CO") + ":" }],
-    	["vcl/ui/Select", ("select-stage-CO"), { }],
-    	["vcl/ui/Element", { content: locale("Stage#SH") + ":" }],
-    	["vcl/ui/Select", ("select-stage-SH"), { }],
-    	["vcl/ui/Group", { css: "display: block;"}, [
+    	["vcl/ui/Group", { css: "display: block;" }, [
+	    	["vcl/ui/Element", { content: locale("Sample") + " 1:" }],
+	    	["vcl/ui/Select", ("select-sample-1"), { }],
+	    	["vcl/ui/Element", { content: locale("Sample") + " 2:" }],
+	    	["vcl/ui/Select", ("select-sample-2"), { }],
+	    	["vcl/ui/Element", { content: locale("Sample") + " 3:" }],
+	    	["vcl/ui/Select", ("select-sample-3"), { }],
+	    	["vcl/ui/Element", { 
+	    		action: "refresh-select-samples",
+	    		css: {'': "cursor:pointer", '&:hover': "background-color:#f0f0f0;" }, // todo which classes?
+	    		content: "<i class='fa fa-refresh'></i>" 
+	    	}]
+	    ]],
+	    ["vcl/ui/Group", { css: "display: block;" }, [
+	    	["vcl/ui/Element", { content: locale("Stage#SA") + ":" }],
+	    	["vcl/ui/Select", ("select-stage-SA"), { }],
+	    	["vcl/ui/Element", { content: locale("Stage#CO") + ":" }],
+	    	["vcl/ui/Select", ("select-stage-CO"), { }],
+	    	["vcl/ui/Element", { content: locale("Stage#SH") + ":" }],
+	    	["vcl/ui/Select", ("select-stage-SH"), { }],
+	    ]],
+    	["vcl/ui/Group", { css: "display: block;" }, [
+	    	["vcl/ui/Element", { 
+	    		content: locale("Consolidation-type") + ":",
+	    		// hint: locale("Consolidation-type")
+	    	}],
+	    	["vcl/ui/Select", ("select-stage-CO-type"), { 
+	    		options: locale("Consolidation-types.options")
+	    	}],
 	    	["vcl/ui/Element", { 
 	    		content: locale("FilterPaper-loadCarried") + ":",
-	    		hint: locale("FilterPaper-loadCarried.hint")
+	    		// hint: locale("FilterPaper-loadCarried.hint")
 	    	}],
 	    	["vcl/ui/Input", ("input-Kfp"), { 
-	    		hint: locale("FilterPaper-loadCarried.hint")
+	    		// hint: locale("FilterPaper-loadCarried.hint")
 	    	}],
 	    	["vcl/ui/Element", { 
 	    		content: js.sf("(%H)", locale("FilterPaper-loadCarried.unit")),
-	    		hint: locale("FilterPaper-loadCarried.hint")
+	    		// hint: locale("FilterPaper-loadCarried.hint")
 	    	}],
 	    	["vcl/ui/Element", { 
 	    		content: locale("FilterPaper-perimeterCovered") + ":",
-	    		hint: locale("FilterPaper-perimeterCovered.hint")
+	    		// hint: locale("FilterPaper-perimeterCovered.hint")
 	    	}],
 	    	["vcl/ui/Input", ("input-Pfp"), {
-	    		hint: locale("FilterPaper-perimeterCovered.hint")    		
+	    		// hint: locale("FilterPaper-perimeterCovered.hint")    		
 	    	}],
 	    	["vcl/ui/Element", { 
 	    		content: js.sf("(%H)", locale("FilterPaper-perimeterCovered.unit")),
-	    		hint: locale("FilterPaper-perimeterCovered.hint")
+	    		// hint: locale("FilterPaper-perimeterCovered.hint")
+	    	}]
+    	]],
+    	["vcl/ui/Group", { css: "display: block;" }, [
+	    	["vcl/ui/Element", { 
+	    		content: locale("MembraneCorr-tm") + ":",
+	    		// hint: locale("MembraneCorr-tm.hint")
+	    	}],
+	    	["vcl/ui/Input", ("input-tm"), {
+	    		value: locale("MembraneCorr-tm.default")
+	    	}],
+	    	["vcl/ui/Element", { 
+	    		content: js.sf("(%H)", locale("MembraneCorr-tm.unit")),
+	    		// hint: locale("MembraneCorr-tm.hint")
+	    	}],
+	    	["vcl/ui/Element", { 
+	    		content: locale("MembraneCorr-Em") + ":",
+	    		// hint: locale("MembraneCorr-Em.hint")
+	    	}],
+	    	["vcl/ui/Input", ("input-Em"), {
+				value: locale("MembraneCorr-Em.default")
+	    	}],
+	    	["vcl/ui/Element", { 
+	    		content: js.sf("(%H)", locale("MembraneCorr-Em.unit")),
+	    		// hint: locale("MembraneCorr-Em.hint")
+	    	}],
+	    	["vcl/ui/Element", { 
+	    		content: locale("MembraneCorr-Evk") + ":",
+	    		// hint: locale("MembraneCorr-Evk.hint")
+	    	}],
+	    	["vcl/ui/Input", ("input-Evk"), {
+				value: locale("MembraneCorr-Evk.default")
+	    	}],
+	    	["vcl/ui/Element", { 
+	    		content: js.sf("(%H)", locale("MembraneCorr-Evk.unit")),
+	    		// hint: locale("MembraneCorr-Evk.hint")
+	    	}],
+	    	["vcl/ui/Element", { 
+	    		content: locale("MembraneCorr-alpha") + ":",
+	    		// hint: locale("MembraneCorr-alpha.hint")
+	    	}],
+	    	["vcl/ui/Input", ("input-alpha"), {
+				value: locale("MembraneCorr-alpha.default")
+	    	}],
+	    	["vcl/ui/Element", { 
+	    		content: js.sf("(%H)", locale("MembraneCorr-alpha.unit")),
+	    		// hint: locale("MembraneCorr-alpha.hint")
+	    	}],
+	    	["vcl/ui/Element", { 
+	    		content: locale("MembraneCorr-beta") + ":",
+	    		// hint: locale("MembraneCorr-beta.hint")
+	    	}],
+	    	["vcl/ui/Input", ("input-beta"), {
+				value: locale("MembraneCorr-beta.default")
+	    	}],
+	    	["vcl/ui/Element", { 
+	    		content: js.sf("(%H)", locale("MembraneCorr-beta.unit")),
+	    		// hint: locale("MembraneCorr-beta.hint")
 	    	}]
     	]]
     ]],
@@ -972,8 +1450,8 @@ const handlers = {
 		["vcl/ui/Tab", { text: locale("Graph:DeviatorStress"), control: "graph_DeviatorStress" }],
 		["vcl/ui/Tab", { text: locale("Graph:WaterOverpressure"), control: "graph_WaterOverpressure" }],
 		["vcl/ui/Tab", { text: locale("Graph:EffectiveHighStressRatio"), control: "graph_EffectiveHighStressRatio" }],
-		["vcl/ui/Tab", { text: locale("Graph:ShearStress"), control: "graph_ShearStress" }],
 		["vcl/ui/Tab", { text: locale("Graph:DeviatorStressQ"), control: "graph_DeviatorStressQ" }],
+		["vcl/ui/Tab", { text: locale("Graph:ShearStress"), control: "graph_ShearStress" }],
 
 		["vcl/ui/Bar", ("menubar"), {
 			align: "right", autoSize: "both", classes: "nested-in-tabs"
@@ -989,10 +1467,7 @@ const handlers = {
 			}]	
 		]]
 	]],
-	[("#graphs"), { 
-
-
-	}, [
+	[("#graphs"), { }, [
 		["vcl/ui/Panel", ("graph_VolumeChange"), {
 			align: "client", visible: false, 
 			classes: "multiple"
@@ -1013,11 +1488,11 @@ const handlers = {
 			align: "client", visible: false, 
 			classes: "multiple"
 		}],
-		["vcl/ui/Panel", ("graph_ShearStress"), {
+		["vcl/ui/Panel", ("graph_DeviatorStressQ"), {
 			align: "client", visible: false, 
 			classes: "multiple"
 		}],
-		["vcl/ui/Panel", ("graph_DeviatorStressQ"), {
+		["vcl/ui/Panel", ("graph_ShearStress"), {
 			align: "client", visible: false, 
 			classes: "multiple"
 		}],
