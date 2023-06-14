@@ -7,7 +7,9 @@ define(function(require) {
 	function getDropbox(uri, force) {
 		var name = uri.split("/").shift();
 		if(force || dbxs[name] === undefined) {
-			dbxs[name] = new Dropbox({ accessToken: localStorage.getItem(js.sf("devtools/Resources-dropbox/tokens/%s", name) || tokens[name])});
+			// var accessToken = localStorage.getItem(js.sf("devtools/Resources-dropbox/tokens/%s", name)) || tokens[name];
+			var accessToken = tokens[name];
+			dbxs[name] = new Dropbox({ accessToken: accessToken });
 		}
 		return dbxs[name];
 	}
