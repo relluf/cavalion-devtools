@@ -174,6 +174,7 @@ var Utils = {
             args: [this]
         });
         this.setSelected(true);
+        this.ud("#update-title").execute();
     },
     onDeactivate: function() {
     	this.setSelected(false);
@@ -461,6 +462,10 @@ var Utils = {
     		var ed = ws.qsa("devtools/Editor<>:root:visible").map(_ => _.down("#ace"));
     		// if(!ed.length) return;
     		
+    		if(evt?.altKey === true) {
+    			return this.ud("#editor-needed").execute(".md");
+    		}
+    		
     		if(ed.length) {
     			ed = ed.pop().up();
     		} else {
@@ -513,6 +518,29 @@ var Utils = {
     		ws.vars(this._name, state);
     	}
     }],
+    
+    ["vcl/Action", ("update-title"), {
+    	on(evt) {
+            var title = this.app().getTitle(), uri;
+            var ws = this.up();//this.app().qs(":root:selected");
+            var tab = (evt && evt.tab) || ws.qsa("devtools/Editor<>:root:visible").pop();
+            if(!(tab instanceof req("vcl/ui/Tab"))) {
+            	tab = tab && tab.up("vcl/ui/Tab");
+            }
+            if(tab) {
+	            ws = ws.getSpecializer();
+	            uri = tab.getVar("resource.uri");
+	            if(uri === undefined) {
+	            	this.setTimeout("otra-vez", () => {
+	            		uri = tab.getVar("resource.uri") || "?";
+	            		top.document.title = js.sf("%s - [%s > %s]", uri, title, ws);
+	            	}, 250);	
+	            } else {
+	            	top.document.title = js.sf("%s - [%s > %s]", uri, title, ws);
+	            }
+            }
+    	}
+    }],
 
     ["vcl/ui/Panel", ("left-sidebar"), { align: "left", css: "border-right: 1px solid gray;", width: 375, visible: false }, [
     	
@@ -545,16 +573,7 @@ var Utils = {
         ["vcl/ui/Tabs", ("editors-tabs"), {
             onChange: function(tab, previous) {
 // TODO tell application to render it's title
-                var title = this.app().getTitle(), me = this;
-                this.setTimeout("foo", function() {
-	                var ws = me.app().qs(":root:selected");
-	                ws = ws !== null ? ws.getSpecializer() : "";
-                    if(tab) {
-                        document.title = String.format("%s - [%s > %s]", tab.getVar("resource.uri"), title, ws);
-                    } else {
-                        // document.title = title;
-                    }
-                }, 0);
+				this.ud("#update-title").execute({tab: tab});
                 this._owner.emit("state-dirty");
             },
             onDblClick: function() {

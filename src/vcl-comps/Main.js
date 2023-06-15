@@ -102,6 +102,25 @@ function focusSidebar(ws, sidebar) {
 	}
 }
 
+const fixThemeColor = () => setTimeout(() => {
+	// Create the meta element
+	var meta = Array.from(top.document.querySelectorAll("meta"))
+		.filter(meta => meta.name === "theme-color")[0];
+		
+	if(!meta) {
+		meta = top.document.createElement("meta");		
+	}
+	
+	// Set the attributes
+	meta.setAttribute("name", "theme-color");
+	meta.setAttribute("content", "#f0f0f0");
+	
+	if(!meta.parentElement) {
+		// Append the meta element to the head
+		top.document.head.appendChild(meta);
+	}
+}, 0);
+
 var tabs_hidden = "height:0;padding:0;border:0;opacity:0;";
 var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c.hashCode();
 
@@ -151,6 +170,8 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
         var scope = this.scope();
         var me = this;
         
+fixThemeColor();
+
         // document.body.qsa("img").map(_ => (_ && _.style.display = "none"));
 
         function createWorkspaces(workspaces) {
