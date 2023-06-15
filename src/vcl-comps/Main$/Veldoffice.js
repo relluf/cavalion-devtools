@@ -11,7 +11,7 @@ var B = require("blocks/Blocks");
 			// this.qs("#session-bar").show();
 			
 			this.app().print("VO", VO);
-			this.app().print("VO.li()", VO.li());
+			this.app().print("VO.itsme()", VO.li());
 		},
 		activate() {
 			var ms = this.vars("ms") || 0;
