@@ -291,8 +291,6 @@ function setup_measurements(vars) {
 
 		mt.txVC = GDS.valueOf(mt, "Volume Change") * -1;
 		mt.txPWPR = GDS.valueOf(mt, "PWP Ratio");
-		// axial strain
-		// pore pressure
 		mt.txDS = GDS.valueOf(mt, "Deviator Stress"); //qs_r
 		mt.txWO = GDS.valueOf(mt, "Excess PWP");
 		mt.txEHSR = GDS.valueOf(mt, "Eff. Stress Ratio");
