@@ -55,7 +55,6 @@ const handlers = {
 };
 
 const escape = (s) => js.sf("\"%s\"", ("" + s).replace(/"/g, "\\\""));
-
 const downloadCSV = (arr, filename) => {
 	const headers = Object.keys(arr[0]);
 	const data = [headers.map(s => escape(s))].concat(arr.map(o => headers.map(h => escape(o[h]))));
@@ -70,7 +69,6 @@ const downloadCSV = (arr, filename) => {
 	document.body.removeChild(link);
 	URL.revokeObjectURL(url);
 };
-
 
 ["", { css: css, handlers: handlers }, [
     [("#ace"), { 
@@ -164,7 +162,7 @@ const downloadCSV = (arr, filename) => {
 						return false;
 					}
 				} else {
-					return !match(obj, part);
+					return !match(obj, part[0]);
 				}
 			}
 			
