@@ -58,6 +58,7 @@ function title_css() {
 		"": "text-align:center;float:right;min-width:200px;line-height:26px;", 
 		"&:not(.custom-colors)": js.sf("background-color:%s;color:%s;", colors[0], colors[1]),
 		"&.arcadis": "background-color:orange;color:black;",
+		"&.kzmrqz": "background-color:orange;color:purple;",
 		"&.cavalion": "background-color:rgb(48,61,80);color:white;",
 		"&.terrannia": "background-color:purple;color:white;",
 		"&.veldoffice": "background-color:limegreen;color:darkgreen;",
@@ -65,7 +66,9 @@ function title_css() {
 		"&.veldapps-alt": "background-color:limegreen;color:white;",
 		"&.eae": "background-color:rgb(14,32,77);color:white;",
 		"&.smdl": "background-color:gold;color:maroon;",
-		"&.gx": "background-color:navy; color:white;"
+		"&.gx": "background-color:navy; color:white;",
+		"&.pdc": "background-color:#261f10;color:white;"
+		
 	};
 }
 function replaceChars(uri) {
@@ -254,7 +257,8 @@ fixThemeColor();
 			return function(evt, type) {
 				evt.preventDefault();
 				var tab = me.scope()['workspaces-tabs'].qsa("< vcl/ui/Tab")[index];
-				tab.setSelected(true);
+				// tab.setSelected(true);
+				tab.toggle("selected");
                 try {
                 	if((tab = tab._control.qs("#left-sidebar-tabs < vcl/ui/Tab:selected"))) {
                 		var input = tab._control.qs("vcl/ui/Input");
@@ -358,19 +362,19 @@ fixThemeColor();
 					}
 				}
 			});
-			HotkeyManager.register({
-				keyCode: 16, type: "keyup",
-				callback: function(evt) {
-					if(evt.code !== "ShiftRight") return;
-					if(focused) {
-						if(ctrlctrl.getVisible()) ctrlctrl.hide(); 
-						else ctrlctrl.show();
-					} else {
-						focused = require("vcl/Control").focused || 1;
-						me.setTimeout("ctrlctrl", () => focused = null, 250);
-					}
-				}
-			});
+			// HotkeyManager.register({
+			// 	keyCode: 16, type: "keyup",
+			// 	callback: function(evt) {
+			// 		if(evt.code !== "ShiftRight") return;
+			// 		if(focused) {
+			// 			if(ctrlctrl.getVisible()) ctrlctrl.hide(); 
+			// 			else ctrlctrl.show();
+			// 		} else {
+			// 			focused = require("vcl/Control").focused || 1;
+			// 			me.setTimeout("ctrlctrl", () => focused = null, 250);
+			// 		}
+			// 	}
+			// });
 		}());
     },
     onDeactivate() {
@@ -427,6 +431,16 @@ fixThemeColor();
     			copy(uri);
     		}
     	}
+    }],
+    [("vcl/Action"), "F5-blocker", {
+        hotkey: "F5|MetaCtrl+R",
+        onExecute: function(evt) {
+            evt.preventDefault();
+        }
+    }],
+    [("vcl/Action"), "reload-app", {
+    	hotkey: "Shift+MetaCtrl+R|Cmd+Alt+R",
+    	on() { document.location.reload(); }
     }],
 
     [("vcl/Action"), "hide-workspace-tabs", {
@@ -504,19 +518,6 @@ fixThemeColor();
     		tabs.setVisible(!tabs.getVisible());
     	}	
     }],
-    
-    [("vcl/Action"), "workspace-issues-new", {
-    	hotkey: "Shift+Ctrl+73", // Shift+Ctrl+I
-    	onExecute() {
-    		// Open a Github "issues/new"-page based upon workspace meta data
-    		
-    		var ws = app.down("devtools/Workspace<>:root:selected");
-			var repo = ws.vars(["workspace.github-repo"]) || 
-				js.sf("relluf/cavalion-%s", ws.vars(["workspace.name"]));
-    		
-    		window.open(js.sf("https://github.com/%s/issues/new", repo), "","menubar=no");
-    	}
-    }],
 
     [["devtools/TabFactory"], "workspaces-new", {
         vars: {
@@ -530,7 +531,7 @@ fixThemeColor();
             if(!evt.hasOwnProperty("formUri")) {
                 evt.formUri = evt.workspace.formUri ||
                     String.format("devtools/Workspace<%s>",
-	                	replaceChars(js.get("workspace.name", evt) || ""));
+	                	/*replaceChars*/(js.get("workspace.name", evt) || ""));
             }
             evt.params = evt.workspace;
 
@@ -542,6 +543,18 @@ fixThemeColor();
         }
     }],
     
+    [("vcl/Action"), "workspace-issues-new", {
+    	hotkey: "Shift+Ctrl+73", // Shift+Ctrl+I
+    	onExecute() {
+    		// Open a Github "issues/new"-page based upon workspace meta data
+    		
+    		var ws = app.down("devtools/Workspace<>:root:selected");
+			var repo = ws.vars(["workspace.github-repo"]) || 
+				js.sf("relluf/cavalion-%s", ws.vars(["workspace.name"]));
+    		
+    		window.open(js.sf("https://github.com/%s/issues/new", repo), "","menubar=no");
+    	}
+    }],
     [("vcl/Action"), "workspace-prompt-new", {
     	hotkey: "Shift+122|Shift+123",
     	onExecute: function(evt) {
@@ -636,7 +649,6 @@ fixThemeColor();
             }
     	}
     }],
-
     [("vcl/Action"), "workspace-left-sidebar-tabs::next-previous", {
     	hotkey: "Ctrl+32|Ctrl+Shift+32",
     	onExecute: function(evt) {
@@ -784,12 +796,6 @@ fixThemeColor();
         },
         top: 232
     }],
-    [("vcl/Action"), "F5-blocker", {
-        hotkey: "F5|MetaCtrl+R",
-        onExecute: function(evt) {
-            evt.preventDefault();
-        }
-    }],
     
     [("vcl/ui/Tabs"), "workspaces-tabs", {
         align: "bottom",
@@ -813,7 +819,10 @@ fixThemeColor();
 			index: 0, 
 			element: "span", 
 			css: title_css(),
-			content: js.sf("&nbsp; <b>%s<b> <i class='fa fa-caret-down'></i>  &nbsp;", title())
+			onRender() {
+				var t = this.vars("title") || title();
+				this.getNode().innerHTML = js.sf("&nbsp; <b>%s<b> <i class='fa fa-caret-down'></i>  &nbsp;", t);
+			}
 		}]
     ]]
 ]];
