@@ -98,6 +98,30 @@ var Utils = {
     }
 };
 
+const ifVar = (owner, args, cb) => {
+	var result = owner.vars.apply(owner, args instanceof Array ? args : [args]);
+	if(result !== undefined) {
+		cb(result, owner, args);
+	}
+};
+const startsWithProtocol = (url) => url.match(/^[^\s]*:\/\//) !== null;
+const expandColonInUri = (uri, ex) => {
+	var swp = startsWithProtocol(uri);
+	if(!swp || uri.split(":").length > 2) {
+		if(uri.charAt(0) !== "#") {
+			// replace last : occurence with ex
+			uri = uri.replace(/:([^:]*)$/, ex + "$1");
+		}
+	}
+	return uri;
+};
+const expandColonInNavigatorFavorites = (ws) => {
+	var spec = ws.getSpecializer();
+	return ifVar(ws, "#navigator favorites", 
+		(value, ws, name) => ws.vars(name, value.map(s => expandColonInUri(s, spec)))
+	);
+};
+
 [["ui/Form"], {
     onLoad: function() {
         var scope = this.scope();
@@ -110,20 +134,9 @@ var Utils = {
         if(workspace.vars) {
         	js.mixIn(this.vars(), workspace.vars);
         }
+        
+        expandColonInNavigatorFavorites(this);
 
-        this.on("state-dirty", function() {
-            var workspace = scope['@owner'];
-            workspace.setTimeout("saveState", function() {
-                 //workspace.writeStorage("state",Utils.getState(workspace.getScope()));
-                 workspace.writeStorage("state", Utils.getState(scope));
-            }, 200);
-        });
-        
-        scope['left-sidebar'].override("visibleChanged", function() {
-            this._owner.emit("state-dirty");
-        	return this.inherited(arguments);
-        });
-        
         this.open = function(evt) {
         	// if(evt instanceof Array) {
         	// 	evt = {
@@ -142,7 +155,18 @@ var Utils = {
         	}
         	scope['editor-needed'].execute(evt);
         };
+        this.on("state-dirty", function() {
+            var workspace = scope['@owner'];
+            workspace.setTimeout("saveState", function() {
+                 //workspace.writeStorage("state",Utils.getState(workspace.getScope()));
+                 workspace.writeStorage("state", Utils.getState(scope));
+            }, 200);
+        });
         
+        scope['left-sidebar'].override("visibleChanged", function() {
+            this._owner.emit("state-dirty");
+        	return this.inherited(arguments);
+        });
         this.qsa("#editor-switch-favorite").execute();
         
         return this.inherited(arguments);

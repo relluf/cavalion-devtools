@@ -48,8 +48,8 @@ define((require) => ({
 				".title.stage-F":				"Trap %d: deviatorspanning [kPa] / axiale rek [%%] →"
 			},
 			"WaterOverpressure": {
-				"":								"Wateroverdruk",
-				".title.stage-F":				"Trap %d: wateroverdruk [kPa] / axiale rek [%%] →"
+				"":								"Wateroverspanning",
+				".title.stage-F":				"Trap %d: wateroverspanning [kPa] / axiale rek [%%] →"
 			},
 			"EffectiveHighStressRatio": {
 				"":								"Effectieve hoogspannigsverhouding",
@@ -61,6 +61,10 @@ define((require) => ({
 			},
 			"ShearStress": {
 				"":								"Schuifspanning",
+				".title.stage-F":				"Trap %d: schuifspanning [kN/m2] / effectieve spanning [kN/m2] →"
+			},
+			"MohrColoumb": {
+				"":								"Mohr Coloumb",
 				".title.stage-F":				"Trap %d: schuifspanning [kN/m2] / effectieve spanning [kN/m2] →"
 			}
 		},
@@ -135,7 +139,7 @@ define((require) => ({
 				"-increaseBackPressure":	{	'': "Achterdruk verhoging",			'.unit': "kPa"	},
 				"-differentialPressure":	{	'': "Differentiële druk",			'.unit': "kPa"	},
 				"-saturationPressure":		{	'': "Eindverzadigingsdruk", 		'.unit': "kPa" },
-				"-poreWaterPressure":		{	'': "Eindporiewaterdruk",			'.unit': "kPa" },
+				"-poreWaterPressure":		{	'': "Eindporiënwaterspanning",		'.unit': "kPa" },
 				"-bAfterSaturation":		{	'': "B-factor na verzadiging" }
 			},
 			"Consolidation": {
@@ -143,8 +147,8 @@ define((require) => ({
 				"-effectiveCellPressure":	{	'': "Effectieve celdruk",			'.unit': "kPa",			'.symbol': "stages.CO.o_3" },
 				"-cellPressure":			{	'': "Celdruk",						'.unit': "kPa" },
 				"-backPressure":			{	'': "Achterdruk",					'.unit': "kPa" }, //tegendruk, binnendruk
-				"-poreWaterOverpressure":	{	'': "Poriënwateroverdruk",			'.unit': "kPa" },
-				"-finalPoreWaterPressure":	{	'': "Finale poriënwaterduk",		'.unit': "kPa" },
+				"-poreWaterOverpressure":	{	'': "Poriënwateroverspanning",		'.unit': "kPa" },
+				"-finalPoreWaterPressure":	{	'': "Eindporiënwaterspanning",		'.unit': "kPa" },
 				"-consolidatedVolume":		{	'': "Geconsolideerd volume",		'.unit': "cm3",			'.symbol': "stages.CO.V" },
 				"-consolidatedHeight":		{	'': "Geconsolideerde hoogte",		'.unit': "mm",			'.symbol': "stages.CO.H" },
 				"-consolidatedArea":		{	'': "Geconsolideerde oppervlakte",	'.unit': "mm2",			'.symbol': "stages.CO.A" },
@@ -194,6 +198,12 @@ define((require) => ({
 			"-types": { ".options": [[			"Isotroop", "Anisotroop", "SHANSEP" ]] },
 		},
 		"EHSR": {
+			"-min":	{
+				'':								"EHSR-min",
+				".default":						"-20",
+				".hint":						"",
+				".unit":						"-"
+			},
 			"-max":	{
 				'':								"EHSR-max",
 				".default":						"20",

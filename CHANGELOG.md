@@ -1,3 +1,10 @@
+### `2023/07/02` Tidying up, refactoring
+
+* Moved `setup_taylor` to `Util`, so it can be used by `triaxial` as well
+* The var `setup` can now be defined at the root level. Seems a nice approach in general, more concise.
+
+![RYwSYP](https://raw.githubusercontent.com/relluf/screenshots/master/uPic/RYwSYP.png)
+
 ### `2023/03/30` - 1.0.82
 
 * Adds Renderer<>/Util module;
