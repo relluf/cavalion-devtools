@@ -1,14 +1,13 @@
-"use ./Util, locale!./locales/nl, vcl/ui/Button, vcl/ui/Tab, papaparse/papaparse, amcharts, amcharts.serial, amcharts.xy, lib/node_modules/regression/dist/regression, ";
+"use ./Util, vcl/ui/Button, vcl/ui/Tab, papaparse/papaparse, amcharts, amcharts.serial, amcharts.xy, lib/node_modules/regression/dist/regression, ";
 
 const regression = require("lib/node_modules/regression/dist/regression");
 const js = require("js");
 
-const Util = require("./Util");
+const GDS = require("./Util");
 
 const Button = require("vcl/ui/Button");
 const Tab = require("vcl/ui/Tab");
 const Control = require("vcl/Control");
-
 
 /*-
 	* `#VA-20230130-1` 
@@ -145,7 +144,7 @@ function getSelectedGraph(cmp) {
 /* Event Handlers */
 const handlers = {
 	/* Event Handlers */
-	'loaded'() { this.print("Util", Util); },
+	// 'loaded'() { this.print("Util", Util); },
 	
 	"#tabs-sections onChange": function tabs_change(newTab, curTab) {
 		this.ud("#bar").setVisible(newTab && (newTab.vars("bar-hidden") !== true));
@@ -226,14 +225,14 @@ const handlers = {
 				makeChart(this, {
 					immediate: true,
 					node: this.getChildNode(st),
-					trendLines: Util.cp(stage.casagrande.trendLines || []),
+					trendLines: GDS.cp(stage.casagrande.trendLines || []),
 				    valueAxes: [{
 				        id: "y1", position: "left", reversed: true,
-						guides: Util.cp(stage.casagrande.guides.filter(guide => guide.position === "left" || guide.position === "right"))
+						guides: GDS.cp(stage.casagrande.guides.filter(guide => guide.position === "left" || guide.position === "right"))
 					}, {
 						id: "x1", position: "bottom",
 						title: js.sf("Trap %s: zetting [µm] / tijd [minuten] → ", st + 1),
-						guides: Util.cp(stage.casagrande.guides.filter(guide => guide.position === "top" || guide.position === "bottom")),
+						guides: GDS.cp(stage.casagrande.guides.filter(guide => guide.position === "top" || guide.position === "bottom")),
 						logarithmic: true
 					}]
 				});
@@ -276,10 +275,10 @@ const handlers = {
 					immediate: true,
 					legend: false,
 					node: this.getChildNode(st),
-					trendLines: Util.cp(stage.taylor.trendLines || []),
+					trendLines: GDS.cp(stage.taylor.trendLines || []),
 				    valueAxes: [{
 				        id: "y1", position: "left", reversed: true,
-						guides: Util.cp(stage.taylor.guides || [])
+						guides: GDS.cp(stage.taylor.guides || [])
 					}, {
 						title: js.sf("Trap %s: zetting [µm] / tijd [√ minuten] → ", st + 1),
 						position: "bottom"
@@ -322,14 +321,14 @@ const handlers = {
 				makeChart(this, {
 					immediate: true,
 					node: this.getChildNode(st),
-					trendLines: Util.cp(stage.isotachen.trendLines || []),
+					trendLines: GDS.cp(stage.isotachen.trendLines || []),
 				    valueAxes: [{
 				        id: "y1", position: "left", reversed: true,
-						guides: Util.cp(stage.isotachen.guides.filter(guide => guide.position === "left" || guide.position === "right"))
+						guides: GDS.cp(stage.isotachen.guides.filter(guide => guide.position === "left" || guide.position === "right"))
 					}, {
 						id: "x1", position: "bottom",
 						title: js.sf("Trap %s: natuurlijke rek [-] / tijd [minuten] → ", st + 1),
-						guides: Util.cp(stage.isotachen.guides.filter(guide => guide.position === "top" || guide.position === "bottom")),
+						guides: GDS.cp(stage.isotachen.guides.filter(guide => guide.position === "top" || guide.position === "bottom")),
 						logarithmic: true
 					}]
 				});
@@ -567,7 +566,7 @@ const handlers = {
 			})));
 		
 			var serie2 = vars.koppejan.serie2;
-			var trendLines = Util.cp(vars.koppejan.trendLines);
+			var trendLines = GDS.cp(vars.koppejan.trendLines);
 			var LLi_1 = vars.koppejan.LLi_1;
 			
 			this.vars("am", { series: series, data: vars.measurements.slice(1) });
@@ -603,7 +602,7 @@ const handlers = {
 	}
 };
 
-/* Math-like */
+/* Math-like (can be refactored to GDS.xxx()) */
 function line_intersect(x1, y1, x2, y2, x3, y3, x4, y4) {
     var ua, ub, denom = (y4 - y3)*(x2 - x1) - (x4 - x3)*(y2 - y1);
     if (denom === 0) {
@@ -891,253 +890,32 @@ function setup_casagrande(vars) {
 	});
 }
 function setup_taylor(vars) {
-	
-	/*- setup for Taylor-minutes */
-	vars.measurements.forEach(m => { 
-		m.x = m.minutes_sqrt;
-		m.y = (m.y_taylor = m.z * 1000); 
-	});
-
-	vars.stages.forEach(stage => {
-		var measurements = stage.measurements.slice(0);
-		var last = measurements[measurements.length - 1];
-		var yZ = last.y;
-		
-		var min, max, delta;
-		/* determine boundaries Y (min-max) */
-		measurements.forEach(obj => {
-			if(min === undefined || min > obj.y) min = obj.y;
-			if(max === undefined || max < obj.y) max = obj.y;
-		});
-		delta = max - min;
-
-		/* 10-40% boundaries */
-		var h10 = min + 0.1 * delta;
-		var h40 = min + 0.4 * delta;
-
-		function calc_Taylor(stage) {
-
-			vars.measurements.forEach(m => { 
-				m.x = m.minutes_sqrt;
-				m.y = (m.y_taylor = m.z * 1000); 
-			});
-
-			var guides = [], trendLines = [];
-			var measurements10_40, line;
-			if((line = js.get(js.sf("overrides.taylor.stage%d.lines.Qq", stage.i), vars))) {
-				/* adjust based on overrides */
-				measurements10_40 = [{
-					x: line.initialXValue,
-					y: line.initialValue
-				}, {
-					x: line.finalXValue,
-					y: line.finalValue
-				}];
-		 	} else {
-				/*- filter measurements within 10-40% boundary */
-		 		measurements10_40 = measurements.filter(obj => obj.y > h10 && obj.y < h40);
-		 	}
-	
-			/*- is it possible? */
-			if(measurements10_40.length < 2) {
-				/*- fallback to the first two measurements */
-				measurements10_40 = measurements.slice(0, 2);
-			}
-	
-			if(measurements10_40.length >= 2) {
-				/*- YES: determine slope of 10-40% boundary */
-				var dx, dy;
-	
-				dx = measurements10_40[measurements10_40.length - 1].x - measurements10_40[0].x;
-				dy = measurements10_40[measurements10_40.length - 1].y - measurements10_40[0].y;
-				
-				var slope = dy / dx;
-	
-				/*- find intersection with Y-axis (Q) - make up a line with (delta1_25_x) */
-				var y0 = measurements10_40[0].y - measurements10_40[0].x * slope;
-				var delta1_25_x = (1.25 * delta) / slope;
-				/* just in case */			
-				stage.taylor = {
-					t50: [],
-					t90: [],
-					update() { calc_Taylor(stage); }
-				};
-
-// logger.print(js.sf("Stage %d: delta1_25_x = %s", stage.i, delta1_25_x), { y0: y0, measurements10_40: measurements10_40, slope: slope, trendLines: trendLines});
-
-				trendLines.push({
-						/*- Q -> a */
-						initialXValue: 0, initialValue: y0,
-						finalXValue: delta1_25_x, finalValue: y0 + delta * 1.25,
-						lineColor: "red	", lineThickness: 1
-					}, {
-						/*- measurement used for slope */
-						initialXValue: measurements10_40[0].x, initialValue: measurements10_40[0].y,
-						finalXValue: measurements10_40[measurements10_40.length - 1].x, finalValue: measurements10_40[measurements10_40.length - 1].y,
-						lineColor: "red", lineThickness: 3, editable: true
-					}, {
-						/* 1.15 line */
-						initialXValue: 0, initialValue: y0,
-						finalXValue: delta1_25_x * 1.15, finalValue: y0 + delta * 1.25,
-						lineColor: "red", lineThickness: 1, dashLength: 3
-					});
-				guides.push({
-					label: "0%", position: "right",
-					value: y0, dashLength: 1,
-					lineAlpha: 0.75, inside: true
-				});
-				
-		/* find intersection with curve (B) @ 90% consolidation */
-	
-			/*- start with point on 1.15 line where Y=top of 10-40% boundary */
-				var sy1 = measurements10_40[1].y;
-				var sx1 = (sy1 - y0) / slope * 1.15;
-			/*- find position in curve (all) */
-				var minutes = sx1 * sx1;
-				var position;// = Math.floor(minutes * 2); // TODO this assumes a 30 second interval
-				for(position = 0; position < measurements.length && measurements[position].minutes < minutes; ++position) ;
-
-			/*- bail out when needed... */				
-				if(position >= measurements.length) {
-					return undefined;
-				}
-	
-			/*- find end point on 1.15 line */
-				var sy2 = measurements[position].y;
-				var sx2 = (sy2 - y0) / slope * 1.15;
-			/*- ...where line crosses (ie. dsx2 > 0)*/	
-				var dsx = sx2 - (measurements[position].x);
-				var passed = [[dsx, measurements[position], {x: sx2, y: sy2}]];
-				while(dsx > 0 && position < measurements.length - 1) {
-					position++;
-					
-					sy2 = measurements[position].y;
-					sx2 = (sy2 - y0) / slope * 1.15;					
-					
-					dsx = sx2 - (measurements[position].x);
-					passed.unshift([dsx, measurements[position], {x: sx2, y: sy2}]);
-				}
-					
-				if(passed.length == 1) {
-					passed.push(passed[0]);
-				}
-	
-							
-			/*- get intersection (B) page 24 */
-				var B = line_intersect(
-						passed[0][2].x, passed[0][2].y, passed[1][2].x, passed[1][2].y,
-						passed[0][1].x, passed[0][1].y, passed[1][1].x, passed[1][1].y
-					) || passed[0][1];
-					
-				if(B) {
-					trendLines.push({
-						initialXValue: B.x, initialValue: 0,
-						finalXValue: B.x, finalValue: B.y,
-						lineColor: "red"
-					});
-					guides.push({
-						label: "50%", position: "right",
-						value: y0 + ((B.y - y0) / 90) * 50, 
-						dashLength: 1, lineAlpha: 0.75, inside: true
-					}, {
-						label: "90%", position: "right",
-						value: B.y, dashLength: 1,
-						lineAlpha: 0.75, inside: true
-					}, {
-						label: "100%", position: "right",
-						value: y0 + ((B.y - y0) / 90) * 100, 
-						dashLength: 1, lineAlpha: 0.75, inside: true
-					}, {
-						label: "10-40%", position: "left",
-						value: h10, toValue: h40,
-						fillColor: "green", fillAlpha: 0.05,
-						lineAlpha: 0, inside: true
-					});
-				}
-					
-				/*- debug/helpers, showing which lines determine intersection */
-				trendLines.push({
-					initialXValue: sx1, initialValue: sy1,
-					finalXValue: sx2, finalValue: sy2,
-					lineColor: "blue", lineThickness: 1, dashLength: 1
-				// }, {
-				// 	initialXValue: passed[0][1].x, initialValue: 0,
-				// 	finalXValue: passed[0][1].x, finalValue: passed[0][1].y,
-				// 	lineColor: "green", _dashLength: 2, lineThickness: 2
-				// }, {
-				// 	initialXValue: passed[0][2].x, initialValue: 0,
-				// 	finalXValue: passed[0][2].x, finalValue: passed[0][2].y,
-				// 	lineColor: "orange", _dashLength: 2
-				// }, {
-				// 	initialXValue: passed[1][1].x, initialValue: 0,
-				// 	finalXValue: passed[1][1].x, finalValue: passed[1][1].y,
-				// 	lineColor: "green", _dashLength: 2, lineThickness: 2
-				// }, {
-				// 	initialXValue: passed[1][2].x, initialValue: 0,
-				// 	finalXValue: passed[1][2].x, finalValue: passed[1][2].y,
-				// 	lineColor: "orange", _dashLength: 2
-				});
-						
-			/* find intersection with curve @ 50% consolidation */
-				var xy50, y50 = y0 + ((B.y - y0) / 90) * 50;
-			/*- find position in curve (measurements) */
-				position = 0;
-				while(measurements[position].y < y50 && position < measurements.length - 1) {
-					position++;
-				}
-				if(position > 0 && position < measurements.length - 2) {
-					dx = measurements[position].x - measurements[position - 1].x;
-					dy = measurements[position].y - measurements[position - 1].y;
-					xy50 = {
-						x: measurements[position].x - (measurements[position].y - y50) * (dx / dy), 
-						y: y50
-					};
-				}
-				stage.taylor = {
-					trendLines: trendLines, guides: guides,
-					
-					min: min, max: max, delta: delta,
-					h10: h10, h40: h40,
-					
-					B: B,
-					measurements10_40: measurements10_40,
-	
-					t50: [xy50 ? 60 * (xy50.x * xy50.x) : undefined, xy50 && xy50.x, y50],
-					t90: [60 * (B.x * B.x), B.x, B.y],
-					
-					update() { calc_Taylor(stage); }
-					
-				};
-			}
-		}
-		
-		calc_Taylor(stage);
-	});
+	return GDS.setup_taylor(vars);
 }
 function setup_bjerrum(vars) {
-	return Util.setup_bjerrum(vars);
+	return GDS.setup_bjerrum(vars);
 }
 function setup_isotachen(vars) {
-	return Util.setup_isotachen(vars);
+	return GDS.setup_isotachen(vars);
 }
 function setup_koppejan(vars) { 
 	/*- initialize y attribute */
 	vars.measurements.forEach(m => {
-		m.x2 = m[Util.key_as];
-		m.y = (m.y_koppejan = m[Util.key_d]); // reset because of Taylor/CG
+		m.x2 = m[GDS.key_as];
+		m.y = (m.y_koppejan = m[GDS.key_d]); // reset because of Taylor/CG
 		m.trap = "Trap-" + m.stage;
 	});
 	
 	/*- ignore the 1st ... */
 	var measurements = vars.measurements.slice(1);
 
-	var serie2, slopes = [], x = Util.key_t, y = Util.key_d;
+	var serie2, slopes = [], x = GDS.key_t, y = GDS.key_d;
 	var slope_variant = 2;
 	var rlines = [];
 
 	// serie2 references only the (7) points where y2 are set, and will its z10, z100, z1000, z10000 values will be calculated later on (references the last measurements of each stage)
 	serie2 = vars.stages.map(stage => stage.measurements[stage.measurements.length - 1]);
-	serie2.forEach(m => m.y2 = m[Util.key_as]); // koppejan
+	serie2.forEach(m => m.y2 = m[GDS.key_as]); // koppejan
 
 	/*- determine for each stage its slope-info (rc, np) - based on measurements 
 		(which are "verschoven" already based upon previous rc/np/stage) */
@@ -1174,7 +952,7 @@ function setup_koppejan(vars) {
 				
 				var t = obj.daysT; // time in days since begin of Test (> t1)
 				// record stage_time in attribute x[stage_number] so that it can be used to plot the extrapolated stages 
-				obj['x' + (s + 3)] = (t - t1) || Util.treatZeroAs;
+				obj['x' + (s + 3)] = (t - t1) || GDS.treatZeroAs;
 				
 				// superpositiebeginsel: vz2(ta-t1) = z1(ta-t1) + z2(ta-t1).
 				obj.z1 = slope.np + slope.rc * Math.log10(t); // previous stages extrapolated
@@ -1276,7 +1054,7 @@ function setup_koppejan(vars) {
 					points[0].x, points[0].y_koppejan, points[1].x, points[1].y_koppejan, 
 					points[2].x, points[2].y_koppejan, points[3].x, points[3].y_koppejan);
 		} else {
-			serie2.forEach(m => m.y = (m.y_koppejan = m[Util.key_d])); // reset
+			serie2.forEach(m => m.y = (m.y_koppejan = m[GDS.key_d])); // reset
 			LLi_1 = log_line_intersect(
 					serie2[0].x2, serie2[0].y_koppejan, serie2[1].x2, serie2[1].y_koppejan, 
 					serie2[2].x2, serie2[2].y_koppejan, serie2[3].x2, serie2[3].y_koppejan);
@@ -1330,7 +1108,7 @@ function setup_koppejan(vars) {
 		
 		/*- calculate Cp, Cs, C, C10, ...  */
 	
-		var cp, Pg = LLi_1.sN1N2.x, sig = Util.key_as;
+		var cp, Pg = LLi_1.sN1N2.x, sig = GDS.key_as;
 		vars.stages.forEach((stage, st) => {
 			/* 1. 1/Cp = d Ev / ln( ov + dov / ov )	*/
 			stage.koppejan = slopes[st];
@@ -1357,7 +1135,7 @@ function setup_koppejan(vars) {
 }
 
 function setup_stages_2(vars, only_this_stage) {
-	return Util.setup_stages_2(vars, only_this_stage);
+	return GDS.setup_stages_2(vars, only_this_stage);
 }
 function setup_parameters(vars, headerValue) {
 	vars.categories = [{
@@ -1367,7 +1145,7 @@ function setup_parameters(vars, headerValue) {
 			{ name: "Locatie", value: headerValue("Job Location", false)  },
 			{ name: "Aantal trappen", value: vars.stages.length },
 			{ name: "Proef periode", value: js.sf("%s - %s", headerValue("Date Test Started", false), headerValue("Date Test Finished", false)) },
-			{ name: "Beproevingstemperatuur", value: headerValue("Temperatuur") || ""},
+			{ name: "Beproevingstemperatuur", value: headerValue("Sample Date") || ""},
 			{ name: "Opmerking van de proef", value: "" },
 			// { name: "Opdrachtgever", value: "" },
 			// { name: "Opdrachtnemer", value: "" },
@@ -1540,7 +1318,7 @@ function setup_parameters(vars, headerValue) {
 			var Pg = vars.koppejan.LLi_1.sN1N2.x;
 			var slopes = vars.koppejan.slopes;
 			var serie2 = vars.koppejan.serie2;
-			var sig = Util.key_st;
+			var sig = GDS.key_st;
 
 			var unload = 0, pre, post, reload = 0;
 			return slopes.map((o, index) => { 
@@ -2043,10 +1821,80 @@ function isEditableTrendLine(tl) {
 			"Isotachen", 
 			"Koppejan", 
 			"Isotachen_c"
-		]
+		],
+		setup() {
+			const vars = this.vars(["variables"]);
+			
+			setup_casagrande(vars);
+			setup_taylor(vars);
+			setup_bjerrum(vars);
+			setup_isotachen(vars);
+			setup_koppejan(vars);
+			setup_stages_2(vars);
+			setup_parameters(vars, vars.headerValue);
+		}
 	}
 }, [
 	
+    [("#reflect-overrides"), {
+    	on(evt) {
+    		var vars = this.vars(["variables"]);
+    		if(evt.overrides) {
+    			vars.overrides = evt.overrides;
+    		} else {
+    			if(!vars.overrides) return;
+    			delete vars.overrides;
+    		}
+			vars.stages.forEach(stage => stage.update("all"));
+			vars.koppejan.update();
+			vars.parameters.update();
+			this.ud("#graphs").getControls().map(c => c.render());
+    	}
+    }],
+    [("#toggle-edit-graph"), {
+    	selected: "state",
+    	state: false, 
+    	visible: false,
+    	on(evt) {
+			var vars = this.vars(["variables"]), am, node, chart;
+    		var graph = this.ud("#graphs > :visible[groupIndex=-1]"), state;
+    		var stage = evt && evt.component.vars("stage");
+
+    		am = (evt && evt.am) || graph.getNode().down(".amcharts-main-div");
+			if(stage === undefined) {
+				stage = Array.from(am.parentNode.parentNode.childNodes).indexOf(am.parentNode);
+			}
+			
+			/* get the stage being clicked */
+			chart = (graph.vars("am-" + stage) || graph.vars("am")).chart;
+
+			if(!(state = this.toggleState())) {
+				vars.editor && vars.editor.stop(true);
+				delete vars.editor;
+				this.ud("#popup-edit-graph-stage")._controls.forEach(c => c.setSelected("never"));
+				// stage = undefined;
+			} else {
+				vars.editor = new TrendLineEditor(vars, vars.stages[stage], chart, graph);
+				node = graph.getNode();
+				node.previous_scrollTop = node.scrollTop;
+				node.scrollTop = 0;
+				graph._parent.focus();
+	
+				// if(evt && !evt.am && stage !== undefined) {
+					// evt.component.print("nevering", evt);
+					// evt.component._parent._controls.forEach(c => c.setSelected(c === evt.component ? true : "never"));
+				// }
+				
+				if(stage !== undefined) {
+					this.ud("#popup-edit-graph-stage").getControls().forEach((c, i) => c.setSelected(i === stage ? true : "never"));
+				}
+			}
+			
+			var multiple = getSelectedGraph(this).multiple;
+			this.ud("#panel-edit-graph").setVisible(this.getState() && !multiple);
+    	}
+    }],
+
     [("#options"), [
         ["vcl/ui/Group", ("group_title"), {}, [
             ["vcl/ui/Element", {
@@ -2156,79 +2004,9 @@ function isEditableTrendLine(tl) {
 			]]
 		]]
     ]],
-
     [("#refresh"), {
 		vars: {
-			setup() {
-				var vars = this.up().vars("variables");
-				
-				setup_casagrande(vars);
-				setup_taylor(vars);
-				setup_bjerrum(vars);
-				setup_isotachen(vars);
-				setup_koppejan(vars);
-				setup_stages_2(vars);
-				setup_parameters(vars, vars.headerValue);
-			}
 		}
-    }],
-    [("#reflect-overrides"), {
-    	on(evt) {
-    		var vars = this.vars(["variables"]);
-    		if(evt.overrides) {
-    			vars.overrides = evt.overrides;
-    		} else {
-    			if(!vars.overrides) return;
-    			delete vars.overrides;
-    		}
-			vars.stages.forEach(stage => stage.update("all"));
-			vars.koppejan.update();
-			vars.parameters.update();
-			this.ud("#graphs").getControls().map(c => c.render());
-    	}
-    }],
-    [("#toggle-edit-graph"), {
-    	selected: "state",
-    	state: false, 
-    	visible: false,
-    	on(evt) {
-			var vars = this.vars(["variables"]), am, node, chart;
-    		var graph = this.ud("#graphs > :visible[groupIndex=-1]"), state;
-    		var stage = evt && evt.component.vars("stage");
-
-    		am = (evt && evt.am) || graph.getNode().down(".amcharts-main-div");
-			if(stage === undefined) {
-				stage = Array.from(am.parentNode.parentNode.childNodes).indexOf(am.parentNode);
-			}
-			
-			/* get the stage being clicked */
-			chart = (graph.vars("am-" + stage) || graph.vars("am")).chart;
-
-			if(!(state = this.toggleState())) {
-				vars.editor && vars.editor.stop(true);
-				delete vars.editor;
-				this.ud("#popup-edit-graph-stage")._controls.forEach(c => c.setSelected("never"));
-				// stage = undefined;
-			} else {
-				vars.editor = new TrendLineEditor(vars, vars.stages[stage], chart, graph);
-				node = graph.getNode();
-				node.previous_scrollTop = node.scrollTop;
-				node.scrollTop = 0;
-				graph._parent.focus();
-	
-				// if(evt && !evt.am && stage !== undefined) {
-					// evt.component.print("nevering", evt);
-					// evt.component._parent._controls.forEach(c => c.setSelected(c === evt.component ? true : "never"));
-				// }
-				
-				if(stage !== undefined) {
-					this.ud("#popup-edit-graph-stage").getControls().forEach((c, i) => c.setSelected(i === stage ? true : "never"));
-				}
-			}
-			
-			var multiple = getSelectedGraph(this).multiple;
-			this.ud("#panel-edit-graph").setVisible(this.getState() && !multiple);
-    	}
     }],
 
 	[("#tabs-graphs"), [

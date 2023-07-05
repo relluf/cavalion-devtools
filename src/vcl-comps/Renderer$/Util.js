@@ -1,5 +1,7 @@
 define(Util => {
 
+// TODO The name of this module should be at least be GDS-related
+
 	const locale = window.locale.prefixed("devtools:Renderer:gds:");
 	
 	const key_s = "Stage Number";
@@ -108,6 +110,348 @@ define(Util => {
 	}
 	function calc_T(d50, dA, dB, tA, tB) {
 		return Math.pow(10, ((d50 - dA) / (dB - dA)) * Math.log10(tB / tA) + Math.log10(tA));
+	}
+	
+	/* Trendline Editing */
+	const TrendLine_Mouse_Handlers = {
+		mousemove(graph, trendLine, evt) {
+			var moved = graph.vars("last-cursor-moved");
+			if(!moved) return;
+			
+			var previous = graph.vars("previous-cursor-moved");
+			graph.vars("previous-cursor-moved", moved);
+			if(!previous) return;
+			
+			var first = graph.vars("first-cursor-moved");
+			if(!first) {
+				graph.vars("first-cursor-moved", (first = previous));
+				graph.vars("first-position", [
+					trendLine.initialXValue, trendLine.initialValue,
+					trendLine.finalXValue, trendLine.finalValue
+				]);
+			}
+			
+			var pos1 = [
+				trendLine.chart.xAxes[0].coordinateToValue(moved.x),
+				trendLine.chart.yAxes[0].coordinateToValue(moved.y)
+			];
+			var pos2 = [
+				trendLine.chart.xAxes[0].coordinateToValue(previous.x),
+				trendLine.chart.yAxes[0].coordinateToValue(previous.y)
+			];
+			var pos3 = [
+				trendLine.chart.xAxes[0].coordinateToValue(first.x),
+				trendLine.chart.yAxes[0].coordinateToValue(first.y)
+			];
+			var fp = graph.vars("first-position");
+			
+			var dx = Math.log10(pos3[0] / pos1[0]);
+			var dy = pos3[1] - pos1[1];
+	
+			if(evt.shiftKey === true) {
+				trendLine.modified = true;
+				if(evt.altKey) {
+					trendLine.initialXValue = fp[0] - dx;
+					trendLine.initialValue = fp[1] - dy;
+				} else {
+					trendLine.initialXValue = pos1[0];
+					trendLine.initialValue = pos1[1];
+				}
+				trendLine.draw();
+			} else if(evt.ctrlKey === true) {
+				trendLine.modified = true;
+				if(evt.altKey) {
+					trendLine.finalXValue = fp[2] - dx;
+					trendLine.finalValue = fp[3] - dy;
+				} else {
+					trendLine.finalXValue = pos1[0];
+					trendLine.finalValue = pos1[1];
+				}
+				trendLine.draw();
+			} else {
+				graph.vars("last-cursor-moved", null);
+				graph.vars("previous-cursor-moved", null);
+				graph.vars("first-cursor-moved", null);
+			}
+			
+			if(trendLine.modified) {
+				graph.ud("#modified").setState(true);
+			}
+		},
+		mousedown(graph, trendLine, evt) {
+			
+		},
+		mouseup(graph, trendLine, evt) {
+			
+		}
+	};
+	const TrendLine_KeyUp_Handlers = {
+		Space(graph, trendLine, evt) {
+			var vars = graph.vars(["variables"]);
+			if(!vars.editor || !vars.editor.chart) return;
+			
+			var trendLines = vars.editor.chart.trendLines;
+			var selected = trendLines.selected;
+			var index = trendLines.indexOf(selected);
+			
+			if(index !== -1 && trendLines.length > 1) {
+				do {
+					if(evt.shiftKey) index--; else index++;
+					if(index < 0) index = trendLines.length - 1;
+					if(index > trendLines.length - 1) index = 0;
+				} while(!isEditableTrendLine(trendLines[index]));
+				trendLine = trendLines[index];
+			} else {
+				trendLine = trendLines.find(tl => isEditableTrendLine(tl) ? tl : null);
+			}
+	
+			if(trendLines.selected !== trendLine) {
+				if(trendLines.selected) {
+					trendLines.selected.lineThickness = 1;
+					trendLines.selected.draw();
+				}
+				if((trendLines.selected = trendLine)) {
+					trendLines.selected.lineThickness = 3;
+					trendLines.selected.draw();
+				}
+			}
+		},
+		// Escape(graph, trendLine, evt) {
+		// 	var vars = graph.vars(["variables"]);
+		// 	if(!vars.editor || !vars.editor.chart) return;
+	
+		// 	if(trendLine) {
+		// 		// ???
+		// 		var stage = vars.editor.stage, a;
+		// 		var original = stage.casagrande.trendLines[vars.editor.chart.trendLines.indexOf(trendLine)];
+		// 		js.mixIn(trendLine, original);
+		// 		trendLine.draw();
+		// 	} else {
+		// 		graph.ud("#cancel-changes").execute(evt);
+		// 	}
+		// },
+		// Enter(graph, trendLine, evt) {
+		// 	var vars = graph.vars(["variables"]);
+		// 	// if(vars.editor) {
+		// 	// 	vars.editor.stop(true);
+		// 	// 	delete vars.editor;
+		// 	// }
+		// 	graph.ud("#toggle-edit-graph").execute(evt);
+		// }
+	};
+	
+	function TrendLineEditor(vars, stage, chart, owner) {
+	
+		function click(evt) {
+			if(chart.trendLines.selected !== evt.trendLine) {
+				if(chart.trendLines.selected) {
+					chart.trendLines.selected.lineThickness = 1;
+					chart.trendLines.selected.draw();
+				}
+	
+				chart.trendLines.selected = evt.trendLine;
+				
+				evt.trendLine.lineThickness = 3;
+				evt.trendLine.draw();
+			}
+		}
+	
+		var originals = chart.trendLines.map(tl => ({
+			initialXValue: tl.initialXValue,
+			initialValue: tl.initialValue,
+			finalXValue: tl.finalXValue,
+			finalValue: tl.finalValue,
+			tl: tl
+		}));
+		var selected = chart.trendLines.selected;
+		var node = chart.node || owner.getNode().qs(".amcharts-main-div");
+	
+		this.chart = chart;
+		this.stage = stage;
+		this.owner = owner;
+		this.stop = function(persist) {
+			var modified = false, points = [];
+			if(persist) {
+				if(owner._name === "graph_Isotachen_c") {
+					chart.trendLines.forEach((tl, index) => {
+						var type = "DEF";
+						if(tl && tl.modified) {
+							modified = true;
+							tl.lineThickness = 1;
+							tl.draw();
+				
+							var line = {
+								initialXValue: tl.initialXValue,
+								initialValue: tl.initialValue,
+								finalXValue: tl.finalXValue,
+								finalValue: tl.finalValue
+							};
+					
+							js.set(js.sf("overrides.isotachen.stage%d.lines.%s", stage.i, type), line, vars);
+						}
+					});
+					if(modified) {
+						stage.isotachen.update();
+					}
+				} else if(owner._name === "graph_Casagrande") {
+					chart.trendLines.forEach((tl, index) => {
+						var type = index === 0 ? "AB" : "DEF";
+						if(tl && tl.modified) {
+							modified = true;
+							tl.lineThickness = 1;
+							tl.draw();
+				
+							var line = {
+								initialXValue: tl.initialXValue,
+								initialValue: tl.initialValue,
+								finalXValue: tl.finalXValue,
+								finalValue: tl.finalValue
+							};
+					
+							js.set(js.sf("overrides.casagrande.stage%d.lines.%s", stage.i, type), line, vars);
+						}
+					});
+					if(modified) {
+						stage.casagrande.update();
+					}
+				} else if(owner._name === "graph_Taylor") {
+					chart.trendLines.forEach((tl, index) => {
+						var type = "Qq"; // lineaire fit
+						if(tl && tl.modified) {
+							modified = true;
+							tl.lineThickness = 1;
+							tl.draw();
+				
+							var line = {
+								initialXValue: tl.initialXValue,
+								initialValue: tl.initialValue,
+								finalXValue: tl.finalXValue,
+								finalValue: tl.finalValue 
+							};
+					
+							js.set(js.sf("overrides.taylor.stage%d.lines.%s", stage.i, type), line, vars);
+						}
+					});
+					if(modified) {
+						stage.taylor.update();
+					}
+				} else if(owner._name === "graph_Koppejan") {
+					chart.trendLines.filter(tl => tl.editable).forEach((tl, index) => {
+						if(tl) {
+							modified = true;
+							tl.lineThickness = 1;
+							tl.draw();
+							points.push(
+								{ x: tl.initialXValue, y: tl.initialValue },
+								{ x: tl.finalXValue, y: tl.finalValue });
+						}
+					});
+					js.set("overrides.koppejan.points_pg", points, vars);
+					vars.koppejan.update();
+				} else {
+					var name = owner._name.substring("graph_".length).toLowerCase();
+					if(["bjerrum_e", "bjerrum_r", "isotachen"].indexOf(name) !== -1) {
+						chart.trendLines.filter(tl => tl.editable).forEach((tl, index) => {
+							if(tl) {
+								modified = true;
+								tl.lineThickness = 1;
+								tl.draw();
+								points.push(
+									{ x: tl.initialXValue, y: tl.initialValue },
+									{ x: tl.finalXValue, y: tl.finalValue });
+							}
+						});
+						js.set(js.sf("overrides.%s.points_pg", name), points, vars);
+						if(modified) {
+							stage.update(name); // FIXME stage(0).updates
+						}
+					}
+				}
+				if(modified) {
+					vars.parameters.update();
+					owner.setState("invalidated", true);
+				}
+			} else {
+				originals.forEach(original => {
+					js.mixIn(original.tl, original);
+					delete original.tl.tl;
+					original.tl.draw();
+				});
+			}
+	
+			delete chart.trendLines.selected;
+			node.classList.remove("editing");
+			
+			// owner.ud("#editing").setState(false);
+			owner.print("stop - TrendLineEditor", modified ? vars : "no changes");
+		};
+		this.handle = function(evt) {
+			var vars = owner.getParent().vars(), h, r;
+			var trendLine = chart.trendLines.selected;
+			
+			if(!trendLine) {
+				if(evt.type === "keyup") {
+					h = TrendLine_KeyUp_Handlers[evt.code];
+				}
+			} else if(evt.type === "click") {
+				if(chart.trendLines.selected) {
+					chart.trendLines.selected.lineThickness = 1;
+					chart.trendLines.selected.draw();
+					delete chart.trendLines.selected;
+				}
+			} else if(evt.type === "keyup") {
+				h = TrendLine_KeyUp_Handlers[evt.code];
+			} else if(evt.type.startsWith("mouse")) {
+				h = TrendLine_Mouse_Handlers[evt.type];
+				// graph.print(evt.type, {trendLine: trendLine, evt: evt, chart: trendLine.chart}); 
+			}
+			
+			if(h) {
+				r = h(owner, trendLine, evt);
+				if(trendLine && r !== false) trendLine.draw();
+			}
+		
+			return r;
+		};
+	
+		chart.trendLines.filter(tl => isEditableTrendLine(tl)).forEach(tl => {
+			if(!tl.hooked) {
+				tl.hooked = true;
+				tl.addListener("click", click);
+			}
+			tl.lineThickness = 1;
+			tl.draw();
+			delete tl.modified; 
+		});
+		node.classList.add("editing");
+		vars.editing = node;
+		
+		owner.print("start - TrendLineEditor");
+	}
+	function handleTrendLineEvent(graph, trendLine, evt) {
+		var vars = graph._parent.vars(), h, r;
+		
+		if(!trendLine) {
+			if(evt.type === "keyup") {
+				h = TrendLine_KeyUp_Handlers[evt.code];
+			}
+		} else if(evt.type === "keyup") {
+			h = TrendLine_KeyUp_Handlers[evt.code];
+		} else if(evt.type.startsWith("mouse")) {
+			h = TrendLine_Mouse_Handlers[evt.type];
+		}
+		
+		if(h) {
+			r = h(graph, trendLine, evt);
+			if(trendLine && r !== false) trendLine.draw();
+		}
+	
+		return r;
+	}
+	function cursorMoved(evt) { this.vars("last-cursor-moved", evt); }
+	function isEditableTrendLine(tl) {
+		return tl.editable;
+		// return tl.dashLength === 0 && (tl.lineColor == "red" || tl.lineColor === "green");
 	}
 
 	const parseValue = (value) => typeof value === "string" && value !== "" ? isNaN(value = value.replace(",", ".")) ? value : parseFloat(value) : value;
@@ -230,7 +574,7 @@ function calc_dH(vars, stage) {
 		vars.dH = calc_dH(vars);
 	/*- initial vars */
 		vars.Hi = vars.H;
-		vars.Vi = vars.V;
+		vars.Vi = vars.V / 1000;
 		vars.Ai = vars.A;
 		vars.yi = vars.y;
 		vars.ydi = vars.yd;
@@ -239,7 +583,7 @@ function calc_dH(vars, stage) {
 		vars.Sri = vars.Sr;
 	/*- final vars */
 		vars.Hf = vars.H - vars.dH;
-		vars.Vf = Math.PI * (vars.D/2) * (vars.D/2) * vars.Hf;
+		vars.Vf = Math.PI * (vars.D/2) * (vars.D/2) * vars.Hf / 1000;
 		vars.yf = vars.mf / (Math.PI / 4 * vars.D * vars.D * vars.Hf) * vars.G;
 		vars.ydf = vars.mdf / (Math.PI / 4 * vars.D * vars.D * vars.Hf) * vars.G;
 		vars.pdf = vars.ydf / (vars.G/1000);
@@ -690,6 +1034,222 @@ function calc_dH(vars, stage) {
 		});
 	};
 
+	function setup_taylor(vars) {
+		/*- setup for Taylor-minutes */
+	
+		vars.stages.forEach(stage => {
+			var measurements = stage.measurements.slice(0);
+			var last = measurements[measurements.length - 1];
+			var calc_dH = Util.valueOf(measurements[1], "Axial Displacement 2") === 0; // TODO
+			// var yZ = last.y;
+			
+			measurements.forEach(mt => { 
+				mt.x = mt.minutes_sqrt;
+				if(!calc_dH) {
+					mt.y = (mt.y_taylor = mt.z * 1000); 
+				} else {
+					/* 7.2.1 If the vertical displacement during consolidation, ∆Ηc is not measured, it shall be calculated. The equation is:
+					
+					∆Hc = 1/3 * ∆Vc/Vi * Hi may be used, where
+					
+						- ∆Vc is the volume change at end of consolidation;
+						- Vi is the initial volume of specimen;
+						- Hi is the initial height of specimen. 
+					*/
+					mt.y = mt.y_taylor = (Util.valueOf(mt, "Volume Change") * -1/1000 * vars.Vi * vars.Hi) / 3;
+				}
+			});
+			
+			var min, max, delta;
+			/* determine boundaries Y (min-max) */
+			measurements.forEach(mt => {
+				if(min === undefined || min > mt.y) min = mt.y;
+				if(max === undefined || max < mt.y) max = mt.y;
+			});
+			delta = max - min;
+	
+			/* 10-40% boundaries */
+			var h10 = min + 0.1 * delta;
+			var h40 = min + 0.4 * delta;
+	
+			function calc_Taylor(stage) {
+	
+				var guides = [], trendLines = [];
+				var measurements10_40, line;
+				if((line = js.get(js.sf("overrides.taylor.stage%d.lines.Qq", stage.i), vars))) {
+					/* adjust based on overrides */
+					measurements10_40 = [{
+						x: line.initialXValue,
+						y: line.initialValue
+					}, {
+						x: line.finalXValue,
+						y: line.finalValue
+					}];
+			 	} else {
+					/*- filter measurements within 10-40% boundary */
+			 		measurements10_40 = measurements.filter(obj => obj.y > h10 && obj.y < h40);
+			 	}
+		
+				/*- is it possible? */
+				if(measurements10_40.length < 2) {
+					/*- fallback to the first two measurements */
+					measurements10_40 = measurements.slice(0, 2);
+				}
+		
+				if(measurements10_40.length >= 2) {
+					/*- YES: determine slope of 10-40% boundary */
+					var dx, dy;
+		
+					dx = measurements10_40[measurements10_40.length - 1].x - measurements10_40[0].x;
+					dy = measurements10_40[measurements10_40.length - 1].y - measurements10_40[0].y;
+					
+					var slope = dy / dx;
+		
+					/*- find intersection with Y-axis (Q) - make up a line with (delta1_25_x) */
+					var y0 = measurements10_40[0].y - measurements10_40[0].x * slope;
+					var delta1_25_x = (1.25 * delta) / slope;
+					/* just in case */			
+					stage.taylor = {
+						t50: [],
+						t90: [],
+						update() { calc_Taylor(stage); }
+					};
+	
+	// logger.print(js.sf("Stage %d: delta1_25_x = %s", stage.i, delta1_25_x), { y0: y0, measurements10_40: measurements10_40, slope: slope, trendLines: trendLines});
+	
+					trendLines.push({
+							/*- Q -> a */
+							initialXValue: 0, initialValue: y0,
+							finalXValue: delta1_25_x, finalValue: y0 + delta * 1.25,
+							lineColor: "red	", lineThickness: 1
+						}, {
+							/*- measurement used for slope */
+							initialXValue: measurements10_40[0].x, initialValue: measurements10_40[0].y,
+							finalXValue: measurements10_40[measurements10_40.length - 1].x, finalValue: measurements10_40[measurements10_40.length - 1].y,
+							lineColor: "red", lineThickness: 3, editable: true
+						}, {
+							/* 1.15 line */
+							initialXValue: 0, initialValue: y0,
+							finalXValue: delta1_25_x * 1.15, finalValue: y0 + delta * 1.25,
+							lineColor: "red", lineThickness: 1, dashLength: 3
+						});
+					guides.push({
+						label: "0%", position: "right",
+						value: y0, dashLength: 1,
+						lineAlpha: 0.75, inside: true
+					});
+					
+			/* find intersection with curve (B) @ 90% consolidation */
+		
+				/*- start with point on 1.15 line where Y=top of 10-40% boundary */
+					var sy1 = measurements10_40[1].y;
+					var sx1 = (sy1 - y0) / slope * 1.15;
+				/*- find position in curve (all) */
+					var minutes = sx1 * sx1;
+					var position;// = Math.floor(minutes * 2); // TODO this assumes a 30 second interval
+					for(position = 0; position < measurements.length && measurements[position].minutes < minutes; ++position) ;
+	
+				/*- bail out when needed... */				
+					if(position >= measurements.length) {
+						return undefined;
+					}
+		
+				/*- find end point on 1.15 line */
+					var sy2 = measurements[position].y;
+					var sx2 = (sy2 - y0) / slope * 1.15;
+				/*- ...where line crosses (ie. dsx2 > 0)*/	
+					var dsx = sx2 - (measurements[position].x);
+					var passed = [[dsx, measurements[position], {x: sx2, y: sy2}]];
+					while(dsx > 0 && position < measurements.length - 1) {
+						position++;
+						
+						sy2 = measurements[position].y;
+						sx2 = (sy2 - y0) / slope * 1.15;					
+						
+						dsx = sx2 - (measurements[position].x);
+						passed.unshift([dsx, measurements[position], {x: sx2, y: sy2}]);
+					}
+						
+					if(passed.length == 1) {
+						passed.push(passed[0]);
+					}
+		
+								
+				/*- get intersection (B) page 24 */
+					var B = line_intersect(
+							passed[0][2].x, passed[0][2].y, passed[1][2].x, passed[1][2].y,
+							passed[0][1].x, passed[0][1].y, passed[1][1].x, passed[1][1].y
+						) || passed[0][1];
+						
+					if(B) {
+						trendLines.push({
+							initialXValue: B.x, initialValue: 0,
+							finalXValue: B.x, finalValue: B.y,
+							lineColor: "red"
+						});
+						guides.push({
+							label: "50%", position: "right",
+							value: y0 + ((B.y - y0) / 90) * 50, 
+							dashLength: 1, lineAlpha: 0.75, inside: true
+						}, {
+							label: "90%", position: "right",
+							value: B.y, dashLength: 1,
+							lineAlpha: 0.75, inside: true
+						}, {
+							label: "100%", position: "right",
+							value: y0 + ((B.y - y0) / 90) * 100, 
+							dashLength: 1, lineAlpha: 0.75, inside: true
+						}, {
+							label: "10-40%", position: "left",
+							value: h10, toValue: h40,
+							fillColor: "green", fillAlpha: 0.05,
+							lineAlpha: 0, inside: true
+						});
+					}
+						
+					/*- debug/helpers, showing which lines determine intersection */
+					trendLines.push({
+						initialXValue: sx1, initialValue: sy1,
+						finalXValue: sx2, finalValue: sy2,
+						lineColor: "blue", lineThickness: 1, dashLength: 1
+					});
+							
+				/* find intersection with curve @ 50% consolidation */
+					var xy50, y50 = y0 + ((B.y - y0) / 90) * 50;
+				/*- find position in curve (measurements) */
+					position = 0;
+					while(measurements[position].y < y50 && position < measurements.length - 1) {
+						position++;
+					}
+					if(position > 0 && position < measurements.length - 2) {
+						dx = measurements[position].x - measurements[position - 1].x;
+						dy = measurements[position].y - measurements[position - 1].y;
+						xy50 = {
+							x: measurements[position].x - (measurements[position].y - y50) * (dx / dy), 
+							y: y50
+						};
+					}
+					stage.taylor = {
+						trendLines: trendLines, guides: guides,
+						
+						min: min, max: max, delta: delta,
+						h10: h10, h40: h40,
+						
+						B: B,
+						measurements10_40: measurements10_40,
+		
+						t50: [xy50 ? 60 * (xy50.x * xy50.x) : undefined, xy50 && xy50.x, y50],
+						t90: [60 * (B.x * B.x), B.x, B.y],
+						
+						update() { calc_Taylor(stage); }
+						
+					};
+				}
+			}
+			
+			calc_Taylor(stage);
+		});
+	}
 	function setup_bjerrum(vars) {
 		// everything is already setup except for poriengetal (e)
 	
@@ -844,12 +1404,23 @@ function calc_dH(vars, stage) {
 		valueOf: valueOf,
 		rateOfStrain: rateOfStrain,
 
+		line_intersect: line_intersect,
+		log_line_intersect: log_line_intersect,
+		log_line_calc: log_line_calc,
+		calc_derivatives: calc_derivatives,
+		calc_T: calc_T,
+		
+		TrendLine_cursorMoved: cursorMoved, // TODO
+		TrendLine_Mouse_Handlers: TrendLine_Mouse_Handlers,
+		TrendLine_KeyUp_Handlers: TrendLine_KeyUp_Handlers,
+
 		setup_measurements_1: setup_measurements_1,
 		setup_variables_1: setup_variables_1,
 		setup_measurements_2: setup_measurements_2,
 		setup_stages_1: setup_stages_1,
 		setup_stages_2: setup_stages_2,
 		
+		setup_taylor: setup_taylor,
 		setup_bjerrum: setup_bjerrum,
 		setup_isotachen: setup_isotachen
 	});

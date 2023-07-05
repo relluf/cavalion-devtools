@@ -2,7 +2,6 @@
 
 define("devtools/Renderer<gds>.parseValue", () => (value) => isNaN(value.replace(",", ".")) ? value : parseFloat(value.replace(",", ".")));
 
-
 /*-
 	* `#VA-20201218-3` Main issue
 	* `#VA-20210816-1` Deduce/copy Axial Stress from Stress Target
@@ -137,7 +136,7 @@ var logger;
 			Util.setup_measurements_2(vars);
 			Util.setup_stages_1(vars);
 			
-			this.applyVar("setup"); // calls vars.on if it exists
+			this.applyVar("setup", [], true); // no args, fallback to owner
 			
 			this.udr("#array-measurements").setArray(vars.measurements);
 			this.udr("#array-variables").setArray(vars.headers.concat(vars.parameters));

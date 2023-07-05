@@ -1,4 +1,4 @@
-"use ./Util, locale!./locales/nl, vcl/ui/Button, vcl/ui/Tab, papaparse/papaparse, amcharts, amcharts.serial, amcharts.xy, lib/node_modules/regression/dist/regression, ";
+"use ./Util, locale!./locales/nl, vcl/ui/Button, vcl/ui/Tab, papaparse/papaparse, amcharts, amcharts.serial, amcharts.xy, lib/node_modules/regression/dist/regression, vcl/ui/Node-closeable";
 
 window.locale.loc = 'nl'; // TODO
 
@@ -13,6 +13,9 @@ const Control = require("vcl/Control");
 const locale = window.locale.prefixed("devtools:Renderer:gds:");
 
 /* Setup (must be called in same order) */
+function setup_taylor(vars) {
+	return GDS.setup_taylor(vars);
+}
 function setup_stages(vars, sacosh) {
 	/*- find highest "B Value"
 	
@@ -31,24 +34,18 @@ function setup_stages(vars, sacosh) {
 		return r;
 	};
 
-	vars.stages.map(stage => {
-		stage.dH = (() => {
-			var ms = stage.measurements;
-			var min = ms[0].z;
-			var max = ms.length ? ms[ms.length - 1].z : undefined;
+	vars.stages.forEach(stage => {
+		var N = stage.measurements.length - 1;
+		// stage.dH = (() => {
+		// 	var min = GDS.valueOf(stage.measurements[0], "Axial Displacement");
+		// 	var max = N ? GDS.valueOf(stage.measurements[N - 1], "Axial Displacement") : undefined;
 		
-			return max === undefined ? 0 : max - min;
-		})();
-		stage.dV = GDS.valueOf(stage.measurements[stage.measurements.length - 1], "Volume Change") * -1;
+		// 	return max === undefined ? 0 : max - min;
+		// })();
+		stage.dH = GDS.valueOf(stage.measurements[N], "Axial Displacement");
+		stage.dV = GDS.valueOf(stage.measurements[N], "Volume Change") * -1;
 		stage.ui = GDS.valueOf(stage.measurements[0], "Pore Pressure");
-		stage.uf = GDS.valueOf(stage.measurements[stage.measurements.length - 1], "Pore Pressure");
-		// stage.measurements.map((measurement, index, arr) => {
-		// 	const value = GDS.valueOf(measurement, "B Value");
-		// 	if(stage.b === undefined || stage['B Value'] < value) {
-		// 		stage.b = measurement;
-		// 		stage['B Value'] = value;
-		// 	}
-		// });
+		stage.uf = GDS.valueOf(stage.measurements[N], "Pore Pressure");
 		stage.b = maxOf(stage, "B Value");
 		stage["B Value"] = stage.b["B Value"];
 	});
@@ -70,6 +67,7 @@ function setup_stages(vars, sacosh) {
 
 	});
 	js.mi((vars.stages.CO), {
+		type: sacosh.type,
 		o_3: (() => {
 			/*- Effectieve celdruk: σ'3 = σc - ub
 	
@@ -93,8 +91,10 @@ function setup_stages(vars, sacosh) {
 			
 			// console.log(js.sf("o_3: %s === %s", oc - ub, r));
 			
-			return oc- ub;
-		})(),
+			return oc - ub;
+		})()
+	});
+	js.mi((vars.stages.CO), {
 		o_1: (() => {
 			/*-	σ'1= σ'3 + q
 			
@@ -107,7 +107,8 @@ function setup_stages(vars, sacosh) {
 			var ms = st.measurements;
 			var mt = ms[ms.length - 1];
 			
-			return GDS.valueOf(mt, "Eff. Radial Stress") + GDS.valueOf(mt, "Deviator Stress");
+			// return GDS.valueOf(mt, "Eff. Radial Stress") + GDS.valueOf(mt, "Deviator Stress");
+			return st.o_3 + GDS.valueOf(mt, "Deviator Stress");
 		})(),
 		V: (() => {
 			/*- Vc = V0 - ΔVc
@@ -137,6 +138,11 @@ function setup_stages(vars, sacosh) {
 				-t90: time to 90% primary consolidation (s)
 				-fT: temperature correction factor."
 			*/
+			var stage = vars.stages.SH;
+			var L = 0.5 * stage.Hi; 
+			var fT = 1, cf = 0.848;
+			var t = stage.taylor.t90[0];
+			return t !== undefined ? cf * (L*L / (1000*1000)) * fT / t : t;
 		})(),
 	});
 	js.mi((vars.stages.CO), {
@@ -159,7 +165,6 @@ function setup_stages(vars, sacosh) {
 				ui: poriënwaterspanning bij begin van consolidatie (kPa)
 				uf: poriënwaterspanning bij eind van consolidatiefase (kPa)
 			*/
-			
 			var st = vars.stages.CO;
 			return (st.dV / vars.V) / (st.ui - st.uf) * 1000;
 		})(),
@@ -257,7 +262,6 @@ function setup_stages(vars, sacosh) {
 		
 		return r;
 	};
-
 	js.mi((vars.stages.SH), {
 		// Mohr-Coulomb Parameters bij Max Deviatorspanning
 		// max q -	Called from calculation section, field "Axial Strain (%)", corresponding to max corrected deviator stress
@@ -286,15 +290,13 @@ function setup_measurements(vars) {
 	const O = 2 * Math.PI * r;
 	
 	vars.stages.forEach(stage => stage.measurements.map((mt, index, arr) => {
-		
 		mt.ROS = GDS.rateOfStrain(arr, index);
-
 		mt.txVC = GDS.valueOf(mt, "Volume Change") * -1;
 		mt.txPWPR = GDS.valueOf(mt, "PWP Ratio");
 		mt.txDS = GDS.valueOf(mt, "Deviator Stress"); //qs_r
-		mt.txWO = GDS.valueOf(mt, "Excess PWP");
+		mt.txWO = GDS.valueOf(mt, "Pore Pressure") - GDS.valueOf(arr[0], "Pore Pressure");
 		mt.txEHSR = GDS.valueOf(mt, "Eff. Stress Ratio");
-		if(mt.txEHSR < (vars.txEHSR_max || 20) && mt.txEHSR >= 0) {
+		if(mt.txEHSR < (vars.txEHSR_max || 20) && mt.txEHSR >= (vars.txEHSR_min || 0)) {
 			mt.txEHSR_clipped = mt.txEHSR;
 		}
 		mt.txSS = GDS.valueOf(mt, "Eff. Cambridge p'");
@@ -462,6 +464,30 @@ to look whether or not the pressures are maintained.  */
 				return (mt.o_1 - mt.o_3) / 2;
 			})();
 
+			mt.mc_x = GDS.valueOf(mt, "Axial Stress");
+			mt.mc_y = (() => {
+				var N = arr.length - 1, mt0 = arr[0], mtN = arr[N];
+				var s = mt0.ens_s_, t = mt0.ss_t;
+				var radians = (GDS.valueOf(mt, "Axial Stress") / GDS.valueOf(mtN, "Axial Stress")) * 360 * Math.PI / 180;
+				
+				return t * Math.sin(radians);
+			})();
+/*-
+
+for (var angle = 0; angle <= 360; angle += 5) {
+  var radians = angle * Math.PI / 180;
+  var x = 30 + 30 * Math.cos(radians); // Circle center x = 30, radius = 30
+  var y = 30 * Math.sin(radians); // Circle center y = 0, radius = 30
+
+  // Add the point to the dataset
+  data.push({
+    x: x,
+    y: y
+  });
+}
+
+*/
+				
 		}
 	}));
 }
@@ -528,19 +554,25 @@ function setup_parameters(vars) {
 	}
 
 /*-	E15: S0 = (w0 * ρs) / (e0 * ρs) */
-	vars.Sri = (vars.wi * vars.ps) / (vars.e0 * vars.ps);
+	vars.Sri = (vars.wi * vars.ps) / (vars.e0 * vars.pw);
+	// S0 = (w0 * ρs) / (e0 * ρs)
+		// -S0: degree of saturation (%)
+		// -w0= initial water content (%)
+		// -ρs= particle density (Mg/m3)
+		// -ρw= water density at test temperature (Mg/m3)
 	
 /*-	E20 wf (%) = ( mf;nat - m0;droog) / m0;droog * 100 % */
 	if(isNaN(vars.wf)) {
 		vars.wf = (vars.mf - vars.mdi) / vars.mdi * 100;
 	}
 
-/*- E21 ρf;nat = mf;nat / (π/4 * D02 * H0 - ΔVc - ΔV) * 1000 * 1000 */
+/*- E21 ρf;nat = mf;nat / (π/4 * D0^2 * H0 - ΔVc - ΔV) * 1000 * 1000 (corrected) */
 	if(isNaN(vars.pf)) {
-		vars.pf = vars.mf / (Math.PI / 4 * vars.D * vars.D * vars.H + vars.stages.CO.dV) * 1000;
+		vars.pf = vars.mf / (Math.PI / 4 * vars.D * vars.D * vars.H - vars.stages.CO.dV - vars.stages.SH.dV * 0) * 1000;
 	}
+/*- E22 ρf;droog = m0;droog / (π/4 * D02 * H0) * 1000 * 1000 */
 	if(isNaN(vars.pdf)) {
-		vars.pdf = vars.mdi / (Math.PI / 4 * vars.D * vars.D * vars.H + vars.stages.CO.dV) * 1000;
+		vars.pdf = vars.mdi / (Math.PI / 4 * vars.D * vars.D * vars.H + vars.stages.CO.dV + vars.stages.SH.dV * 0) * 1000;
 	}
 	
 	const meas_b = (st, name) => GDS.valueOf(vars.stages[st].b, name);
@@ -626,20 +658,23 @@ function setup_parameters(vars) {
 			["poreWaterOverpressure", () => meas_0("CO", "Pore Pressure") - meas_0("CO", "Back Pressure")],
 			["finalPoreWaterPressure", () => meas_N("CO", "Pore Pressure")],
 			["consolidatedVolume"],
+			["volumetricStrain"],
 			["consolidatedHeight"],
 			["consolidatedArea"],
-			["volumetricStrain"],
 			["volumeCompressibility"],
 			["consolidationCoefficient"],
 			["verticalStrain"],
 			["effectiveVerticalStress"],
 			["k0AfterConsolidation"],
-			["consolidationType", () => "TODO"],
+			["consolidationType", () => vars.stages.CO.type]
 		]),
 		category(("ShearPhase"), [
 			["cellPressure", () => meas_0("SH", "Radial Pressure")],
 			["poreWaterPressure", () => meas_0("SH", "Pore Pressure")],
-			["strainRate"]
+			["strainRate", () => {
+				var mts = vars.stages.SH.measurements;
+				return mts.reduce((t, mt) => t += mt.ROS, 0) / mts.length;
+			}]
 			// ["maxDeviatorStress"],
 			// ["maxPrincipalStressRatio"],
 			// ["axialStrain2%"],
@@ -1024,8 +1059,6 @@ const handlers = {
 						
 					this.print("overrides", vars.overrides);
 				}
-
-
 			}, 250);
 		}
 	},
@@ -1080,9 +1113,10 @@ const handlers = {
 			}
 		}
 	},
+
 	"#graph_VolumeChange onRender" () {
 	    var vars = this.vars(["variables"]) || { stages: [] };
-	    var selected = [vars.stages.length - 1];
+	    var selected = [vars.stages.CO.i + 1];
 	
 	    renderChart.call(this, vars, 
 	    	locale("Graph:VolumeChange.title.stage-F"), 
@@ -1091,7 +1125,7 @@ const handlers = {
 	},
 	"#graph_PorePressureDissipation onRender" () {
 	    var vars = this.vars(["variables"]) || { stages: [] };
-	    var selected = [2];
+	    var selected = [vars.stages.SA.i + 1];
 	
 	    renderChart.call(this, vars, 
 	    	locale("Graph:PorePressureDissipation.title.stage-F"), 
@@ -1100,7 +1134,7 @@ const handlers = {
 	}, 
 	"#graph_DeviatorStress onRender"() {
 	    var vars = this.vars(["variables"]) || { stages: [] };
-	    var selected = [vars.stages.length];
+	    var selected = [vars.stages.SH.i + 1];
 	
 	    renderChart.call(this, vars, 
 	    	locale("Graph:DeviatorStress.title.stage-F"), 
@@ -1109,16 +1143,16 @@ const handlers = {
 	},
 	"#graph_WaterOverpressure onRender"() {
 	    var vars = this.vars(["variables"]) || { stages: [] };
-	    var selected = [vars.stages.length - 1];
+	    var selected = [vars.stages.SH.i + 1];
 	
 	    renderChart.call(this, vars, 
 	    	locale("Graph:WaterOverpressure.title.stage-F"), 
 	    	locale("Graph:WaterOverpressure.title.stage-F"), 
-	    	"txWO", "Axial Strain (%)", selected);
+	    	"txWO", "Axial Strain (%)", selected, false, false);
 	},
 	"#graph_EffectiveHighStressRatio onRender"() {
 	    var vars = this.vars(["variables"]) || { stages: [] };
-	    var selected = [vars.stages.length];
+	    var selected = [vars.stages.SH.i + 1];
 	    
 	    renderChart.call(this, vars, 
 	    	locale("Graph:EffectiveHighStressRatio.title.stage-F"), 
@@ -1127,7 +1161,7 @@ const handlers = {
 	},
 	"#graph_DeviatorStressQ onRender"() {
 	    var vars = this.vars(["variables"]) || { stages: [] };
-	    var selected = [vars.stages.length];
+	    var selected = [vars.stages.SH.i + 1];
 	
 	    renderChart.call(this, vars, 
 	    	locale("Graph:DeviatorStressQ.title.stage-F"), 
@@ -1136,13 +1170,63 @@ const handlers = {
 	},
 	"#graph_ShearStress onRender"() {
 	    var vars = this.vars(["variables"]) || { stages: [] };
-	    var selected = [vars.stages.length];
+	    var selected = [vars.stages.SH.i + 1];
 	
 	    renderChart.call(this, vars, 
 	    	locale("Graph:ShearStress.title.stage-F"), 
 	    	locale("Graph:ShearStress.title.stage-F"), 
-	    	"ens_s_", "ss_t", selected, false, false);
+	    	"mc_x", "mc_y", selected, false, false);
 	    	// "txDS", "txSS", selected, false, false);
+	},
+
+	"#graph_Taylor cursor-moved": GDS.TrendLine_cursorMoved,
+	"#graph_Taylor onRender"() {
+		this.setTimeout("render", () => {
+			var vars = this.vars(["variables"]) || { stages: [] };
+			var selected = [vars.stages.CO.i + 1];// || [4];
+	
+			/*- reset */
+			var content = [], st;
+			for(st = 0; st < vars.stages.length; ++st) {
+				content.push(js.sf("<div>Stage %s</div>", st));
+			}
+			this._node.innerHTML = content.join("");
+			
+			this.vars("rendering", true);
+			var render = () => {
+				var stage = vars.stages[st];
+			    var series = [{
+					title: js.sf("Zetting trap %s [µm]", st + 1),
+					valueAxis: "y1", valueField: "y_taylor",
+					categoryField: "minutes_sqrt"
+				}];
+		
+				this.vars("am", { series: series, stage: stage, data: stage.measurements });
+				this.vars("am-" + st, this.vars("am"));
+				makeChart(this, {
+					immediate: true,
+					legend: false,
+					node: this.getChildNode(st),
+					trendLines: GDS.cp(stage.taylor.trendLines || []),
+				    valueAxes: [{
+				        id: "y1", position: "left", reversed: true,
+						guides: GDS.cp(stage.taylor.guides || [])
+					}, {
+						title: js.sf("Trap %s: zetting [µm] / tijd [√ minuten] → ", st + 1),
+						position: "bottom"
+					}]
+				});
+		
+				if(++st < vars.stages.length) { 
+					this.nextTick(render); 
+				} else {
+					selected.forEach(selected => this.getChildNode(selected - 1).classList.add("selected"));
+					this.vars("rendering", false);
+				}
+			};
+	
+			st = 0; vars.stages.length && render();
+		}, 125);
 	}
 };
 
@@ -1156,12 +1240,68 @@ const handlers = {
 			"DeviatorStress",
 			"WaterOverpressure",
 			"EffectiveHighStressRatio",
-			"DeviatorStressQ",
-			"ShearStress"
-		]
+			"ShearStress",
+			"DeviatorStressQ"
+		],
+		setup() {
+			const vars = this.vars(["variables"]), n = vars.stages.length;
+			const sacosh = {SA: n - 3, CO: n - 2, SH: n - 1};
+
+			["Kfp", "Pfp", "tm", "Em", "Evk", "alpha", "beta", "txEHSR_min", "txEHSR_max"]
+				.forEach(key => {
+					vars[key] = parseFloat(this.ud("#input-" + key).getValue())
+				});
+				
+
+			if(!Object.keys(sacosh).every(k => {
+				if(isNaN(sacosh[k] = parseInt(this.ud("#select-stage-" + k).getValue(), 10))) {
+
+					vars.parameters = [];
+					vars.categories = [];
+					
+					this.print("cleared parameters & categories");
+
+					return false;
+				}
+				return true;
+			})) return this.ud("#bar-user-inputs").render();
+			
+			sacosh.type = this.ud("#select-stage-CO-type").getValue();
+			
+			setup_taylor(vars);
+			setup_stages(vars, sacosh);
+			setup_measurements(vars);
+			setup_parameters(vars);
+		}
 	}
 }, [
-	["vcl/Action", ("generate_here"), {
+    ["vcl/Action", ("refresh-select-samples"), {
+    	on() { // TODO implement devtools/Workspace<>-environment as well :-p
+    		let node = this.up("vcl/ui/Node-closeable");
+			let sel = this.up("vcl/ui/Node-closeable").up()
+					.qsa("vcl/ui/Node-closeable")
+					.filter(n => n.vars("instance"))
+					.map(n => ({ n: n, d: n.vars("instance") }))
+					.filter((o, i, a) => o.d.getAttributeValue && (a.map(o => o.d).indexOf(o.d) === i))
+					.filter(o => o.d.getAttributeValue && (
+						o.d.getAttributeValue("naam") || "")
+						.toLowerCase().endsWith(".gds")
+					);
+
+			for(let i = 1; i <= 3; ++i) {
+				let select = this._owner.qs("#select-sample-" + i);
+				select.setOptions(sel.map(o => ({ 
+					// value: o.d.getAttributeValue("id"), 
+					content: o.d.getAttributeValue("naam"),
+					value: o.n.hashCode()
+				})));
+				if(sel.length >= i) {
+					select.setValue(sel[i - 1].n.hashCode());
+				}
+			}
+    	}
+    }],
+	["vcl/Action", ("report-generate"), {
         content: locale("-/Generate"),
     	on(evt) {
 			const refresh = (node) => { // HACKER-THE-HACK but seems to work nicely
@@ -1236,7 +1376,7 @@ const handlers = {
         ["vcl/ui/Group", ("group_buttons"), {
             css: "padding-top:8px;"
         }, [
-            ["vcl/ui/Button", ("button_generate"), { action: "generate_here" }]
+            ["vcl/ui/Button", ("button_generate"), { action: "report-generate" }]
         ]],
         ["vcl/ui/Group", { classes: "seperator" }],
         ["vcl/ui/Group", ("group_layout"), {}, [
@@ -1293,37 +1433,6 @@ const handlers = {
 			]]
 		]]
 	]],
-
-    [("#refresh"), { 
-    	vars: { 
-    		setup() {
-				const vars = this.vars(["variables"]), n = vars.stages.length;
-				const sacosh = {SA: n - 3, CO: n - 2, SH: n - 1};
-
-				["Kfp", "Pfp", "tm", "Em", "Evk", "alpha", "beta", "txEHSR_max"]
-					.forEach(key => {
-						vars[key] = parseFloat(this.ud("#input-" + key).getValue())
-					});
-
-				if(!Object.keys(sacosh).every(k => {
-					if(isNaN(sacosh[k] = parseInt(this.ud("#select-stage-" + k).getValue(), 10))) {
-
-						vars.parameters = [];
-						vars.categories = [];
-						
-						this.print("cleared parameters & categories");
-
-						return false;
-					}
-					return true;
-				})) return this.ud("#bar-user-inputs").render();
-				
-    			setup_stages(vars, sacosh);
-    			setup_measurements(vars);
-    			setup_parameters(vars);
-    		},
-	    } 
-    }],
     [("#reflect-overrides"), {
     	on(evt) {
     		var vars = this.vars(["variables"]);
@@ -1334,33 +1443,6 @@ const handlers = {
     			delete vars.overrides;
     		}
 			this.ud("#graphs").getControls().map(c => c.render)();
-    	}
-    }],
-    
-    ["vcl/Action", ("refresh-select-samples"), {
-    	on() {
-    		let node = this.up("vcl/ui/Node-closeable");
-			let sel = this.up("vcl/ui/Node-closeable").up()
-					.qsa("vcl/ui/Node-closeable")
-					.filter(n => n.vars("instance"))
-					.map(n => ({ n: n, d: n.vars("instance") }))
-					.filter((o, i, a) => o.d.getAttributeValue && (a.map(o => o.d).indexOf(o.d) === i))
-					.filter(o => o.d.getAttributeValue && (
-						o.d.getAttributeValue("naam") || "")
-						.toLowerCase().endsWith(".gds")
-					);
-
-			for(let i = 1; i <= 3; ++i) {
-				let select = this._owner.qs("#select-sample-" + i);
-				select.setOptions(sel.map(o => ({ 
-					// value: o.d.getAttributeValue("id"), 
-					content: o.d.getAttributeValue("naam"),
-					value: o.n.hashCode()
-				})));
-				if(sel.length >= i) {
-					select.setValue(sel[i - 1].n.hashCode());
-				}
-			}
     	}
     }],
     
@@ -1404,6 +1486,18 @@ const handlers = {
 	    	["vcl/ui/Element", { 
 	    		content: locale("EHSR-max") + ":",
 	    		// hint: locale("EHSR-max.hint")
+	    	}],
+	    	["vcl/ui/Input", ("input-txEHSR_min"), { 
+	    		value: locale("EHSR-min.default")
+	    		// hint: locale("EHSR-min.hint")
+	    	}],
+	    	["vcl/ui/Element", { 
+	    		content: js.sf("(%H)", locale("EHSR-min.unit")),
+	    		// hint: locale("EHSR-min.hint")
+	    	}],
+	    	["vcl/ui/Element", { 
+	    		content: locale("EHSR-min") + ":",
+	    		// hint: locale("EHSR-min.hint")
 	    	}],
 	    	["vcl/ui/Input", ("input-txEHSR_max"), { 
 	    		value: locale("EHSR-max.default")
@@ -1506,6 +1600,7 @@ const handlers = {
 		["vcl/ui/Tab", { text: locale("Graph:EffectiveHighStressRatio"), control: "graph_EffectiveHighStressRatio" }],
 		["vcl/ui/Tab", { text: locale("Graph:DeviatorStressQ"), control: "graph_DeviatorStressQ" }],
 		["vcl/ui/Tab", { text: locale("Graph:ShearStress"), control: "graph_ShearStress" }],
+		["vcl/ui/Tab", { text: locale("Graph:Taylor"), control: "graph_Taylor" }],
 
 		["vcl/ui/Bar", ("menubar"), {
 			align: "right", autoSize: "both", classes: "nested-in-tabs"
@@ -1549,6 +1644,9 @@ const handlers = {
 		["vcl/ui/Panel", ("graph_ShearStress"), {
 			align: "client", visible: false, 
 			classes: "multiple"
+		}],
+		["vcl/ui/Panel", ("graph_Taylor"), {
+			align: "client", visible: false, classes: "multiple"
 		}],
 
 		[("#panel-edit-graph"), {}, [
