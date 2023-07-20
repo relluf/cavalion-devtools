@@ -61,7 +61,7 @@ var getKeyName = (key) => {
 				
 				this.vars("N", N);
 
-				// this.print(js.sf("%s-%d", e.type, N), {event: e, name: name || e.code, code_: e.code, key: e.key, keyCode: e.keyCode});
+				this.print(js.sf("%s-%d", e.type, N), {event: e, name: name || e.code, code_: e.code, key: e.key, keyCode: e.keyCode});
 				// if(modifiers.length === 0) return; 
 				
 				var toast = this.vars("toast");
