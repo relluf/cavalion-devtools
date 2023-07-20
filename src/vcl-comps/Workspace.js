@@ -105,12 +105,17 @@ const ifVar = (owner, args, cb) => {
 	}
 };
 const startsWithProtocol = (url) => url.match(/^[^\s]*:\/\//) !== null;
-const expandColonInUri = (uri, ex) => {
+const expandColonInUri = (uri, expansion) => {
+	if(uri.startsWith("://")) {
+		const name = js.get("storageDB.name", req("vcl/Component"));
+		uri = js.sf("pouchdb://%s/%s", name, uri.substring(3));
+	}
+
 	var swp = startsWithProtocol(uri);
 	if(!swp || uri.split(":").length > 2) {
 		if(uri.charAt(0) !== "#") {
-			// replace last : occurence with ex
-			uri = uri.replace(/:([^:]*)$/, ex + "$1");
+			// replace last : occurence with expansion
+			uri = uri.replace(/:([^:]*)$/, expansion + "$1");
 		}
 	}
 	return uri;

@@ -1,3 +1,9 @@
+### `2023/07/07` Seperate package for GDS
+
+Or at least codebase, because it won't be published to NPM.
+
+* [veldapps-gds-devtools](/Workspaces/veldapps.com/:/)
+
 ### `2023/07/02` Tidying up, refactoring
 
 * Moved `setup_taylor` to `Util`, so it can be used by `triaxial` as well
