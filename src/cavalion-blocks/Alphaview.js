@@ -35,8 +35,7 @@ function objectAsTabs() {
 }
 
 var css = {
-	"background": "#f0f0f0",
-	"#bar": "text-align: center;",
+	"#bar": "text-align: center;background: #f0f0f0;",
 	"#bar > *": "margin-right:5px;",
 	"#bar input": "font-size:12pt;width:50%; border-radius: 5px; border-width: 1px; padding: 2px 4px; border-color: #f0f0f0;",
 	"#bar #left": "float:left;", "#bar #right": "float:right;"
@@ -194,6 +193,11 @@ var css = {
 		}
 	}],
 	
+	["Executable", ("focus-q"), {
+		hotkey: "MetaCtrl+191",
+		on() { this.ud("#q").setFocus(); }
+	}],
+	
 	["Array", ("array"), { 
 		// onFilterObject(obj) {
 		// 	var q = this.vars("q");
@@ -331,7 +335,6 @@ var css = {
 	]],
 	["List", ("list"), { 
 		css: { 
-			'': "background-color:white;",
 			".autowidth": "max-width: 320px;", 
 			".ListCell": "max-width: 332px;",
 			'.{ListColumn}': { ':active': "font-weight:bold;" },
