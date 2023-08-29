@@ -1,5 +1,6 @@
 "use vcl/ui/ListColumn, util/Event";
 
+/*- ### 2023/07/20 #focus-q stabilized
 /*- ### 2022/07/24 #q.placeholder reflects location in tree (more or less) */
 /*- ### 2022/01/10 ... */
 /*- ### 2021/09/18 Hooking devtools/Editor<xml>'s console */
