@@ -288,8 +288,9 @@ document.addEventListener("click", (evt) => {
         if(href.endsWith("::")) {
         	// TODO allow pre/suffix?
         	var hs = href.split(":"), action = control.udr(hs[0]);
+        	hs.pop(); hs.pop(); hs.shift();
         	if(action instanceof require("vcl/Action")) {
-        		return action.execute(js.normalize(base, hs[1] || anchor.textContent), evt);
+        		return action.execute(js.normalize(base, hs.join(":") || anchor.textContent), evt);
         	}
         	alert(js.sf("%s not found", href.split(":")[0]));
         	throw new Error(js.sf("%s not found", href.split(":")[0]));
@@ -427,16 +428,17 @@ var Handlers = {
         state: true,
         onLoad() {
         	var resource = this.vars(["resource"]);
+        	var md_sourceInitiallyHidden = this.vars(["markdown-source-intially-hidden"]) === true;
         	if(!resource.name) resource.name = resource.uri.split("/").pop();
     		this.up().readStorage("source-visible", (visible) => {
     			if(typeof visible === "boolean") {
     				this.setState(visible);
     				update_shrink(this, visible);
     				// this.ud("#output").syncClass("shrink", visible);
-    			} else if(visible === undefined && (
+    			} else if(visible === undefined && (md_sourceInitiallyHidden || (
     					resource.uri.split("/").pop() === ".md" ||
     					isUpperCase(resource.name.split(".md")[0])
-    				)
+    				))
     			) {
     				this.setState(false);
     				update_shrink(this, false);

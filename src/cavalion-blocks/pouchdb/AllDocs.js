@@ -1,13 +1,14 @@
-"use pouchdb, v7/objects, data/Source, veldoffice/Session, veldoffice/EM, stylesheet!home/Projects/V7/src/styles.less, pouchdb, va/objects";
+"use pouchdb, v7/objects, data/Source, veldoffice/Session, veldoffice/EM, stylesheet!home/Projects/V7/src/styles.less, pouchdb";
 
 var PouchDB = require("pouchdb");
 var Source = require("data/Source");
+var Component = require("vcl/Component");
 
 ["veldapps/ListOf", { 
 	handlers: {
 		onLoad() {
 			this.scope().refresh.setEnabled(false);
-			this.vars("db", new PouchDB(this.getSpecializer() || "va_objects"));
+			this.vars("db", new PouchDB(this.getSpecializer() || Component.storageDB.name));
 			this.scope().refresh.setEnabled(true);
 			this.scope().refresh.execute();
 		},

@@ -158,7 +158,7 @@ const expandColonInNavigatorFavorites = (ws) => {
 	        		selected: true
         		};
         	}
-        	scope['editor-needed'].execute(evt);
+        	return scope['editor-needed'].execute(evt);
         };
         this.on("state-dirty", function() {
             var workspace = scope['@owner'];
@@ -194,19 +194,26 @@ const expandColonInNavigatorFavorites = (ws) => {
     	/*- TODO describe why a timeout is necessary */
         this.getApp().setTimeout({
             name: "devtools/Workspace<>.activate", 
-            f: function(me) {
-            	// debugger;
-                me.qsa(["vcl/ui/Tab[uri=devtools/Workspace][selected=true]", 
-                    "vcl/ui/Ace"].join(" ")).focus();
-            }, 
-            ms: 200, 
-            args: [this]
+            f: () => this.qsa("vcl/ui/Tab:selected")
+                	.filter(t => t.vars("resource"))
+                	.forEach(t => t.qsa("#ace").focus()), 
+            ms: 200
         });
         this.setSelected(true);
         this.ud("#update-title").execute();
     },
     onDeactivate: function() {
     	this.setSelected(false);
+    },
+    
+    overrides: {
+    	destroy(b) {
+    		if(b) {
+	    		const tab = this.up("vcl/ui/Tab");
+	    		if(tab) return tab.destroy();
+    		}
+    		return this.inherited(arguments);
+    	}
     }
 }, [
     [["devtools/TabFactory"], ("editor-factory"), {

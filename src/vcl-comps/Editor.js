@@ -96,7 +96,7 @@ var getKey = (tab) => {
         ed.renderer.setHScrollBarAlwaysVisible(false);
         ed.setScrollSpeed(2);
 
-        var resource = tab.vars(["resource"]);
+        var resource = this.vars(["resource"]);
         var name = resource.name || (resource.uri || "").split("/").pop();
         var type = (resource.contentType || "").split("/").pop();
         var ext = name.split(".").pop();
@@ -203,7 +203,7 @@ var getKey = (tab) => {
         onExecute: function (evt) {
             var scope = this.getScope();
             var tab = this.up("vcl/ui/Tab");
-            var resource = tab.getVar("resource");
+            var resource = this.vars(["resource"]);//tab.getVar("resource");
             var editor = scope.ace.getEditor();
             if (resource) {
                 scope.loading.show();
@@ -340,7 +340,7 @@ var getKey = (tab) => {
         }
     }],
     ["vcl/Action", ("toggle-wrap"), {
-        hotkey: "MetaCtrl+Shift+W",
+        hotkey: "MetaCtrl+Shift+W|MetaCtrl+Shift+50",
         onExecute: function (evt) {
             var editor = this.scope().ace.getEditor();
             editor.getSession().setUseWrapMode(!editor.getSession().getUseWrapMode());

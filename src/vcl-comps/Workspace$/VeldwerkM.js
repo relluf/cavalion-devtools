@@ -2,12 +2,12 @@ $([], {
 	vars: {
 		"#navigator root": "Workspaces/veldapps.com/VeldwerkM",
 		"#navigator nodes": ["favorites", "cavalion-server-fs", "root", "pouchdbs", "any.."],
-		"#nvaigator tabs editors": [],
+		"#navigator tabs editors": [],
 		"#navigator favorites": [
 			"Workspaces/veldapps.com/VeldwerkM/server2/cavalion-ROOT/trunk;cavalion-ROOT-web",
 			"Workspaces/veldapps.com/VeldwerkM/veldapps-veldwerkm-web",
 		],
-		"workspace": {
+		"workspace#": {
 			"github-repo": "relluf/veldapps-veldwerkm-web"
 		}
 	},
@@ -16,10 +16,11 @@ $([], {
 			// Blocks.DEFAULT_NAMESPACES['vcl-veldoffice'] = "vcl-veldoffice";
 			// Blocks.DEFAULT_NAMESPACES.veldoffice = "vcl-veldoffice";
 
-			js.mixIn(this.vars(["workspace"]), this.vars("workspace"));
+			js.mixIn(this.vars(["workspace"]), this.vars("workspace#"));
 			
 			var keys = require("vcl/Component").getKeysByUri;
 			if(keys(this._uri).specializer_classes.length > 0) {
+				console.log("Workspace<VeldwerkM>::onLoad inherited not called");
 				return;
 			}
 			

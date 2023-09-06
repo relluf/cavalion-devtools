@@ -64,19 +64,5 @@ var Blocks = require("blocks/Blocks");
 		this.setTimeout(() => { this.print(this._uri, this); }, 250);
 	},
 }, [
-	["vcl/Action", {
-		hotkey: "MetaCtrl+F1",
-		on() {
-			var ws = this.vars("ws");
-			if(!ws) {
-				ws = this.vars("ws", app.qs("devtools/Workspace<>:root:selected"));
-			} else {
-				this.vars("ws", null);
-			}
-			ws.up("vcl/ui/Tab").toggle("selected");
-		}
-	}],
-	
-	
 	["#client", { formUri: "devtools/Main<>" }]
 ]];

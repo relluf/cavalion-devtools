@@ -48,7 +48,7 @@ var css = {
         if (name.startsWith("key")) {
             var scope = this.scope();
             if (component === scope.q) {
-                if ([13, 27, 33, 34, 38, 40].indexOf(evt.keyCode) !== -1) {
+                if ([13, 27, 38, 40].indexOf(evt.keyCode) !== -1) {
                     var list = scope.list;
                     if(evt.keyCode === 13 && list.getSelection().length === 0 && list.getCount()) {
                         list.setSelection([0]);
@@ -92,9 +92,10 @@ var css = {
 				var ws = this.up("devtools/Workspace<>");
 				if(ws) {
 					cons = ws.down("#left-sidebar < #console #console");
+				}
+				if(cons) {
 					sel = cons.sel || [];
 				} else {
-					// sel = [];
 					sel = this.app().down("vcl/ui/Console#console").sel || [];
 				}
 			} else {
@@ -216,39 +217,65 @@ var css = {
 			}
 			
 			function match(obj, q) {
-				q = q.toLowerCase();	
+				const invert = q.charAt(0) === "!";
+
+				q = q.toLowerCase();
+				if(invert) {
+					q = q.substring(1);
+				}
 				if(typeof obj ==="string") {
-					return obj.toLowerCase().includes(q);
+					q = obj.toLowerCase().includes(q);
+					return invert ? !q : q;
 				}
 				for(var k in obj) {
 					if(js.sf("%n", obj[k]).toLowerCase().includes(q)) {
-						return true;
+						return invert ? false : true;
 					}
 				}
-				return false;
+				return invert ? true : false;
 			}
 			function match_columns(obj, q) {
-				var column, value;
+				var column, value, invert;
+
+				if((invert = q.charAt(0) === "!")) {
+					q = q.substring(1);
+				}
+				
 				if(q.indexOf(":") === -1) {
 					q = q.toLowerCase();
+					
 					for(var i = 0, n = context.list.getColumnCount(); i < n; ++i) {
 						column = context.list.getColumn(i);
 						value = context.list.valueByColumnAndRow(column, row);
+						
+						if(value instanceof Array) {
+							value = value.findIndex(v => js.sf("%n", v).toLowerCase().includes(q)) !== -1;
+							
+							return invert ? !value : value;
+						}
+
 						if(js.sf("%n", value).toLowerCase().includes(q)) {
-							return true;
+							return invert ? false : true;
 						}
 					}
-					return false;
+					return invert ? true : false;
 				} else {
 					q = q.split(":");
 					column = context.columns[q[0]] || (context.columns[q] = context.list.getColumnByName(q[0]));
 					if(column) {
 						value = context.list.valueByColumnAndRow(column, row);
+
+						if(value instanceof Array) {
+							value = value.findIndex(v => js.sf("%n", v).toLowerCase().includes(q)) !== -1;
+							
+							return invert ? !value : value;
+						}
+						
 						if(js.sf("%n", value).toLowerCase().includes(q[1])) {
-							return true;
+							return invert ? false : true;
 						}
 					}
-					return false;
+					return invert ? true : false;
 				}
 			}
 			

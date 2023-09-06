@@ -104,6 +104,9 @@ function focusSidebar(ws, sidebar) {
 		}
 	}
 }
+function onTabRender() {
+	this._nodes.text.textContent = this.vars(["workspace"]).name;
+}
 
 const fixThemeColor = () => setTimeout(() => {
 	// Create the meta element
@@ -512,10 +515,11 @@ fixThemeColor();
     	}	
     }],
     [("vcl/Action"), "toggle-workspaces-tabs", {
-    	hotkey: "Ctrl+Alt+F12", // euh ,responds to F11 instead?
+    	hotkey: "Ctrl+Alt+F12|Alt+Cmd+F12", // euh ,responds to F11 instead?
     	onExecute: function() {
     		var tabs = this.app().down("devtools/Main<> #workspaces-tabs");
-    		tabs.setVisible(!tabs.getVisible());
+    		//tabs.setVisible(!tabs.getVisible());
+    		tabs.toggleClass("hidden");
     	}	
     }],
 
@@ -528,17 +532,20 @@ fixThemeColor();
             }
         },
         onExecute: function(evt) {
+        	evt.workspace.specializer = evt.workspace.specializer || evt.workspace.name;
+        	
             if(!evt.hasOwnProperty("formUri")) {
                 evt.formUri = evt.workspace.formUri ||
                     String.format("devtools/Workspace<%s>",
-	                	/*replaceChars*/(js.get("workspace.name", evt) || ""));
+	                	/*replaceChars*/(js.get("workspace.specializer", evt) || ""));
             }
             evt.params = evt.workspace;
 
             var tab = this.inherited(arguments);
             tab.setVar("workspace", evt.workspace);
             tab.setText(evt.workspace.name);
-            
+        	tab.set("onRender", evt.workspace.onTabRender || onTabRender);
+
             return tab;
         }
     }],
@@ -608,14 +615,17 @@ fixThemeColor();
         	}
         	
         	if(typeof evt === "string") {
-        		evt = { workspace: {name: evt} };
+        		evt = evt.split("|");
+        		evt = { workspace: { name: evt[0], specializer: evt.pop() } };
+        	}
+        	
+        	if(evt.workspace && !evt.workspace.specializer) {
+        		evt.workspace.specializer = evt.workspace.name;
         	}
         	
             var scope = this.getScope();
     		var tabs = scope['workspaces-tabs'].getControls();
-    		var tab = tabs.find(function(tab) {
-    			return tab.vars("workspace.name") === evt.workspace.name;
-    		});
+    		var tab = tabs.find(tab =>tab.vars("workspace.specializer") === evt.workspace.specializer) || tabs.find(tab =>tab.vars("workspace.name") === evt.workspace.name);
     		if(!tab) {
 	            tab = scope['workspaces-new'].execute(evt);
     		} else {
@@ -800,6 +810,7 @@ fixThemeColor();
     [("vcl/ui/Tabs"), "workspaces-tabs", {
         align: "bottom",
         classes: "bottom",
+        css: { '&.hidden': "max-height:0;height:0;padding:0;" },
         onMouseDown(evt) {
         	this.vars("mousedown", Date.now());
         },

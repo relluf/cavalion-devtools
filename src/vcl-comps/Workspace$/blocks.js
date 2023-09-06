@@ -1,6 +1,38 @@
 "use devtools/Resources-dropbox";
 
 [[], {
+	onLoad() {
+		const host = this.qs("#host");
+		let uri = host.vars("uri");
+		if(!uri) {
+			const spec = this.getSpecializer().split(":");
+			
+			if(spec.length > 1) {
+				uri = spec.pop();
+				if(uri.endsWith("/")) {
+					uri += ".blocks";
+				} else {
+					uri += ".js";
+				}
+
+				if(uri.startsWith("/")) {
+					uri = "$HOME" + uri;
+					this.setTimeout(".md", () => this.open(js.up(uri.substring(6)) + "/.md"), 500);
+				} else if(uri.startsWith("./")) {
+					console.warn("TODO");
+				}
+				host.vars("uri", uri);
+			} else {
+				this.qs("#editors-visible").toggle();
+				this.qs("#viewer-visible").toggle();
+				host.hide();
+			}
+		}
+
+		uri && app.toast({ content: uri, classes: "glassy fade centered"});
+
+		return this.inherited(arguments);
+	},
 	vars: {
 		"#navigator favorites": [
 			// "Workspaces/cavalion.org/cavalion-blocks/src/prototypes;blocks/prototypes",
@@ -21,7 +53,7 @@
 			"Library/cavalion-blocks/veldapps;;Folder"
 		],
 	},
-	onLoad: function() {
+	onLoad_: function() {
 /*- Let's obtain the correct constructor and 'clone' a Node ;-) */
 		var fs = this.down("#tree < #fs");
 		// new (fs.constructor)({
@@ -96,4 +128,27 @@
 
 		return this.inherited(arguments);
 	}
-}];
+}, [
+	
+	["vcl/Action", ("editors-visible"), {
+		state: false,
+		visible: "state",
+		on() { this.toggle(); },
+		hotkey: "Alt+Cmd+F1"
+	}],
+	
+	["vcl/Action", ("viewer-visible"), { 
+		parent: "editors-visible", 
+		state: "parent", 
+		visible: "notState"
+	}],
+
+	["#editors", { action: "editors-visible", executesAction: false }],
+	["#left-sidebar", { action: "editors-visible", executesAction: false }],
+	
+	[["cavalion-blocks"], ("host"), {
+		action: "viewer-visible", 
+		executesAction: false
+	}]
+
+]];

@@ -35,7 +35,7 @@ var Parser = require("lib/bower_components/papaparse/papaparse");
             var scope = this.scope();
             // this.app().qs("vcl/ui/Console#console").print(name, {f: arguments.callee, args: arguments});
 			if (component === scope['search-input']) {
-                if ([13, 27, 33, 34, 38, 40].indexOf(evt.keyCode) !== -1) {
+                if ([13, 27, 38, 40].indexOf(evt.keyCode) !== -1) {
                     var list = scope.list;
                     if(evt.keyCode === 13 && list.getSelection().length === 0 && list.getCount()) {
                         list.print(list.getSelection(true));
