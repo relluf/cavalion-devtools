@@ -1,14 +1,10 @@
-"use veldoffice/VO, veldoffice/devtools";
-
-window.VO = require("veldoffice/VO");
+"";
 
 ["", {
-	onLoad() {
-		// this.qs("#toggle-workspaces-tabs").execute();
-		return this.inherited(arguments);
+	overrides: {
+		
 	},
 	vars: {
-		"markdown-source-intially-hidden": true,
         "default-workspaces": [{
         	"name": "✪",
 	    	"vars": { "#navigator favorites": [ "Dropbox-veldapps/BXV/.md;.md;File" ] },
@@ -25,6 +21,7 @@ window.VO = require("veldoffice/VO");
         }, {
             "name": "Start",
             "selected": true,
+	    	"vars": { "#navigator favorites": [ "Dropbox-veldapps/BXV/Start/.md;.md;File" ] },
             "state": {
 	            "left-sidebar.visible": false,
 	            "editors": [{
@@ -44,5 +41,5 @@ window.VO = require("veldoffice/VO");
         }]
 	}
 }, [
-	[("#title"), { classes: "smdl", vars: { title: "BVX" } }]
+	[("#title"), { classes: "smdl" }]//, vars: { title: "BVX" } }], // picked up from #0 (app)
 ]];

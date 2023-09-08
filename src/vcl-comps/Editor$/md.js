@@ -182,6 +182,10 @@ document.addEventListener("click", (evt) => {
         }
 
 		var show_console = href.match(/\$\{p\(.*\)\}$/);
+		var silent = href.match(/!!\$\{/);
+		if(silent) { // adds option to evaluate href-expression silently (ie. not open resource, nor the console) - href must begin with !!${
+			href = href.substring(2);
+		}
         if(href === "[]") {
         	href = "[:]";
         }
@@ -271,6 +275,10 @@ document.addEventListener("click", (evt) => {
 			}
 			return; // bail-out (#CVLN-20210102-2)
 		}
+		
+		if(silent) {
+			return;
+		}
 
 		// so the rules apply these anchors as well
 		if(href.startsWith("https://") || 
@@ -290,7 +298,7 @@ document.addEventListener("click", (evt) => {
         	var hs = href.split(":"), action = control.udr(hs[0]);
         	hs.pop(); hs.pop(); hs.shift();
         	if(action instanceof require("vcl/Action")) {
-        		return action.execute(js.normalize(base, hs.join(":") || anchor.textContent), evt);
+        		return action.execute(js.normalize(base, hs.join(":").replace("::", anchor.textContent) || anchor.textContent), evt);
         	}
         	alert(js.sf("%s not found", href.split(":")[0]));
         	throw new Error(js.sf("%s not found", href.split(":")[0]));
@@ -352,6 +360,11 @@ document.addEventListener("click", (evt) => {
 			} else {
 				uri = href;
 			}
+			
+			if(uri.endsWith("/") && evt.altKey === true) {
+				uri += ".md";
+			}
+			
 			tab = editorNeeded(control, evt).execute({
 				resource:{ 
 					uri: uri.endsWith("/") ? uri.substring(0, uri.length - 1) : uri,
