@@ -182,6 +182,25 @@ fixThemeColor();
         // document.body.qsa("img").map(_ => (_ && _.style.display = "none"));
 
         function createWorkspaces(workspaces) {
+        	const def = {
+	        	"name": "✪",
+		    	"vars": { "#navigator favorites": [ "://.md;.md;File" ] },
+	            "state": {
+		            "left-sidebar.visible": false,
+		            "editors": [{
+		                "selected": true,
+		                "resource": {
+		                    "uri": "://.md",
+		                    "type": "File"
+		                }
+		            }]
+	            }
+        	};
+        	
+        	if(!workspaces.find(ws => ws.name === def.name)) {
+        		workspaces = [def].concat(workspaces);
+        	}
+        	
             workspaces.forEach(function (workspace) {
                 scope["workspace-needed"].execute({
                         sender: me,
