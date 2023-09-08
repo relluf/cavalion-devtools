@@ -48,7 +48,7 @@ var FormContainer = require("vcl/ui/FormContainer");
 // FIXME move to a better place
 function title() {
 	var url = app.vars("url");
-	return js.sf("%s", url.getParamValue("title") || url.getParamValue("") || url.getPath().split("/")[0] || "cavalion-code");
+	return js.sf("%s", url.getParamValue("title") || app.getTitle(), url.getParamValue("") || url.getPath().split("/")[0] || "cavalion-code");
 }
 function title_css() {
 	var url = app.vars("url");
@@ -60,7 +60,8 @@ function title_css() {
 		"&.arcadis": "background-color:orange;color:black;",
 		"&.kzmrqz": "background-color:orange;color:purple;",
 		"&.cavalion": "background-color:rgb(48,61,80);color:white;",
-		"&.terrannia": "background-color:purple;color:white;",
+		"&.terrannia": "background-color:pink;color:purple;",
+		"&.homemade": "background-color:purple;color:white;",
 		"&.veldoffice": "background-color:limegreen;color:darkgreen;",
 		"&.veldapps": "background-color:lightgreen;color:darkgreen;",
 		"&.veldapps-alt": "background-color:limegreen;color:white;",
@@ -203,8 +204,8 @@ fixThemeColor();
         	this.app().print("workspaces", workspaces);
         	createWorkspaces(workspaces.split(",").map(_ => ({name: _})));
         } else {
-        	this.app().print("workspaces", this.vars("default-workspaces"));
-            createWorkspaces(this.vars("default-workspaces") || []);
+        	this.app().print("workspaces", this.vars(["default-workspaces"]));
+            createWorkspaces(this.vars(["default-workspaces"]) || []);
         }
         this.readStorage("state", function(state) {
             if(state !== undefined) {
@@ -811,11 +812,22 @@ fixThemeColor();
         align: "bottom",
         classes: "bottom",
         css: { '&.hidden': "max-height:0;height:0;padding:0;" },
+        onDispatchChildEvent(component, name, evt) {
+        	if(name === "dblclick" && component._parent === this && component._control) {
+        		if(evt.altKey === true) {
+        			component._control.destroy();
+        			component.setSelected(false);
+        			component.setVisible(false);
+        			component.setTimeout("destroy", () => component.destroy(), 200);
+        		}
+        	}	
+        },
         onMouseDown(evt) {
         	this.vars("mousedown", Date.now());
         },
         onMouseUp(evt) {
-        	if(Date.now() - this.removeVar("mousedown") > 400) {
+        	const now = Date.now(); 
+        	if(now - this.removeVar("mousedown") > 400) {
         		this.getSelectedControl(1).setSelected(false);
         	}
         },
