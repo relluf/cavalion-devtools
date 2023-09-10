@@ -163,6 +163,10 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
 	    },
 	    "#workspaces-tabs": {
 	    	"": "background-color:#f0f0f0",//rgba(255,255,255,0.75);",
+	    	".{Tab}.star": {
+	    		// '': "padding-top: 4px;",
+	    		".menu": "visibility:hidden;display:block;"
+	    	},
 	    	".{Tab}": "border-bottom-left-radius:5px; border-bottom-right-radius:5px;",
 	    	".{Tab}.selected": "padding-left:8px;"
 	    },
@@ -180,12 +184,13 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
 fixThemeColor();
 
         // document.body.qsa("img").map(_ => (_ && _.style.display = "none"));
+        const _md = js.sf("pouchdb://%s/.md", js.get("storageDB.name", req("vcl/Component")));
 
         function createWorkspaces(workspaces) {
         	const def = {
-	        	"name": "✪",
-		    	"vars": { "#navigator favorites": [ "://.md;.md;File" ] },
-	            "state": {
+	        	name: "✪",
+		    	vars: { "#navigator favorites": [ js.sf("%s;://.md;File", _md) ] },
+	            state: {
 		            "left-sidebar.visible": false,
 		            "editors": [{
 		                "selected": true,
@@ -194,11 +199,23 @@ fixThemeColor();
 		                    "type": "File"
 		                }
 		            }]
+	            },
+	            onTabRender() {
+	            	// Some sort of first load-mechanism...
+	            	delete this._onRender;
+	            	this.addClass("star");
+	            	
+	            	// this.set({
+	            	// 	onRender() {
+	            			
+	            	// 	}
+	            	// });
 	            }
         	};
         	
         	if(!workspaces.find(ws => ws.name === def.name)) {
         		workspaces = [def].concat(workspaces);
+        		// workspaces.push(def);//
         	}
         	
             workspaces.forEach(function (workspace) {
@@ -332,21 +349,21 @@ fixThemeColor();
 		// } });
 		
 		/* Workspaces and Sidebar */
-		for(var i = 1, hotkey; i <= 9; ++i) {
+		for(var i = 0, hotkey; i <= 9; ++i) {
 			hotkey = String.format("Meta+%d", i + 48);
 			HotkeyManager.register(hotkey, {
 				type: "keydown",
-				callback: create_callback_activateWS(hotkey, i - 1)
+				callback: create_callback_activateWS(hotkey, i)
 			});
 			hotkey = String.format("Ctrl+Alt+%d", i + 48);
 			HotkeyManager.register(hotkey, {
 				type: "keydown",
-				callback: create_callback_activateWS(hotkey, i - 1)
+				callback: create_callback_activateWS(hotkey, i)
 			});
 			// hotkey = String.format("Shift+Ctrl+%d", i + 48);
 			// HotkeyManager.register(hotkey, {
 			// 	type: "keydown",
-			// 	callback: create_callback_activateAce(hotkey, i - 1)
+			// 	callback: create_callback_activateAce(hotkey, i)
 			// });
 			hotkey = String.format("Meta+Alt+%d", i + 48);
 			HotkeyManager.register(hotkey, {
@@ -565,6 +582,10 @@ fixThemeColor();
             tab.setVar("workspace", evt.workspace);
             tab.setText(evt.workspace.name);
         	tab.set("onRender", evt.workspace.onTabRender || onTabRender);
+        	
+        	if(evt.workspace.name === "✪") {
+        		tab.addClass("right");
+        	}
 
             return tab;
         }
@@ -716,6 +737,15 @@ fixThemeColor();
     		tab.setIndex(index + 1);
     	}
     }],
+    [("vcl/Action"), "workspace-destroy", {
+    	hotkey: "MetaCtrl+115",
+    	on() {
+    		var tab = this._owner.qs("vcl/ui/Tab:selected:childOf(workspaces-tabs)");
+    		if(confirm(js.sf("destroy %n?", tab.vars("workspace.name")))) {
+    			tab.destroy();
+    		}
+    	}
+    }],
 
     [("vcl/Action"), "workspaces-tabs::next-previous", {
     	hotkey: "Ctrl+Alt+219|Ctrl+Alt+221|Shift+Meta+219|Shift+Meta+221",
@@ -830,7 +860,7 @@ fixThemeColor();
     [("vcl/ui/Tabs"), "workspaces-tabs", {
         align: "bottom",
         classes: "bottom",
-        css: { '&.hidden': "max-height:0;height:0;padding:0;" },
+        css: { '&.hidden': "max-height:0;height:0;padding:0;", '.right': "float:right;" },
         onDispatchChildEvent(component, name, evt) {
         	if(name === "dblclick" && component._parent === this && component._control) {
         		if(evt.altKey === true) {

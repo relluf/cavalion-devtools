@@ -454,11 +454,15 @@ var getKey = (tab) => {
             }
         }
     }],
-    ["vcl/Action", ("focus-in-navigator"), {
-    	hotkey: "MetaCtrl+48",
+    ["vcl/Action", ("focus-in-navigator"), { // TODO move this to devtools/Main or Workspace
+    	hotkey: "MetaCtrl+121",
         onExecute: function(evt) {
             var app = this.getApp();
             var resource = this.getVar("resource", true);
+            
+            this.ud("devtools/Workspace<>:root", "vcl/ui/Tab[control=navigator]").selectVisible();
+            
+            // app.udr("devtools/Workspace<>:owner-of(.) #navigator").selectVisible()
             app.qsa("devtools/Workspace<>:owner-of(.) #navigator #resource-focus", this)
             	.execute({resource: resource}, this);
         }

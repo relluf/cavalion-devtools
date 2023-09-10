@@ -1,6 +1,6 @@
 ["", {}, [
 	
-	[("Executable"), "csv", {
+	["Executable", ("csv"), {
 		on(evt) {
 			var selection = this.ud("#list").getSelection(true);
 			var filtered = this.ud("#q").getValue().length > 0;

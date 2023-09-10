@@ -6,9 +6,9 @@
 	},
 	vars: {
         "default-workspaces": [{
-        	"name": "✪",
-	    	"vars": { "#navigator favorites": [ "Dropbox-veldapps/BXV/.md;.md;File" ] },
-            "state": {
+        	name: "✪",
+	    	vars: { "#navigator favorites": [ "Dropbox-veldapps/BXV/.md;.md;File" ] },
+            state: {
 	            "left-sidebar.visible": false,
 	            "editors": [{
 	                "selected": true,
@@ -17,6 +17,10 @@
 	                    "type": "File"
 	                }
 	            }]
+            },
+            onTabRender() {
+            	this.addClass("star");
+            	this.set("onRender", null);
             }
         }, {
             "name": "Start",

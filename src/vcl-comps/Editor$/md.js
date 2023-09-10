@@ -293,12 +293,13 @@ document.addEventListener("click", (evt) => {
 		var base = control.vars(["resource.uri"]);
 		var tab, uri;
 
+        // if(href.startWith("#")) {
         if(href.endsWith("::")) {
         	// TODO allow pre/suffix?
         	var hs = href.split(":"), action = control.udr(hs[0]);
         	hs.pop(); hs.pop(); hs.shift();
         	if(action instanceof require("vcl/Action")) {
-        		return action.execute(js.normalize(base, hs.join(":").replace("::", anchor.textContent) || anchor.textContent), evt);
+        		return action.execute(js.normalize(base, hs.join(":").replace(/::/g, anchor.textContent) || anchor.textContent), evt);
         	}
         	alert(js.sf("%s not found", href.split(":")[0]));
         	throw new Error(js.sf("%s not found", href.split(":")[0]));
