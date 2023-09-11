@@ -266,6 +266,10 @@ document.addEventListener("click", (evt) => {
 			blocks_vars = e_v_a_l(blocks_vars).f.apply(control, backtick_params);
 			comps_vars = e_v_a_l(comps_vars).f.apply(control, backtick_params);
 		}
+		
+		if(silent) {
+			return;
+		}
 
 		if(show_console) {
 			if(!evt.metaKey) {
@@ -274,10 +278,6 @@ document.addEventListener("click", (evt) => {
 						.selectVisible();
 			}
 			return; // bail-out (#CVLN-20210102-2)
-		}
-		
-		if(silent) {
-			return;
 		}
 
 		// so the rules apply these anchors as well
@@ -362,8 +362,15 @@ document.addEventListener("click", (evt) => {
 				uri = href;
 			}
 			
-			if(uri.endsWith("/") && evt.altKey === true) {
-				uri += ".md";
+			if(evt.altKey === true) {
+				if(uri.endsWith("/")) {
+					uri += ".md";
+				} else if(!uri.endsWith(".smdl")) {
+					uri += ".smdl"
+				} else {
+					// uri ends in ".smdl", cut it off
+					uri = uri.replace(/smdl$/, "");
+				}
 			}
 			
 			tab = editorNeeded(control, evt).execute({

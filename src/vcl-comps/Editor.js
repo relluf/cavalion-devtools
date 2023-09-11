@@ -85,6 +85,10 @@ var getKey = (tab) => {
 
 [["ui/Form"], {
     activeControl: "ace",
+    onActivate() {
+    	this.scope().loading.update();
+    	return this.inherited(arguments);	
+    },
     onLoad() {
         var tab = this.up("vcl/ui/Tab");
         var scope = this.getScope();
@@ -193,14 +197,14 @@ var getKey = (tab) => {
 }, [
     ["vcl/Action", ("menu-open"), {
         hotkey: "Shift+F10",
-        onExecute: function (evt) {
+        on(evt) {
         	// TODO: evt.args?
         	this.udown("#ace").getEditor().execCommand("showSettingsMenu",  evt.args || []);
         }
     }],
     ["vcl/Action", ("refresh"), {
         hotkey: "MetaCtrl+R",
-        onExecute: function (evt) {
+        on(evt) {
             var scope = this.getScope();
             var tab = this.up("vcl/ui/Tab");
             var resource = this.vars(["resource"]);//tab.getVar("resource");
@@ -222,7 +226,6 @@ var getKey = (tab) => {
                         editor.focus();
                         scope.loading.hide();
                         tab.emit("resource-loaded");
-                        
 // STATE READ
 // state_read(scope.ace.up());
 						// tab.setState("invalidated", true);
@@ -230,6 +233,8 @@ var getKey = (tab) => {
                     catch(function(res) {
                         editor.setReadOnly(false);
                         editor.focus();
+                        
+                        tab.emit("resource-needed");
                         
                         if(evt && res.status === 404) {
                         	tab.app().confirm(String.format("404 - %s\n\nThis resource does not exist. Would you like to create it?", resource.uri), function(res) {
@@ -240,7 +245,7 @@ var getKey = (tab) => {
                         			}
 	                        	});
                         }
-                        
+
                         scope.loading.hide();
                         tab.emit("resource-loaded");
 // STATE READ
@@ -249,8 +254,33 @@ var getKey = (tab) => {
             }
         }
     }],
+    ["vcl/Action", ("save-local"), {
+    	hotkey: "Shift+MetaCtrl+Alt+S",
+    	on() {
+			const resource = this.vars(["resource"]);
+			const text = this.ud("#ace").getValue();
+			const blob = new Blob([text], { type: "text/plain" });
+			
+			if(!resource.name) { // TODO Resources.extrapolate(resource);
+				resource.path = resource.uri.split("/");
+				resource.name = resource.path.pop();
+				resource.path = resource.join("/");
+				resource.ext = resource.name.split(".").pop();
+			}
+			
+			const link = document.createElement("a");
+			link.setAttribute("href", URL.createObjectURL(blob));
+			link.setAttribute("download", resource.name);
+			
+			document.body.appendChild(link);
+			this.nextTick(() => { 
+				link.click(); 
+				document.body.removeChild(link); 
+			});
+    	}
+    }],
     ["vcl/Action", ("save-resource"), {
-        onExecute: function () {
+        on() {
             var scope = this.getScope();
             var resource = this.getVar("resource", true);
             var text = scope.ace.getValue();
@@ -315,7 +345,7 @@ var getKey = (tab) => {
     }],
     ["vcl/Action", ("format"), {
         hotkey: "MetaCtrl+Shift+F",
-        onExecute: function () {
+        on() {
             var Xml = require("util/Xml");
             var scope = this.getScope();
             var editor = scope.ace.getEditor();
@@ -341,7 +371,7 @@ var getKey = (tab) => {
     }],
     ["vcl/Action", ("toggle-wrap"), {
         hotkey: "MetaCtrl+Shift+W|MetaCtrl+Shift+50",
-        onExecute: function (evt) {
+        on(evt) {
             var editor = this.scope().ace.getEditor();
             editor.getSession().setUseWrapMode(!editor.getSession().getUseWrapMode());
             evt.preventDefault();
