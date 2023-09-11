@@ -43,21 +43,67 @@ function isResourceSupported(resource) {
 			// classes: "root-invisible", expanded: true,
 			// text: js.sf("<input type='checkbox'> %s", locale("OpenLayers-documents")),
 			text: locale("OpenLayers-documents"),
-			expandable: true,
+			expandable: true, expanded: true,
 			index: 0,
+			onLoad() {
+				// TODO need to respect nodes that are already instantiated
+				this.app().qs("devtools/DragDropHandler<>").on("dropped", (evt) => {
+					const files = evt.files;
+
+					if(this._childNodesLoaded === false) {
+						return this.reloadChildNodes(() => this.setExpanded(true));
+					}
+					
+					const parent = this, owner = this.up();
+					const uris = this.getControls().map(c => c.vars("resource.uri"));
+					const dropped = this.app()
+						.qs("devtools/DragDropHandler<>").vars("dropped")
+						.map(d => d.files)
+						.flat()
+						.map((f, i) => js.sf("dropped://%d/%s", i, f.name));
+						
+					parent.beginLoading();
+					try {
+						dropped.filter(uri => !uris.includes(uri))
+							.forEach(uri => new Node({
+								text: uri.split("/").pop(),
+								expandable: true,
+								parent: parent,
+								owner: owner,
+								onNodeCreated() { this.nextTick(() => this.setExpanded(true)); },
+								onNodesNeeded(parent) { 
+									return parent === this && 
+										Document_onNodesNeeded.apply(this, arguments); 
+								},
+								vars: { resource: { uri: uri, type: "File" } }
+							}));
+					} finally {
+						parent.endLoading();
+					}
+				});
+			},
 			onKeyDown(evt) {
 				if(evt.keyCode === evt.KEY_F5) {
-					this.reloadChildNodes();
+					this.reloadChildNodes(() => this.setExpanded(true));
 				}
 			},
 			onNodesNeeded(parent) {
+				var dropped = this.app()
+					.qs("devtools/DragDropHandler<>").vars("dropped")
+					.map(d => d.files)
+					.flat()
+					.map((f, i) => ({ 
+						uri: js.sf("dropped://%d/%s", i, f.name), 
+						type: "File" 
+					}));
+
 				var resources = this.vars("resources", this.app().qsa("*")
 							.filter(c => isResourceSupported(c.vars("resource")))
 							.filter(c => c instanceof require("vcl/ui/Tab"))
 							.map(c => c.vars("resource")));
 				var owner = this.up();
 				
-				resources = resources.filter((r,i,a) => a.indexOf(r) === i);
+				resources = dropped.concat(resources.filter((r,i,a) => a.indexOf(r) === i));
 				parent.beginLoading();
 				try {
 					resources.forEach(resource => new Node({

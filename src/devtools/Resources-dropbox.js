@@ -27,7 +27,8 @@ define(function(require) {
 			if(arguments.length === 1 && typeof alias === "object") {
 				Object.keys(alias).forEach(name => 
 					this.registerAccessToken(name, alias[name]));
-			} else tokens[alias] = token;	
+			} else 
+				tokens[alias] = token;	
 		},
 		
 		index: function(uris) {

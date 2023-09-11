@@ -44,27 +44,31 @@ function copy(obj, r) {
 	onLoad: function() {
 		this.setParentNode(document.body);
 
-		var me = this, listeners;
+		var listeners;
 		var dropped = this.vars("dropped", false, []);
 		this.vars("listeners", listeners = {
-			dragover: function(evt) {
+			dragover: (evt) => {
 				evt.preventDefault();
-				me.setVisible(true);
+				this.setVisible(true);
 			},
-			dragend: function(evt) {
-				me.setTimeout("dragend", function() {
+			dragend: (evt) => {
+				this.setTimeout("dragend", () => {
 					evt.preventDefault();
-					me.setVisible(false);
+					this.setVisible(false);
 				}, 500);
 			},
-			drop: function(evt) {
+			drop: (evt) => {
 				var dataTransfer = copy(evt.dataTransfer);
 				dropped.push(dataTransfer);
 				
-				me.emit("dropped", [dataTransfer, dropped]);
+				// TODO 
+				this.setTimeout(
+					"dropped", 
+					() => this.emit("dropped", [dataTransfer, dropped]),
+					750);
 				
 				evt.preventDefault();
-				me.setVisible(false);
+				this.setVisible(false);
 			}
 		});
 		
