@@ -126,6 +126,7 @@ const expandColonInNavigatorFavorites = (ws) => {
 		(value, ws, name) => ws.vars(name, value.map(s => expandColonInUri(s, spec)))
 	);
 };
+const setDocumentTitle = (title) => { try { top.document.title = title; } catch(e) { } };
 
 [["ui/Form"], {
     onLoad: function() {
@@ -569,10 +570,10 @@ const expandColonInNavigatorFavorites = (ws) => {
 	            if(uri === undefined) {
 	            	this.setTimeout("otra-vez", () => {
 	            		uri = tab.getVar("resource.uri") || "?";
-	            		top.document.title = js.sf("%s - [%s > %s]", uri, title, ws);
+	            		setDocumentTitle(js.sf("%s - [%s > %s]", uri, title, ws));
 	            	}, 250);	
 	            } else {
-	            	top.document.title = js.sf("%s - [%s > %s]", uri, title, ws);
+	            	setDocumentTitle(js.sf("%s - [%s > %s]", uri, title, ws));
 	            }
             }
     	}

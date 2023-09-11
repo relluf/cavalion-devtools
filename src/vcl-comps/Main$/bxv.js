@@ -39,9 +39,9 @@
         }, {
         	"name": "Kaart",
         	"specializer": "cavalion-blocks:Dropbox-veldapps/Issues/VA-20220501-1-Map/Map"
-        }, {
-        	"name": "Documenten",
-	    	"vars": { "#navigator favorites": [ "Dropbox-veldapps/Issues/VA-20230903-1-Docs/.md;.md;File" ] }
+      //  }, {
+      //  	"name": "Documenten",
+	    	// "vars": { "#navigator favorites": [ "Dropbox-veldapps/Issues/VA-20230903-1-Docs/.md;.md;File" ] }
         }]
 	}
 }, [

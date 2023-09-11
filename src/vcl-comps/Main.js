@@ -64,12 +64,11 @@ function title_css() {
 		"&.homemade": "background-color:purple;color:white;",
 		"&.veldoffice": "background-color:limegreen;color:darkgreen;",
 		"&.veldapps": "background-color:lightgreen;color:darkgreen;",
-		"&.veldapps-alt": "background-color:limegreen;color:white;",
+		"&.veldapps-alt": "background-color:limegreen;color:darkgreen;",
 		"&.eae": "background-color:rgb(14,32,77);color:white;",
 		"&.smdl": "background-color:gold;color:maroon;",
 		"&.gx": "background-color:navy; color:white;",
 		"&.pdc": "background-color:#261f10;color:white;"
-		
 	};
 }
 function replaceChars(uri) {
@@ -108,7 +107,7 @@ function focusSidebar(ws, sidebar) {
 function onTabRender() {
 	this._nodes.text.textContent = this.vars(["workspace"]).name;
 }
-
+ 
 const fixThemeColor = () => setTimeout(() => {
 	// Create the meta element
 	var meta = Array.from(top.document.querySelectorAll("meta"))
@@ -180,8 +179,8 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
     onLoad() {
         var scope = this.scope();
         var me = this;
-        
-fixThemeColor();
+
+try { fixThemeColor(); } catch(e) { }
 
         // document.body.qsa("img").map(_ => (_ && _.style.display = "none"));
         const _md = js.sf("pouchdb://%s/.md", js.get("storageDB.name", req("vcl/Component")));
