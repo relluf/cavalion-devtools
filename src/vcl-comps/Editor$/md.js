@@ -39,12 +39,12 @@
 * Adding support for clicking anchors (`#CVLN-20210102-2`)
 */
 
+const resolveUri_blocks = require("blocks/Factory").resolveUri;
 const on = require("on");
 const markdown = require("markdown");
 const Component = require("vcl/Component");
 const HE = require("util/HtmlElement");
 const resolveUri_comps = require("vcl/Factory").resolveUri;
-const resolveUri_blocks = require("blocks/Factory").resolveUri;
 
 
 // CVLN-20221106-1, CVLN-20220418-1
@@ -196,6 +196,8 @@ document.addEventListener("click", (evt) => {
         	href = "blocks:!:";
         } else if(href.startsWith("[") && href.endsWith("]")) {
         	href = "blocks:" + href.substring(1, href.length - 1);
+        } else if(href.startsWith("<[") && href.endsWith("]>")) {
+        	href = "blocks:*" + href.substring(2, href.length - 2);
         } else if((blocks = href.match(/(\[[^\]]*\])({.*})/))) {
         	href = "blocks:" + blocks[1].substring(1).split("]")[0];
         	blocks_vars = blocks[2];
@@ -248,7 +250,7 @@ document.addEventListener("click", (evt) => {
 			href = anchor.textContent;
 		}
 
-		if(href.startsWith("://")) {
+		if(href.startsWith("://")) { // TODO anticipate ! and *
 			var pre = blocks ? "/cavalion-blocks" : comps ? "/vcl-comps" : "";
 			href = js.sf("pouchdb://%s%s/%s", Component.storageDB.name, pre, href.substring(3) || anchor.textContent);
 		}
@@ -305,15 +307,16 @@ document.addEventListener("click", (evt) => {
         	throw new Error(js.sf("%s not found", href.split(":")[0]));
         }
 
-		var run, title = anchor.title;
+		var run, ins, title = anchor.title, sourceUri;
 		if(title.startsWith('`') && title.endsWith('`')) {
 			title = title.substring(1, title.length - 1);
 			title = e_v_a_l(title).f.apply(control, backtick_params);
 		}
 		
 		if(blocks) {
-			run = href.charAt(0) === "!";
-			if(run) href = href.substring(1);
+			if(run = href.charAt(0) === "!") href = href.substring(1);
+			if(ins = href.charAt(0) === "*") href = href.substring(1);
+			
 			if(href.startsWith("./")) {
 				uri = js.normalize(base, href);
 			} else if(href.startsWith("/")) {
@@ -323,14 +326,22 @@ document.addEventListener("click", (evt) => {
 			} else {
 				uri = href;
 			}
+				
+			sourceUri = resolveUri_blocks(uri).substring("cavalion-blocks/".length) + ".js";
 			
-			tab = editorNeeded(control, evt).execute({
-				formUri: "devtools/Editor<blocks>",
-				formParams: { run: run },
-				formVars: blocks_vars,
-				resource: { uri: resolveUri_blocks(uri).substring("cavalion-blocks/".length) + ".js" },
-				selected: true
-			});
+			if(ins) {
+				// control.print(B.i([""], { uri: "$HOME/" + uri, _sourceUri: "$HOME/" + sourceUri }).then())
+				control.print(B.i(["Hover<>", [["$HOME/" + uri]]]));
+			} else {
+				tab = editorNeeded(control, evt).execute({
+					formUri: "devtools/Editor<blocks>",
+					formParams: { run: run },
+					formVars: blocks_vars,
+					resource: { uri: sourceUri },
+					selected: true
+				});
+			}
+			
 		} else if(comps) {
 			run = href.charAt(0) === "!";
 			if(run) href = href.substring(1);
@@ -383,7 +394,6 @@ document.addEventListener("click", (evt) => {
 				selected: true
 			});
 		}
-
 	}
 });
 

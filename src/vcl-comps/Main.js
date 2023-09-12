@@ -860,16 +860,16 @@ try { fixThemeColor(); } catch(e) { }
         align: "bottom",
         classes: "bottom",
         css: { '&.hidden': "max-height:0;height:0;padding:0;", '.right': "float:right;" },
-        onDispatchChildEvent(component, name, evt) {
-        	if(name === "dblclick" && component._parent === this && component._control) {
-        		if(evt.altKey === true) {
-        			component._control.destroy();
-        			component.setSelected(false);
-        			component.setVisible(false);
-        			component.setTimeout("destroy", () => component.destroy(), 200);
-        		}
-        	}	
-        },
+        // onDispatchChildEvent(component, name, evt) {
+        // 	if(name === "dblclick" && component._parent === this && component._control) {
+        // 		if(evt.altKey === true) {
+        // 			component._control.destroy();
+        // 			component.setSelected(false);
+        // 			component.setVisible(false);
+        // 			component.setTimeout("destroy", () => component.destroy(), 200);
+        // 		}
+        // 	}	
+        // },
         onMouseDown(evt) {
         	this.vars("mousedown", Date.now());
         },
