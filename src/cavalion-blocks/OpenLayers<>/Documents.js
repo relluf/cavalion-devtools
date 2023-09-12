@@ -65,23 +65,25 @@ function isResourceSupported(resource) {
 					parent.beginLoading();
 					try {
 						dropped.filter(uri => !uris.includes(uri))
-							.forEach(uri => new Node({
+							.map(uri => new Node({
 								text: uri.split("/").pop(),
 								expandable: true,
 								parent: parent,
 								owner: owner,
-								onNodeCreated() { this.nextTick(() => this.setExpanded(true)); },
+								// onNodeCreated() { this.nextTick(() => this.setExpanded(true)); },
 								onNodesNeeded(parent) { 
 									return parent === this && 
 										Document_onNodesNeeded.apply(this, arguments); 
 								},
 								vars: { resource: { uri: uri, type: "File" } }
-							}));
+							}))
+							.forEach(node => this.nextTick(() => node.childNodesNeeded()));
 					} finally {
 						parent.endLoading();
 					}
 				});
 			},
+			onNodeCreated() { this.setTimeout(() => this.setExpanded(false), 200); },
 			onKeyDown(evt) {
 				if(evt.keyCode === evt.KEY_F5) {
 					this.reloadChildNodes(() => this.setExpanded(true));

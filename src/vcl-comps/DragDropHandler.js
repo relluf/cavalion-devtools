@@ -1,3 +1,7 @@
+"use util/HtmlElement";
+
+var HE = require("util/HtmlElement");
+
 function handleFile(file, r) {
 	let reader = new FileReader();
 	reader.onloadend = function() {
@@ -43,6 +47,26 @@ function copy(obj, r) {
 [("vcl/ui/Panel"), {
 	onLoad: function() {
 		this.setParentNode(document.body);
+
+		const input = HE.fromSource('<input type="file" style="display:none;">');
+		document.body.appendChild(input);
+		
+		this.set("onDestroy", () => document.body.removeChild(input));
+		this.vars("input", input);
+		
+	    input.addEventListener("change", (evt) => {
+	        if (evt.target.files.length > 0) {
+	            var file = evt.target.files[0];
+	            var dataTransfer = copy({ files: [file] });
+	            dropped.push(dataTransfer);
+
+				// TODO 
+				this.setTimeout(
+					"dropped", 
+					() => this.emit("dropped", [dataTransfer, dropped]),
+					750);
+	        }
+	    });		
 
 		var listeners;
 		var dropped = this.vars("dropped", false, []);

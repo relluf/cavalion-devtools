@@ -1,0 +1,20 @@
+
+# DragDropHandler (devtools)
+
+* [Hover<1>](`!!${B.i(`:`)}`)
+
+Dit stuk code lijkt te zijn geschreven in JavaScript en heeft betrekking op het afhandelen van drag-and-drop functionaliteit, specifiek voor bestanden. Hier is een beknopte beschrijving van wat het doet:
+
+1. **handleFile functie**: Deze functie leest de inhoud van een bestand. Als het bestand een afbeelding is (gebaseerd op het MIME-type), wordt het gelezen als een Data URL (wat betekent dat de afbeelding wordt gecodeerd in base64-formaat). Anders wordt het bestand gelezen als tekst.
+
+2. **copy functie**: Deze functie maakt een diepe kopie van een object, waarbij het speciale afhandelingen heeft voor functies en bepaalde methoden zoals `getAsString` en `getAsFile`.
+
+3. **vcl/ui/Panel**: Dit lijkt een componentdefinitie te zijn, mogelijk van een framework of bibliotheek. Het definieert een paneel dat reageert op drag-and-drop gebeurtenissen.
+
+   - **onLoad**: Wanneer het paneel wordt geladen, worden er event listeners toegevoegd aan het document voor drag-and-drop gebeurtenissen. Het paneel wordt zichtbaar gemaakt wanneer er een bestand over het document wordt gesleept en wordt weer verborgen wanneer het slepen eindigt of een bestand wordt gedropt.
+   
+   - **onDestroy**: Wanneer het paneel wordt vernietigd, worden de event listeners verwijderd om geheugenlekken te voorkomen.
+   
+   - **align, css, content, visible**: Dit zijn eigenschappen die het uiterlijk en gedrag van het paneel definiëren. Het paneel heeft een semi-transparante donkere achtergrond, een bericht dat de gebruiker instrueert om bestanden hier te slepen, en is standaard niet zichtbaar.
+
+Wanneer een gebruiker een bestand over het document sleept, wordt het paneel zichtbaar gemaakt met een bericht dat aangeeft dat bestanden hier kunnen worden gedropt. Als een bestand wordt gedropt, wordt de inhoud ervan gelezen en opgeslagen, en wordt een "dropped" event geëmitteerd met de gegevens van het gedropte bestand.
