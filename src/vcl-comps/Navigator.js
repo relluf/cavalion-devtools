@@ -173,7 +173,7 @@ function onNodesNeeded(parent) {
         return this.inherited(arguments);
     },
     onDestroy: function() {
-    	var ddh = this.app().qsa("devtools/DragDropHandler<>");
+    	var ddh = this.app().qsa("devtools/DragDropHandler<>:root");
     	(this.vars("listeners") || []).forEach(listeners => ddh.un(listeners));
     	return this.inherited(arguments);
     },
@@ -239,7 +239,7 @@ function onNodesNeeded(parent) {
         	}
         });
 
-		this.vars("listeners", this.app().qsa("devtools/DragDropHandler<>")
+		this.vars("listeners", this.app().qsa("devtools/DragDropHandler<>:root")
 			.on("dropped", () => this.qsa("#DragDropHandler_files").map(node => {
 					node.show();
 					node.reloadChildNodes();

@@ -420,7 +420,7 @@ try { fixThemeColor(); } catch(e) { }
     	// FIXME deactivate hotkeys
     }
 }, [
-    [["devtools/DragDropHandler<dropbox>"]],
+    [["devtools/DragDropHandler<>:root"]],
     [["devtools/CtrlCtrl<>"], "ctrlctrl", { visible: false}],
     
 	[("vcl/Action"), "⌘.", {

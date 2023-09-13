@@ -17,26 +17,27 @@ function handleFile(file, r) {
 	}
 	return file;
 }
-function copy(obj, r) {
+function copy(obj, r, promises) {
 	r = r || {};
+	promises = promises || [];
+	
 	for(var k in obj) {
 		var v = obj[k];
 		if(typeof v === "object") {
 			if(typeof v.length === "number") {
-				v = copy(v, []);
+				v = copy(v, [], promises);
 			} else {
-				v = copy(v);
+				v = copy(v);//, {}, promises);
 			}
 		}
 		if(typeof v !== "function") {
 			r[k] = v;
 		} else if(k === "getAsString") {
-			obj.getAsString(function(value) { 
-				r.strValue = value; 
-			});
+			promises.push(obj.getAsString(value => r.strValue = value));
 		} else if(k === "getAsFile") {
-			r.fileValue = handleFile(obj.getAsFile(), r);
-			// r.fileValue.item = r;
+			r.fileValue = handleFile(obj.getAsFile(), r, promises); // TODO handle with promises
+		} else if(k === "text" && typeof v === "function") {
+			promises.push(r.text = obj.text().then(res => r.text = r.readerResult = res));
 		} else {
 			r[k] = function() {};
 		}
@@ -45,31 +46,31 @@ function copy(obj, r) {
 }
 
 [("vcl/ui/Panel"), {
+	css: { 'input': "display:none;" },
 	onLoad: function() {
 		this.setParentNode(document.body);
 
-		const input = HE.fromSource('<input type="file" style="display:none;">');
+		const input = HE.fromSource('<input type="file" multiple style="display:none;">');
 		document.body.appendChild(input);
 		
 		this.set("onDestroy", () => document.body.removeChild(input));
 		this.vars("input", input);
 		
+		const dropped = this.vars("dropped", false, []);
+		
 	    input.addEventListener("change", (evt) => {
 	        if (evt.target.files.length > 0) {
-	            var file = evt.target.files[0];
-	            var dataTransfer = copy({ files: [file] });
-	            dropped.push(dataTransfer);
-
-				// TODO 
-				this.setTimeout(
-					"dropped", 
-					() => this.emit("dropped", [dataTransfer, dropped]),
-					750);
+	            // var file = evt.target.files[0];
+	            const p = [], dataTransfer = copy({ files: evt.target.files }, false, p);
+	            Promise.all(p).then(() => {
+		            dropped.push(dataTransfer);
+					// this.emit("dropped", [dataTransfer, dropped]);
+					this.nextTick(() => this.emit("dropped", [dataTransfer, dropped])); // TODO
+	            });
 	        }
 	    });		
 
 		var listeners;
-		var dropped = this.vars("dropped", false, []);
 		this.vars("listeners", listeners = {
 			dragover: (evt) => {
 				evt.preventDefault();
@@ -82,17 +83,15 @@ function copy(obj, r) {
 				}, 500);
 			},
 			drop: (evt) => {
-				var dataTransfer = copy(evt.dataTransfer);
-				dropped.push(dataTransfer);
-				
-				// TODO 
-				this.setTimeout(
-					"dropped", 
-					() => this.emit("dropped", [dataTransfer, dropped]),
-					750);
+				const p = [], dataTransfer = copy(evt.dataTransfer, false, p);
+				Promise.all(p).then(() => {
+					dropped.push(dataTransfer);
+					// this.emit("dropped", [dataTransfer, dropped]);
+					this.nextTick(() => this.emit("dropped", [dataTransfer, dropped])); // TODO
+					this.setVisible(false);
+				});
 				
 				evt.preventDefault();
-				this.setVisible(false);
 			}
 		});
 		
@@ -110,4 +109,14 @@ function copy(obj, r) {
 	css: "background-color:rgba(45,45,45,0.8);z-index:9999999999; color:white;padding:64px; font-family:\"Lucida Grande\", Arial, sans-serif;",
 	content: locale("DragDropHandler.dropHereMessage") + " [" + Date.now() + "]",
 	visible: false
-}];
+}, [
+
+	["vcl/Action", ("drop-opened-files"), {
+		hotkey: "MetaCtrl+O",
+		on() { this.vars(["input"]).click(); },
+		overrides: {
+			isHotkeyEnabled() { return true; },
+		}
+	}]	
+	
+]];
