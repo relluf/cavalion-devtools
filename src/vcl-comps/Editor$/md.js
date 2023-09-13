@@ -80,7 +80,7 @@ function render() {
 						window.locale,
 						(a, b, c, d) => this.print.apply(this, [a, b, c, d].filter(a => a !== undefined))];
 
-    				a.title = e_v_a_l(
+    				a.title = e_v_a_l( // probably doesn't work as expected anymore
     					a.title.substring(1, a.title.length - 1))
     						.f.apply(this, params);
     			}
@@ -295,9 +295,8 @@ document.addEventListener("click", (evt) => {
 		var base = control.vars(["resource.uri"]);
 		var tab, uri;
 
-        // if(href.startWith("#")) {
         if(href.endsWith("::")) {
-        	// TODO allow pre/suffix?
+        	// TODO allow pre/suffix? maybe checking for "if(href.startWith("#"))" is better and then just substitute the last :, the first being a seperator
         	var hs = href.split(":"), action = control.udr(hs[0]);
         	hs.pop(); hs.pop(); hs.shift();
         	if(action instanceof require("vcl/Action")) {
@@ -307,15 +306,15 @@ document.addEventListener("click", (evt) => {
         	throw new Error(js.sf("%s not found", href.split(":")[0]));
         }
 
-		var run, ins, title = anchor.title, sourceUri;
-		if(title.startsWith('`') && title.endsWith('`')) {
-			title = title.substring(1, title.length - 1);
-			title = e_v_a_l(title).f.apply(control, backtick_params);
+		var run, ins, title = anchor.title.trim(), sourceUri, props;
+		if(title.startsWith('${') && title.endsWith('}')) {
+			// title = title.substring(2, title.length - 1);
+			props = e_v_a_l(title).f.apply(control, backtick_params);
 		}
 		
 		if(blocks) {
-			if(run = href.charAt(0) === "!") href = href.substring(1);
 			if(ins = href.charAt(0) === "*") href = href.substring(1);
+			if(run = href.charAt(0) === "!") href = href.substring(1);
 			
 			if(href.startsWith("./")) {
 				uri = js.normalize(base, href);
@@ -330,8 +329,13 @@ document.addEventListener("click", (evt) => {
 			sourceUri = resolveUri_blocks(uri).substring("cavalion-blocks/".length) + ".js";
 			
 			if(ins) {
-				// control.print(B.i([""], { uri: "$HOME/" + uri, _sourceUri: "$HOME/" + sourceUri }).then())
-				control.print(B.i(["Hover<>", [["$HOME/" + uri]]]));
+				if(!run) {
+					control.print(B.i(["Hover<>:root", props, [["$HOME/" + uri]]], { 
+						owner: control
+					}));
+				} else {
+					control.print(B.i(["$HOME/" + uri, props]));
+				}
 			} else {
 				tab = editorNeeded(control, evt).execute({
 					formUri: "devtools/Editor<blocks>",
@@ -376,11 +380,14 @@ document.addEventListener("click", (evt) => {
 			if(evt.altKey === true) {
 				if(uri.endsWith("/")) {
 					uri += ".md";
+				} else if(uri.endsWith("/.md")) {
+					// uri already ends in ".md", cut it off
+					uri = uri.replace(/\.md$/, "");
 				} else if(!uri.endsWith(".smdl")) {
 					uri += ".smdl"
 				} else {
 					// uri ends in ".smdl", cut it off
-					uri = uri.replace(/smdl$/, "");
+					uri = uri.replace(/\.smdl$/, "");
 				}
 			}
 			
@@ -406,11 +413,11 @@ const editorNeeded = (control, evt) => {
 const update_shrink = (me, value) => me.ud("#output").syncClass("shrink", value);
 const isUpperCase = (s) => s.toUpperCase() === s;
 const e_v_a_l = (s) => {
-	// #VA-20221029-1
-	var E, s = js.sf("try { return `%s`; } catch(e) { alert(e.message); throw p(e); } ", s);
+	// #VA-20221029-1 TODO EXPLAIN this one
+	var E, s = js.sf("try { return `${r = %s`, r; } catch(e) { alert(e.message); throw p(e); } ", s.substring(2));
 	return window[(E = "e") + 'val'](js.sf("({" + 
-		"f: (app, ws, ed, v, l, p) => { %s }, " + 
-		"i: (img, app, ws, ed, v, l, p) => { %s } " + 
+		"f: (app, ws, ed, v, l, p, r) => { %s }, " + 
+		"i: (img, app, ws, ed, v, l, p, r) => { %s } " + 
 	"})", s, s));
 };
 const startsWithProtocol = (url) => url.match(/^[^\s]*:\/\//) !== null;
