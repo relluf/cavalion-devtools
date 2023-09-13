@@ -201,22 +201,9 @@ var css = {
 	}],
 	
 	["Array", ("array"), { 
-		// onFilterObject(obj) {
-		// 	var q = this.vars("q");
-		// 	if(!q) return false;
-		// 	return q.split(/\s/).filter(q => q.length > 0).some(q => !match(obj, q));
-		// },
 
-		onFilterObject(obj, row, context) {
-			var q = this.vars("q");
-			
-			if(!context.list) {
-				context.list = this.ud("#list");
-				context.columns = {};
-				context.q = q ? q.split(" ") : [""];
-			}
-			
-			function match(obj, q) {
+		vars: {
+			match(obj, q) {
 				const invert = q.charAt(0) === "!";
 
 				q = q.toLowerCase();
@@ -233,8 +220,8 @@ var css = {
 					}
 				}
 				return invert ? true : false;
-			}
-			function match_columns(obj, q) {
+			},
+			match_columns(obj, q) {
 				var column, value, invert;
 
 				if((invert = q.charAt(0) === "!")) {
@@ -278,8 +265,18 @@ var css = {
 					return invert ? true : false;
 				}
 			}
+		},
+
+		onFilterObject(obj, row, context) {
+			var q = this.vars("q"), match = this.vars("match_columns") || this.vars("match");
 			
-			return context.q.some(q => q ? !(match_columns(obj, q)) : false);// || match(obj, q)): false;
+			if(!context.list) {
+				context.list = this.ud("#list");
+				context.columns = {};
+				context.q = q ? q.split(" ") : [""];
+			}
+			
+			return context.q.some(q => q ? !(match(obj, q)) : false);// || match(obj, q)): false;
 		},
 		
 		onUpdate() {
@@ -303,6 +300,9 @@ var css = {
 					}
 					// this.setVisible(history.length);
 				}
+			}],
+			["Button", ("reload"), {
+				action: "load"
 			}]
 		]],
 		["Input", ("q"), { 
@@ -313,12 +313,7 @@ var css = {
 					array.vars("q", this.getValue());
 					array.updateFilter();
 					this.ud("#list-status").render();
-					
-					// if(this.vars("enter-pressed")) {
-					// }
-					
 				}, 250); 
-				// this.removeVar("enter-pressed");
 			} 
 		}],
 		["Group", ("right"), [
