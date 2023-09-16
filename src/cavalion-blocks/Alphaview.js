@@ -203,7 +203,7 @@ var css = {
 	["Array", ("array"), { 
 
 		vars: {
-			match(obj, q) {
+			match(obj, q, context) {
 				const invert = q.charAt(0) === "!";
 
 				q = q.toLowerCase();
@@ -221,7 +221,7 @@ var css = {
 				}
 				return invert ? true : false;
 			},
-			match_columns(obj, q) {
+			match_columns(obj, q, context, row) {
 				var column, value, invert;
 
 				if((invert = q.charAt(0) === "!")) {
@@ -276,7 +276,7 @@ var css = {
 				context.q = q ? q.split(" ") : [""];
 			}
 			
-			return context.q.some(q => q ? !(match(obj, q)) : false);// || match(obj, q)): false;
+			return context.q.some(q => q ? !(match(obj, q, context, row)) : false);
 		},
 		
 		onUpdate() {
