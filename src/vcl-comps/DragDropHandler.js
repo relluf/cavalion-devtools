@@ -44,14 +44,38 @@ function copy(obj, r, promises) {
 	}
 	return r;
 }
+function traverseFileTree(item, path) {
+    path = path || "";
+    return new Promise((resolve) => {
+        if (item.isFile) {
+            // Het is een bestand, verwerk het
+            item.file(file => {
+                resolve([file]);
+            });
+        } else if (item.isDirectory) {
+            // Het is een directory, duik erin
+            var dirReader = item.createReader();
+            dirReader.readEntries(entries => {
+                var promises = [];
+                for (var i = 0; i < entries.length; i++) {
+                    promises.push(traverseFileTree(entries[i], path + item.name + "/"));
+                }
+                Promise.all(promises).then(files => {
+                    resolve(files.flat());
+                });
+            });
+        }
+    });
+}
+
 
 [("vcl/ui/Panel"), {
 	css: { 'input': "display:none;" },
 	onLoad: function() {
 		this.setParentNode(document.body);
 
-		const input = HE.fromSource('<input type="file" multiple style="display:none;">');
-		document.body.appendChild(input);
+		const input = HE.fromSource('<input type="file" multiple webkitdirectory>');
+		this.nodeNeeded().appendChild(input);
 		
 		this.set("onDestroy", () => document.body.removeChild(input));
 		this.vars("input", input);
@@ -83,6 +107,28 @@ function copy(obj, r, promises) {
 				}, 500);
 			},
 			drop: (evt) => {
+			    evt.preventDefault();
+			    this.setVisible(false);
+			
+			    var items = evt.dataTransfer.items;
+				Promise.all(items.map(itemEntry => {
+				        var item = itemEntry.webkitGetAsEntry();
+				        if (item) {
+				            return traverseFileTree(item);
+				        }
+				        return null;
+				    })
+				    .filter(Boolean))
+				    .then(files => {
+					    files = files.flat();
+					    files.forEach(file => {
+					        var dataTransfer = copy({ files: [file] });
+					        dropped.push(dataTransfer);
+					        this.emit("dropped", [dataTransfer, dropped]);
+					    });
+					});
+			},
+			drop_: (evt) => {
 				const p = [], dataTransfer = copy(evt.dataTransfer, false, p);
 				Promise.all(p).then(() => {
 					dropped.push(dataTransfer);
