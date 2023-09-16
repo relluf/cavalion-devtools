@@ -80,7 +80,7 @@ function render() {
 						window.locale,
 						(a, b, c, d) => this.print.apply(this, [a, b, c, d].filter(a => a !== undefined))];
 
-    				a.title = e_v_a_l( // probably doesn't work as expected anymore
+    				a.title = e_v_a_l1( // probably doesn't work as expected anymore
     					a.title.substring(1, a.title.length - 1))
     						.f.apply(this, params);
     			}
@@ -129,7 +129,7 @@ function render() {
 
 		    		imgs = img.title.split('`');
 		    		img.title = imgs.pop();
-		    		imgs = e_v_a_l(imgs[1]).i.apply(me, backtick_params).split(";");
+		    		imgs = e_v_a_l1(imgs[1]).i.apply(me, backtick_params).split(";");
 		    		
 		    		if(imgs.length === 1) { // only classes
 		    			HE.addClasses(imgs.pop());
@@ -264,9 +264,9 @@ document.addEventListener("click", (evt) => {
 			(a, b, c, d) => control.print.apply(control, [a, b, c, d].filter(a => a !== undefined))];
 
 		if(backticks) {
-			href = e_v_a_l(href).f.apply(control, backtick_params);
-			blocks_vars = e_v_a_l(blocks_vars).f.apply(control, backtick_params);
-			comps_vars = e_v_a_l(comps_vars).f.apply(control, backtick_params);
+			href = e_v_a_l1(href).f.apply(control, backtick_params);
+			blocks_vars = e_v_a_l1(blocks_vars).f.apply(control, backtick_params);
+			comps_vars = e_v_a_l1(comps_vars).f.apply(control, backtick_params);
 		}
 		
 		if(silent) {
@@ -415,6 +415,14 @@ const isUpperCase = (s) => s.toUpperCase() === s;
 const e_v_a_l = (s) => {
 	// #VA-20221029-1 TODO EXPLAIN this one
 	var E, s = js.sf("try { return `${r = %s`, r; } catch(e) { alert(e.message); throw p(e); } ", s.substring(2));
+	return window[(E = "e") + 'val'](js.sf("({" + 
+		"f: (app, ws, ed, v, l, p, r) => { %s }, " + 
+		"i: (img, app, ws, ed, v, l, p, r) => { %s } " + 
+	"})", s, s));
+};
+const e_v_a_l1 = (s, E) => {
+	// #VA-20221029-1 TODO EXPLAIN this one
+	s = js.sf("try { return `%s`; } catch(e) { alert(e.message); throw p(e); } ", s);
 	return window[(E = "e") + 'val'](js.sf("({" + 
 		"f: (app, ws, ed, v, l, p, r) => { %s }, " + 
 		"i: (img, app, ws, ed, v, l, p, r) => { %s } " + 
