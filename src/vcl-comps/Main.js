@@ -104,9 +104,6 @@ function focusSidebar(ws, sidebar) {
 		}
 	}
 }
-function onTabRender() {
-	this._nodes.text.textContent = this.vars(["workspace"]).name;
-}
  
 const fixThemeColor = () => setTimeout(() => {
 	// Create the meta element
@@ -561,6 +558,9 @@ try { fixThemeColor(); } catch(e) { }
 
     [["devtools/TabFactory"], "workspaces-new", {
         vars: {
+			onTabRender() {
+				this._nodes.text.textContent = this.vars(["workspace"]).name.split(".").pop();
+			},
             parents: {
             	tab: "workspaces-tabs",
                 container: "@owner",
@@ -580,7 +580,7 @@ try { fixThemeColor(); } catch(e) { }
             var tab = this.inherited(arguments);
             tab.setVar("workspace", evt.workspace);
             tab.setText(evt.workspace.name);
-        	tab.set("onRender", evt.workspace.onTabRender || onTabRender);
+        	tab.set("onRender", evt.workspace.onTabRender || this.vars("onTabRender"));
         	
         	if(evt.workspace.name === "✪") {
         		tab.addClass("right");
