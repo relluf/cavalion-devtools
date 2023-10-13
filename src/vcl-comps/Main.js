@@ -421,7 +421,7 @@ try { fixThemeColor(); } catch(e) { }
     [["devtools/CtrlCtrl<>"], "ctrlctrl", { visible: false}],
     
 	[("vcl/Action"), "⌘.", {
-		hotkey: "Meta+190",
+		hotkey: "Meta+190|Alt+Meta+190",
 		on_() {
 			var editor, ws;
 			if(Control.focused) {
@@ -435,11 +435,13 @@ try { fixThemeColor(); } catch(e) { }
 				ws.print(nameOf(this), editor.vars(["resource.uri"]));
 			}
 		},
-		on() {
+		on(evt) {
 			var editor = app.qsa("vcl/ui/Tab:visible:selected").filter(_ => _.vars("resource")).pop();
 			if(editor) {
 				var uri = editor.vars("resource.uri"); 
-				app.print(uri, editor);
+				if(evt.altKey) {
+					app.print(uri, editor);
+				}
 				app.toast({classes: "glassy fade", content: uri})
 			}
 		}

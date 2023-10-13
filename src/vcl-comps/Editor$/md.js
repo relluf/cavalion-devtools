@@ -2,6 +2,93 @@
 
 /*-
 
+### 2023/09/16
+
+- Introduced an evaluation mechanism with a return value.
+
+### 2023/09/13
+
+- Added the ability to instantiate block components using Markdown anchors, allowing for specific property value transfers.
+- Implemented support for embedding block components within a Hover<> instance.
+- Enhanced interaction with .md and .smdl files and folders, introducing an Alt+Tap toggle behavior.
+
+### 2023/09/12
+
+- Expanded the features of cavalion-blocks, enabling the instantiation of Hover<> with specific block components using the <<[:]>> syntax.
+
+### 2023/09/11
+
+- Resolved the silent tap issue.
+- Introduced a local save feature for the resource currently being edited, specifically for #ace.getValue().
+
+### 2023/09/09
+
+- Prioritized using component names over class names.
+- Enabled the use of :: in Markdown-action links.
+- Refactored the hotkey functionality for resource-focus within the navigator.
+- Updated the primary workspace to display its tab in a unique manner.
+
+### 2023/09/07
+
+- Introduced a silent option for linking evaluable links in Markdown.
+- Allowed the use of :: (replacing :) in #action::-links, which will be replaced with anchor content.
+- Optimized the default workspaces for BXV.
+- Automated the title generation in devtools/Main based on vcl/Application#0.title.
+- Refactored title-related classes.
+
+### 2023/09/06
+
+- Modified blocks and cavalion-blocks workspaces to support an alternative workspace UI.
+- Fixed a bug preventing certain characters from being filtered.
+- Introduced a setting to keep Markdown sources hidden by default.
+- Added the devtools/cavalion-devtools.js file.
+- Committed the initial version of Main<bxv>.
+
+### 2023/06/07
+
+- No significant changes, only file attributes were modified.
+
+### 2023/03/26
+
+- Resolved issues with linking to ://.
+- Fixed the startsWithProtocol function.
+- Enhanced the UI with additional padding.
+
+### 2023/01/16
+
+- Updated the width settings for the non-shrink mode in devtools/Editor<md>.
+
+### 2023/11/15
+
+- Fixed a bug causing null, 0, and false to be treated as undefined.
+
+### 2023/10/30
+
+- Improved the detection mechanism for automatically displaying the workspace console.
+  
+### 2023/10/30
+
+- Reference: #CVLN-20210102-2.
+
+### 2023/09/23
+
+- Added a shortcut, Ctrl+S, for #editor-switch-favorite.
+
+### 2023/07/29
+
+- Updated the CSS styling for inline images.
+
+### 2023/07/28
+
+- Enhanced image styling and classifications within Markdown code.
+- Introduced `${p(:)}`, expanding the possibilities with links and backticks in Markdown.
+- Made variables constant for better code stability.
+
+### 2023/06/24
+
+- Removed unnecessary log and debug prints.
+
+
 ### 2022/10/29
 
 * Improves console.print-click, while Cmd no console.show
@@ -196,8 +283,12 @@ document.addEventListener("click", (evt) => {
         	href = "blocks:!:";
         } else if(href.startsWith("[") && href.endsWith("]")) {
         	href = "blocks:" + href.substring(1, href.length - 1);
+        } else if(href.startsWith("<<[") && href.endsWith("]>>")) {
+        	href = "blocks:*" + href.substring(3, href.length - 3);
         } else if(href.startsWith("<[") && href.endsWith("]>")) {
         	href = "blocks:*" + href.substring(2, href.length - 2);
+        } else if(href.startsWith("<[") && href.endsWith("]>>")) { // crazy rendering bugs)
+        	href = "blocks:*" + href.substring(2, href.length - 3);
         } else if((blocks = href.match(/(\[[^\]]*\])({.*})/))) {
         	href = "blocks:" + blocks[1].substring(1).split("]")[0];
         	blocks_vars = blocks[2];
@@ -242,12 +333,8 @@ document.addEventListener("click", (evt) => {
 			
 		evt.preventDefault();
 		
-		if(href === "") {
-			href = anchor.textContent;
-		} else if(href === ":") {
-			// alert("HUU?")
-			blocks = true;
-			href = anchor.textContent;
+		if(href === "" || href === "*") { // <<[]>> becomes *
+			href = href + anchor.textContent;
 		}
 
 		if(href.startsWith("://")) { // TODO anticipate ! and *
@@ -328,9 +415,11 @@ document.addEventListener("click", (evt) => {
 				
 			sourceUri = resolveUri_blocks(uri).substring("cavalion-blocks/".length) + ".js";
 			
-			if(ins) {
+			if(ins && evt.altKey === false) {
 				if(!run) {
-					control.print(B.i(["Hover<>:root", props, [["$HOME/" + uri]]], { 
+					props = props || {};
+					props.vars = js.mi({ 'storage-uri': uri }, props.vars || {});
+					control.print(B.i(["Hover<>:root", uri, props, [["$HOME/" + uri]]], { 
 						owner: control
 					}));
 				} else {

@@ -106,6 +106,10 @@ const ifVar = (owner, args, cb) => {
 };
 const startsWithProtocol = (url) => url.match(/^[^\s]*:\/\//) !== null;
 const expandColonInUri = (uri, expansion) => {
+	var uris = uri.split(";");
+	
+	uri = uris[0];
+	
 	if(uri.startsWith("://")) {
 		const name = js.get("storageDB.name", req("vcl/Component"));
 		uri = js.sf("pouchdb://%s/%s", name, uri.substring(3));
@@ -118,7 +122,10 @@ const expandColonInUri = (uri, expansion) => {
 			uri = uri.replace(/:([^:]*)$/, expansion + "$1");
 		}
 	}
-	return uri;
+	
+	uris[0] = uri;
+	
+	return uris.join(";");
 };
 const expandColonInNavigatorFavorites = (ws) => {
 	var spec = ws.getSpecializer();

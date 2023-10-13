@@ -87,6 +87,7 @@ var getKey = (tab) => {
     activeControl: "ace",
     onActivate() {
     	this.scope().loading.update();
+    	this.scope().ace.setFocus();
     	return this.inherited(arguments);	
     },
     onLoad() {

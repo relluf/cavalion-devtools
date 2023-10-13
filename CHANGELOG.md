@@ -1,15 +1,50 @@
-### `2023/07/07` Seperate package for GDS
+### `2023/10/12` 1.0.85 October Release
 
-Or at least codebase, because it won't be published to NPM.
+* Finally (**!!!**) fixed focusing #ace upon Editor-tab change
 
-* [veldapps-gds-devtools](/Workspaces/veldapps.com/:/)
+### `2023/09/16` 1.0.84
 
-### `2023/07/02` Tidying up, refactoring
+- **Added**:
+  - An evaluation mechanism with a return value.
+  - Support for instantiating block components using Markdown anchors, enabling specific property value transfers.
+  - Support for embedding block components within a Hover<> instance.
+  - Interaction with .md and .smdl files and folders, introducing an Alt+Tap toggle behavior.
+  - MetaCtrl+O shortcut to "drop" additional files in.
+  - A reload action.
+  - The smdl file format.
+  - A cavalion-blocks feature.
+  - The ✪ workspace.
+  - Debugger tools for RequireJS.
+  - A setting to keep Markdown sources hidden by default.
+  - The latest dotted part of the name on the corresponding Tab.
+  - The use of :: in Markdown-action links.
+  - Filter and matching mechanisms.
+  - The capability to override matching items using `vars.match_columns` and falling back to `vars.match` (utilized by ChatGPT viewer by falsifying `match_columns` and redefining `match`).
+  - The `devtools/cavalion-devtools.js` file.
+  - The initial version of `Main<bxv>`.
+- **Developed**:
+  - Drag-and-drop functionality for directories.
+  - The ability to drop and open files in BXV.
+  - Cavalion-blocks features, allowing the instantiation of Hover<> with specific block components using the <<[:]>> syntax.
+  - The functionality to drag and drop files directly onto the map.
+  - BXV by removing the Documenten workspace on startup.
+- **Fixed**:
+  - The primary workspace to display its tab in a unique manner.
+  - Blocks and cavalion-blocks workspaces to support an alternative workspace UI.
+  - A bug preventing certain characters from being filtered.
+  - An issue where `top.document` access would throw an error when not allowed.
+  - `#title` colors.
+  - The silent tap issue.
+- **Refactored**:
+  - The hotkey functionality for resource-focus within the navigator.
+  - Title-related classes.
 
-* Moved `setup_taylor` to `Util`, so it can be used by `triaxial` as well
-* The var `setup` can now be defined at the root level. Seems a nice approach in general, more concise.
+### `2023/08/29` 1.0.83
 
-![RYwSYP](https://raw.githubusercontent.com/relluf/screenshots/master/uPic/RYwSYP.png)
+* Publishing in favor of veldapps.com/bxv
+* Adds debugging info for Keys
+* Adds hotkey for focussing #q (filter dataset)
+* Adjusts background styling
 
 ### `2023/03/30` - 1.0.82
 

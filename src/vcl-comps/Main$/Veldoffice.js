@@ -1,42 +1,49 @@
-"use blocks/Blocks, veldoffice/VO";
-
-window.VO = require("veldoffice/VO");
-var B = require("blocks/Blocks");
+"";
 
 ["", {
-	handlers: {
-		loaded() {
-			// this.qs("#session-bar").getNode().style.backgroundColor = "#f0f0f0";
-			// this.qs("#session-bar").setIndex(0);
-			// this.qs("#session-bar").show();
-			
-			this.app().print("VO", VO);
-			this.app().print("VO.itsme()", VO.li());
-		},
-		activate() {
-			var ms = this.vars("ms") || 0;
-			if(Date.now() - ms > 30000) {
-				this.setTimeout("activate->refresh->every30s", 
-					function() {
-						this.down("#session-bar #refresh").execute();
-						this.vars("ms", Date.now());
-					}.bind(this), 200
-				);
-			}
-			return this.inherited(arguments);
-		}
+	overrides: {
+		
+	},
+	vars: {
+        "default-workspaces": [{
+        	name: "✪",
+	    	vars: { "#navigator favorites": [ "Dropbox-veldapps/VO/.md;.md;File" ] },
+            state: {
+	            "left-sidebar.visible": false,
+	            "editors": [{
+	                "selected": true,
+	                "resource": {
+	                    "uri": "Dropbox-veldapps/VO/.md",
+	                    "type": "File"
+	                }
+	            }]
+            },
+            onTabRender() {
+            	this.addClass("star");
+            	this.set("onRender", null);
+            }
+        }, {
+            "name": "Start",
+            "selected": true,
+	    	"vars": { "#navigator favorites": [ "Dropbox-veldapps/VO/Start/.md;.md;File" ] },
+            "state": {
+	            "left-sidebar.visible": false,
+	            "editors": [{
+	                "selected": true,
+	                "resource": {
+	                    "uri": "Dropbox-veldapps/VO/Start/.md",
+	                    "type": "File"
+	                }
+	            }]
+            }
+        }, {
+        	"name": "Kaart",
+        	"specializer": "cavalion-blocks:Dropbox-veldapps/Issues/VA-20220501-1-Map/Map"
+        }, {
+        	"name": "Documenten",
+	    	"vars": { "#navigator favorites": [ "Dropbox-veldapps/Issues/VA-20230903-1-Docs/.md;.md;File" ] }
+        }]
 	}
 }, [
-	// [["veldoffice/Session"], "session-bar", {}, [
-	
-	// 	["#title", { 
-	// 		content: "Veldoffice<span style='font-weight:normal;'> - code</span>" 
-	// 	}]
-		
-	// ]],
-	["#workspaces-tabs", { //align: "top", index: 1, classes: "", _zoom: 1.5,
-		onNodeCreated() { 
-			// this.setTimeout("zoom", () => this.setZoom(1.45), 750); 
-		}
-	}]	
+	[("#title"), { vars: "title: VO;", classes: "veldoffice" }]//, vars: { title: "BVX" } }], // picked up from #0 (app)
 ]];
