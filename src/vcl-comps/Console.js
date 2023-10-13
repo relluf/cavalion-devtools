@@ -23,8 +23,7 @@ var Resources = require("devtools/Resources");
             	},
             	ls: { 
             		get() {
-            			return (path) => Resources.list(path || 
-            				js.up(ace.vars(["resource.uri"]))); 
+            			return (path) => Resources.list(js.normalize((ace.vars(["resource.uri"])), path || ".")); 
             		} 
             	}
             }))]);

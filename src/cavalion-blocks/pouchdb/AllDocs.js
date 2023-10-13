@@ -8,35 +8,11 @@ var Component = require("vcl/Component");
 	handlers: {
 		onLoad() {
 			this.scope().refresh.setEnabled(false);
-			this.vars("db", new PouchDB(this.getSpecializer() || Component.storageDB.name));
+			this.vars("db", new PouchDB(this.getSpecializer() || "arcadis-va_objects" || Component.storageDB.name));
 			this.scope().refresh.setEnabled(true);
 			this.scope().refresh.execute();
 		},
 	
-		"#status onRender": function() {
-	    	var scope = this.scope();
-	    	var active = scope.docs.isActive();
-	    	var selection = scope.list.getSelection();
-	    	var content = [];
-	    	if(active) {
-	        	var size = scope.docs.getSize();
-	        	var arr = scope.docs.getArray(), loaded = 0;
-	        	for(var i = 0; i < arr.length; 
-	        		++i, loaded += (arr[i] !== Source.Pending ? 1 : 0)) {
-	        	}
-	
-	        	if(selection.length) {
-	        	    content.push(String.format("%d / ", selection.length));
-	        	}
-	        	if(size) {
-		        	content.push(String.format("%s item%s (%d%%)",
-							size, size === 1 ? "" : "s", parseInt(loaded / size * 100, 10)));
-	        	} else {
-		        	content.push("No items");
-	        	}
-	    	}
-			this.setContent("&nbsp;" + content.join(""));
-		},
 		"#list onColumnGetValue": function(column, value, rowIndex, source) {
 			if(column._attribute === "value") {
 				return value.rev;
@@ -62,6 +38,8 @@ var Component = require("vcl/Component");
 		}
 	}
 }, [
+	
+	[("#query_load_all"), { on() {} }],
 
 	[("#list"), { autoColumns: true, source: "docs" }],
 
@@ -114,6 +92,63 @@ var Component = require("vcl/Component");
 			var scope = this.scope();
 			scope.refresh.setEnabled(!busy);
 			scope.status.render();
+		},
+		onFilterObject(obj, row, context) {
+			var q = this.vars("q");
+			
+			if(!context.list) {
+				context.list = this.ud("#list");
+				context.columns = {};
+				context.q = q ? q.split(" ") : [""];
+			}
+			
+			function match(obj, q) {
+				q = q.toLowerCase();
+	
+				if((inverse = (q && q.charAt(0) === "!"))) {
+					q = q.substring(1);
+				}
+				
+				if(typeof obj ==="string") {
+					return obj.toLowerCase().includes(q);
+				}
+				for(var k in obj) {
+					if(js.sf("%n", obj[k]).toLowerCase().includes(q)) {
+						return inverse ? false : true;
+					}
+				}
+				return inverse ? true : false;
+			}
+			function match_columns(obj, q) {
+				var column, value, inverse = false;
+				if(q.indexOf(":") === -1) {
+					q = q.toLowerCase();
+					if(q && (inverse = (q.charAt(0) === "!"))) {
+						q = q.substring(1);
+					}
+					
+					for(var i = 0, n = context.list.getColumnCount(); i < n; ++i) {
+						column = context.list.getColumn(i);
+						value = context.list.valueByColumnAndRow(column, row);
+						if(js.sf("%n", value).toLowerCase().includes(q)) {
+							return inverse ? false : true;
+						}
+					}
+					return inverse ? true : false;
+				} else {
+					q = q.split(":");
+					column = context.columns[q[0]] || (context.columns[q] = context.list.getColumnByName(q[0]));
+					if(column) {
+						value = context.list.valueByColumnAndRow(column, row);
+						if(js.sf("%n", value).toLowerCase().includes(q[1])) {
+							return true;
+						}
+					}
+					return false;
+				}
+			}
+			
+			return context.q.some(q => q ? !(match_columns(obj, q)) : false);// || match(obj, q)): false;
 		}
 	}]
 	
