@@ -110,7 +110,7 @@ function traverseFileTree(item, path) {
 			    evt.preventDefault();
 			    this.setVisible(false);
 			
-			    var items = evt.dataTransfer.items;
+			    var items = Array.from(evt.dataTransfer.items);
 				Promise.all(items.map(itemEntry => {
 				        var item = itemEntry.webkitGetAsEntry();
 				        if (item) {

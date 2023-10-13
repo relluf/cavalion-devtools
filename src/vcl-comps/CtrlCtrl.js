@@ -1,5 +1,3 @@
-"";
-
 /*- hide list when no results */
 
 var path = (tab) => {
