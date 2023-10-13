@@ -92,8 +92,10 @@ var css = {
 				var ws = this.up("devtools/Workspace<>");
 				if(ws) {
 					cons = ws.down("#left-sidebar < #console #console");
+				} else {
+					cons = this.app().qs("#console #console");
 				}
-				if(cons) {
+				if(cons && cons.isVisible()) {
 					sel = cons.sel || [];
 				} else {
 					sel = this.app().down("vcl/ui/Console#console").sel || [];
@@ -109,11 +111,16 @@ var css = {
 					var content = node.textContent;
 					if(content) {
 						var parent = node.parentNode.parentNode.parentNode.qs(".key");
-						if(parent.textContent.charAt(0) === "[") {
+						if(parent.textContent.startsWith(0) === "Array[") {
 							parent = parent.parentNode.parentNode.parentNode.qs(".key");
 						}
-						parent = parent && parent.textContent;
-						this.ud("#q").setPlaceholder(js.sf("%s/%s", parent.replace(/: $/, ""), content.replace(/: $/, "")));
+						if(parent) {
+							parent = parent.textContent;
+							this.ud("#q").setPlaceholder(js.sf("%s/%s", parent.replace(/: $/, ""), content.replace(/: $/, "")));
+						
+						} else {
+							this.ud("#q").setPlaceholder(js.sf("%s", content.replace(/: $/, "")));
+						}
 					}
 				}
 			}
@@ -135,8 +142,14 @@ var css = {
 					root.down("#array").setArray(value);
 				} else if(value !== null) {
 					if(typeof value === "object") {
-						var tabs = [];
-						if(Object.values(value).every(value => value instanceof Array)) {
+						var tabs = [], values = Object.values(value);
+						if(values.every(value => value instanceof Array)) {
+							tabs.push(["Tab", {
+								textReflects: "innerHTML",
+								text: js.sf("<small>(%d)</small>", values.flat().length), 
+								vars: { array: values.flat(), key: "" }
+							}]);
+								
 							for(var ft in value) {
 								tabs.push(["Tab", { 
 									textReflects: "innerHTML",
@@ -152,7 +165,7 @@ var css = {
 								tabs.clearState("acceptChildNodes");
 								[].concat(c._controls).forEach(tab => tab.setParent(tabs));
 								tabs.setState("acceptChildNodes", true);
-								tabs._controls[0].setSelected(true);
+								tabs._controls[1].setSelected(true);
 							});
 						} else {
 							var arr = [];
@@ -361,7 +374,11 @@ var css = {
 			".autowidth": "max-width: 320px;", 
 			".ListCell": "max-width: 332px;",
 			'.{ListColumn}': { ':active': "font-weight:bold;" },
-			'.{ListHeader}': { ':active': "background-color: gold;" }//rgb(56, 121, 217);" } 
+			'.{ListHeader}': { 
+				'': "background-color:transparent;transition:background-color 0.5s ease 0s;", 
+				':active': "background-color: gold;", //rgb(56, 121, 217);" } 
+				'&.scrolled': "background-color:rgba(255,255,255,0.75);"
+			}
 		},
 		autoColumns: true,
 		source: "array", 
@@ -401,6 +418,16 @@ var css = {
 		onDblClick() { 
 			var selection = this.getSelection(true);
 			this.print(selection.length === 1 ? selection[0] : selection);
+		},
+		onScroll() {
+			var hasClass = this._header.hasClass("scrolled");
+			var scrollTop = this._nodes.body.scrollTop;
+			if(scrollTop > 20) {
+				!hasClass && this._header.addClass("scrolled");
+			} else {
+				hasClass && this._header.removeClass("scrolled");
+			}
+			this.ud("#list")._nodes.body.scrollTop = scrollTop;
 		}
 	}],
 	["Ace", ("ace"), { visible: false }],
