@@ -150,13 +150,7 @@ const setDocumentTitle = (title) => { try { top.document.title = title; } catch(
         
         expandColonInNavigatorFavorites(this);
 
-        this.open = function(evt) {
-        	// if(evt instanceof Array) {
-        	// 	evt = {
-        			
-        	// 	}
-        	// }
-        	
+        this.open = function(evt, opts) {
         	if(typeof evt === "string") {
         		evt = { 
         			resource: { 
@@ -166,7 +160,11 @@ const setDocumentTitle = (title) => { try { top.document.title = title; } catch(
 	        		selected: true
         		};
         	}
-        	return scope['editor-needed'].execute(evt);
+        	if(typeof opts === "string") {
+        		evt.content = opts;
+        		opts = arguments[2];
+        	}
+        	return scope['editor-needed'].execute(js.mi(evt, opts || {}));
         };
         this.on("state-dirty", function() {
             var workspace = scope['@owner'];
@@ -357,6 +355,9 @@ const setDocumentTitle = (title) => { try { top.document.title = title; } catch(
 	            // 	"resource-rendered"(e) { callback(evt.onResourceRendered, [e]); },
 	            	"resource-loaded"(e) { 
 	            		if(first) { tab.emit("editor-available", [e]); }
+	            		if(evt.content) {
+	            			tab.qs("#ace").setValue(evt.content);
+	            		}
 	            		callback(evt.onResourceLoaded, [e]); 
 	            	},
 	            // 	"resource-saved"(e) { callback(evt.onResourceSaved, [e]); }
