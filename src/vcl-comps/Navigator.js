@@ -5,7 +5,10 @@ var Resources = require("devtools/Resources");
 var NavigatorNode = require("devtools/NavigatorNode");
 var Component = require("vcl/Component");
 
-var Storage_uri = (uri) => js.sf("pouchdb://%s/%s", Component.storageDB.name, uri);
+var Storage_uri = Component.storageDB ? 
+	(uri) => js.sf("pouchdb://%s/%s", Component.storageDB.name, uri) 
+	:
+	(uri) => uri;
 
 var needsParent = ["src", "build", "vcl-comps", "css", "images", "img", "lib", "pages", "cavalion-blocks"];
 function getNodeText(uri, usedNames) {
