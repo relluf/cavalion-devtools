@@ -1,3 +1,9 @@
+### `2024/05/20` 1.0.86 May Release
+
+* Changes were made
+* Bugs were fixed
+* Features were added
+
 ### `2023/10/12` 1.0.85 October Release
 
 * Finally (**!!!**) fixed focusing #ace upon Editor-tab change
