@@ -68,20 +68,19 @@ function traverseFileTree(item, path) {
     });
 }
 
-
 [("vcl/ui/Panel"), {
-	css: { 'input': "display:none;" },
+	css: {
+		'': "background-color:rgba(45,45,45,0.8);z-index:9999999999; color:white;padding:64px; font-family:\"Lucida Grande\", Arial, sans-serif;",
+		'input': "display:none;"
+	},
 	onLoad: function() {
-		this.setParentNode(document.body);
-
 		const input = HE.fromSource('<input type="file" multiple webkitdirectory>');
+		const dropped = this.vars("dropped", []);
+
+		this.setParentNode(document.body);
 		this.nodeNeeded().appendChild(input);
-		
-		this.set("onDestroy", () => document.body.removeChild(input));
+
 		this.vars("input", input);
-		
-		const dropped = this.vars("dropped", false, []);
-		
 	    input.addEventListener("change", (evt) => {
 	        if (evt.target.files.length > 0) {
 	            // var file = evt.target.files[0];
@@ -90,79 +89,74 @@ function traverseFileTree(item, path) {
 		            dropped.push(dataTransfer);
 					// this.emit("dropped", [dataTransfer, dropped]);
 					this.nextTick(() => this.emit("dropped", [dataTransfer, dropped])); // TODO
+					
+					this.print("dropped", dataTransfer);
 	            });
 	        }
 	    });		
-
-		var listeners;
+		
 		this.vars("listeners", listeners = {
 			dragover: (evt) => {
-				evt.preventDefault();
-				this.setVisible(true);
+				if(this.isEnabled()) {
+					evt.preventDefault();
+					this.clearTimeout("hide");
+					this.show();
+				}
 			},
 			dragend: (evt) => {
-				this.setTimeout("dragend", () => {
+				if(this.isEnabled()) {
 					evt.preventDefault();
-					this.setVisible(false);
-				}, 500);
+					this.setTimeout("hide", () => this.hide(), 500);
+				}
 			},
 			drop: (evt) => {
-			    evt.preventDefault();
-			    this.setVisible(false);
-			
-			    var items = Array.from(evt.dataTransfer.items);
-				Promise.all(items.map(itemEntry => {
-				        var item = itemEntry.webkitGetAsEntry();
-				        if (item) {
-				            return traverseFileTree(item);
-				        }
-				        return null;
-				    })
-				    .filter(Boolean))
-				    .then(files => {
-					    files = files.flat();
-					    files.forEach(file => {
-					        var dataTransfer = copy({ files: [file] });
-					        dropped.push(dataTransfer);
-					        this.emit("dropped", [dataTransfer, dropped]);
-					    });
-					});
-			},
-			drop_: (evt) => {
-				const p = [], dataTransfer = copy(evt.dataTransfer, false, p);
-				Promise.all(p).then(() => {
+				if(this.isEnabled()) {
+					var dataTransfer = copy(evt.dataTransfer);
 					dropped.push(dataTransfer);
-					// this.emit("dropped", [dataTransfer, dropped]);
-					this.nextTick(() => this.emit("dropped", [dataTransfer, dropped])); // TODO
-					this.setVisible(false);
-				});
-				
-				evt.preventDefault();
+					
+					this.emit("before-dropped", [dataTransfer, dropped]);
+	
+					Promise.all(dataTransfer.items.map(item => Promise.resolve(item.readerResult)))
+						.then(res => this.emit("dropped", [dataTransfer, dropped]))
+						.then(res => this.emit("after-dropped", [dataTransfer, dropped]));
+	
+					evt.preventDefault();
+					this.hide();
+				}
+			},
+			dragleave: (evt) => {
+				if(this.isEnabled()) {
+					evt.preventDefault();
+					this.setTimeout("hide", () => this.hide(), 500);
+					
+				}
 			}
 		});
-		
+
 		document.addEventListener("dragover", listeners.dragover);
 		document.addEventListener("dragend", listeners.dragend);
 		document.addEventListener("drop", listeners.drop);
+		document.addEventListener("dragleave", listeners.dragleave);
 	},
 	onDestroy: function() {
 		var listeners = this.vars("listeners");
+
+		// this.set("onDestroy", () => document.body.removeChild(input));
+
 		document.removeEventListener("dragover", listeners.dragover);
 		document.removeEventListener("dragend", listeners.dragend);
 		document.removeEventListener("drop", listeners.drop);
+		document.removeEventListener("dragleave", listeners.dragleave);
 	},
 	align: "client",
-	css: "background-color:rgba(45,45,45,0.8);z-index:9999999999; color:white;padding:64px; font-family:\"Lucida Grande\", Arial, sans-serif;",
-	content: locale("DragDropHandler.dropHereMessage") + " [" + Date.now() + "]",
+	// content: locale("DragDropHandler.dropHereMessage") + " [" + Date.now() + "]",
 	visible: false
 }, [
-
 	["vcl/Action", ("drop-opened-files"), {
 		hotkey: "MetaCtrl+O",
 		on() { this.vars(["input"]).click(); },
 		overrides: {
-			isHotkeyEnabled() { return true; },
+			isHotkeyEnabled() { return this._owner.isEnabled(); },
 		}
 	}]	
-	
 ]];
