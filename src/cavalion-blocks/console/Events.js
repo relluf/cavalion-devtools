@@ -1,5 +1,11 @@
 "use js, override";
 
+/*-
+
+2023/10/14 Should add [x] Ignore event of this component
+
+*/
+
 var override = require("override");
 
 var handlers = {

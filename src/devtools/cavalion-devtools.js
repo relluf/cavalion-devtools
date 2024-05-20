@@ -17,7 +17,7 @@ define([], function() {
 	var veldoffice_js_ = veldoffice_js.substring(veldoffice_js.charAt(0) === '/' ? 1 : 0);
 
 	window.require.config({
-		baseUrl: "src/",
+		// baseUrl: "src/",
 	    paths: {
 	        "cavalion-blocks/$HOME": "/home",
 	        "home": "/home",

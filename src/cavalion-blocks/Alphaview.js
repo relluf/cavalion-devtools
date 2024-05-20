@@ -92,10 +92,11 @@ var css = {
 				var ws = this.up("devtools/Workspace<>");
 				if(ws) {
 					cons = ws.down("#left-sidebar < #console #console");
+					sel = cons.sel || [];
 				} else {
 					cons = this.app().qs("#console #console");
 				}
-				if(cons && cons.isVisible()) {
+				if(cons) {// && cons.isVisible()) {
 					sel = cons.sel || [];
 				} else {
 					sel = this.app().down("vcl/ui/Console#console").sel || [];
@@ -207,7 +208,13 @@ var css = {
 			(ws || q._owner).print(q.getValue() || selected || "*" , objs);
 		}
 	}],
-	
+	["Executable", ("open"), {
+		on(evt) {
+			// var selection = this.getSelection(true);
+			// this.ud("#print").execute(selection.length === 1 ? selection[0] : selection);
+			this.ud("#print").execute(evt);
+		}	
+	}],
 	["Executable", ("focus-q"), {
 		hotkey: "MetaCtrl+191",
 		on() { this.ud("#q").setFocus(); }
@@ -281,7 +288,7 @@ var css = {
 		},
 
 		onFilterObject(obj, row, context) {
-			var q = this.vars("q"), match = this.vars("match_columns") || this.vars("match");
+			var q = this.vars("q"), match = this.vars("match") || this.vars("match_columns");
 			
 			if(!context.list) {
 				context.list = this.ud("#list");
@@ -370,6 +377,8 @@ var css = {
 		}]
 	]],
 	["List", ("list"), { 
+		action: "open",
+		autoColumns: true,
 		css: { 
 			".autowidth": "max-width: 320px;", 
 			".ListCell": "max-width: 332px;",
@@ -380,7 +389,6 @@ var css = {
 				'&.scrolled': "background-color:rgba(255,255,255,0.75);"
 			}
 		},
-		autoColumns: true,
 		source: "array", 
 		visible: false, 
 		onSelectionChange() {
@@ -415,10 +423,10 @@ var css = {
 				}, 300);
 			}
 		},
-		onDblClick() { 
-			var selection = this.getSelection(true);
-			this.print(selection.length === 1 ? selection[0] : selection);
-		},
+		// onDblClick() { 
+		// 	var selection = this.getSelection(true);
+		// 	this.open(selection.length === 1 ? selection[0] : selection);
+		// },
 		onScroll() {
 			var hasClass = this._header.hasClass("scrolled");
 			var scrollTop = this._nodes.body.scrollTop;
