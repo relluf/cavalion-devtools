@@ -133,7 +133,6 @@ const Component = require("vcl/Component");
 const HE = require("util/HtmlElement");
 const resolveUri_comps = require("vcl/Factory").resolveUri;
 
-
 // CVLN-20221106-1, CVLN-20220418-1
 js.dt = (a) => a === undefined ? new Date() : new Date(a);
 
@@ -519,7 +518,7 @@ const e_v_a_l1 = (s, E) => {
 };
 const startsWithProtocol = (url) => url.match(/^[^\s]*:\/\//) !== null;
 
-var Handlers = {
+const Handlers = {
     onResize() {
     	var cs = this.getComputedStyle();
 		this.ud("#output").syncClass("shrink", parseInt(cs.width, 10) < 900);
@@ -536,8 +535,11 @@ var Handlers = {
     	}
 	}
 };
+const Css = {
+	'a > img': "border: 2px solid rgb(56, 121, 217);"
+};
 
-["", { handlers: Handlers }, [
+["", { css: Css, handlers: Handlers }, [
     [("#evaluate"), {
     	onLoad() {
     		this.vars("eval", () => this.vars(["root"]));

@@ -6,30 +6,31 @@
 		.eval(expr)
 */
 var ExtensionToMode = {
-            "html": "html",
-            "css": "css",
-            "scss": "scss",
-            "json": "json",
-            "geojson": "json",
-            "js": "javascript",
-            "jso": "javascript",
-            "blocks": "javascript",
-            "vcl": "javascript",
-            "ts": "typescript",
-            "md": "markdown",
-            "markdown": "markdown",
-            "java": "java",
-            "jsx": "jsx",
-            "rdf": "xml",
-            "wsdl": "xml",
-            "xsd": "xml",
-            "xml": "xml",
-            "kml": "xml",
-            "xsl": "xml",
-            "jsp": "jsp",
-            "yml": "yaml",
-            "openapi": "yaml"
-        };
+		"f7": "html",
+        "html": "html",
+        "css": "css",
+        "scss": "scss",
+        "json": "json",
+        "geojson": "json",
+        "js": "javascript",
+        "jso": "javascript",
+        "blocks": "javascript",
+        "vcl": "javascript",
+        "ts": "typescript",
+        "md": "markdown",
+        "markdown": "markdown",
+        "java": "java",
+        "jsx": "jsx",
+        "rdf": "xml",
+        "wsdl": "xml",
+        "xsd": "xml",
+        "xml": "xml",
+        "kml": "xml",
+        "xsl": "xml",
+        "jsp": "jsp",
+        "yml": "yaml",
+        "openapi": "yaml"
+    };
 
 var Event_ = require("util/Event");
 var Resources = require("devtools/Resources");

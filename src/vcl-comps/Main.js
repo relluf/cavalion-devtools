@@ -58,7 +58,7 @@ function title_css() {
 		"": "text-align:center;float:right;min-width:200px;line-height:26px;", 
 		"&:not(.custom-colors)": js.sf("background-color:%s;color:%s;", colors[0], colors[1]),
 		"&.arcadis": "background-color:orange;color:black;",
-		"&.kzmrqz": "background-color:orange;color:purple;",
+		"&.kzmrqz": "background-color:gold;color:#996300;",
 		"&.cavalion": "background-color:rgb(48,61,80);color:white;",
 		"&.terrannia": "background-color:pink;color:purple;",
 		"&.homemade": "background-color:purple;color:white;",
@@ -122,6 +122,10 @@ const fixThemeColor = () => setTimeout(() => {
 		// Append the meta element to the head
 		top.document.head.appendChild(meta);
 	}
+	top.document.body.style.overflow = "hidden";
+	window.document.body.focus();
+	
+	console.log("fixedThemeColor and such");
 }, 0);
 
 var tabs_hidden = "height:0;padding:0;border:0;opacity:0;";
