@@ -1,7 +1,7 @@
 var allDroppedItems = () => require("vcl/Application").get()
-		.qsa("devtools/DragDropHandler<>")
+		.qsa("devtools/DragDropHandler<>:root")
 		.map(_ => _.vars("dropped")).flat()
-		.map(_ => _.items)
+		.map(_ => _.items || _.files)
 		.flat();
 		
 ["", {}, [
