@@ -267,6 +267,16 @@ var xsTypes = {};
 							});
 						}
 					}, this);
+
+					// ctypes zonder features (of eigenlijk @_ref, maar sommigen hebben wel features)
+					this.ctypes.filter(ct => !js.get(at__ + ".features", ct)).forEach(ct => {
+						var ref = js.get("sequence.element.@_ref", ct);
+						var features = js.get(at__ + ".features", this.elems_map[ref]);
+						if(features) {
+							// console.log("adjusted features", ct)
+							Object.keys(features).forEach(key => js.set(at__ + ".features." + key, features[key], ct));
+						}
+					});
 				},
 				
 				findType: function(name) {
@@ -375,7 +385,7 @@ var xsTypes = {};
 					}
 				},			
 				inheritType: function(xselem, xstype, xstype_name, as_base) {
-					var base, ref;
+					var base, ref, name;
 					if(xstype['@_base']) {
 						if((base = this.findType(xstype['@_base']))) {
 							js.set(at__ + ".base-resolved", base, xstype);
@@ -389,6 +399,28 @@ var xsTypes = {};
 					}
 					if(xstype['@_substitutionGroup']) {
 						console.log("inheritType.@_substitutionGroup", xselem, xstype);
+					}
+					if((ref = js.get("complexContent.extension.sequence.element.@_ref", xstype))) {
+						ref = ref.split(":");
+						js.set(at__ + ".features." + ref[1], ({
+							namespace: ref[0],
+							reference: true,
+							kind: "element", 
+							type: ref.join(":"),
+							'type-resolved': this.elems_map[ref.join(":")],
+							cardinality: [
+								typeof (x=xselem['@_minOccurs']) === "number" ? x : x || 1, 
+								typeof (x=xselem['@_maxOccurs']) === "number" ? x : x || 1
+							].join("-"),
+							xs: xselem
+						}), xselem);
+						
+						// this.stamp(xstype);
+						// this.inheritElement(xselem, xstype, ref);
+
+					}
+					if((ref = js.get("complexContent.extension.sequence.element.@_ref", xselem))) {
+						// console.log("other one", ref, xselem);
 					}
 					xsArray("simpleContent.extension", xstype).map(function(xsext, i) {
 						this.stamp(xsext);
@@ -416,7 +448,11 @@ var xsTypes = {};
 					}, this);
 					xsArray("sequence.element", xstype).map(function(xsel, i) {
 						this.stamp(xsel);
-						this.inheritElement(xselem, xsel, xsel['@_type'] || xsel['@_name']);
+						if(xsel['@_ref']) {
+							// TODO this must be done later
+						} else {
+							this.inheritElement(xselem, xsel, xsel['@_type'] || xsel['@_name']);
+						}
 					}, this);
 					xsArray("choice.element", xstype).map(function(xsel, i) {
 						this.stamp(xsel);
@@ -486,6 +522,9 @@ var xsTypes = {};
 						info.reference = true;
 						if(!(info['type-resolved'] = this.elems_map[ref])) {
 							this.log(xselem, sf("@_ref %s not found", ref));
+						} else {
+							// var features = js.get(at__ + ".features", );
+							xsel['@_ref-resolved'] = info['type-resolved'];
 						}
 					} else if((type = js_getXs("%scomplexType", xsel))) {
 						// %scomplexType.%ssimpleContent.%srestriction.@_base
