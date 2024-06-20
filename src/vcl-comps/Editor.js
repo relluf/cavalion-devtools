@@ -266,7 +266,7 @@ var getKey = (tab) => {
 			if(!resource.name) { // TODO Resources.extrapolate(resource);
 				resource.path = resource.uri.split("/");
 				resource.name = resource.path.pop();
-				resource.path = resource.join("/");
+				resource.path = resource.path.join("/");
 				resource.ext = resource.name.split(".").pop();
 			}
 			
