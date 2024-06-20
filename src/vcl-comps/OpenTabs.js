@@ -38,7 +38,7 @@
     }],
     
     ["vcl/Action", ("refresh"), {
-    	// hotkey: "keyup:F5",
+    	hotkey: "keyup:F5",
     	on() {
 			this.scope("editors-array").setArray(
 		    	this.up("devtools/Workspace<>:root").qsa("vcl/ui/Tab")

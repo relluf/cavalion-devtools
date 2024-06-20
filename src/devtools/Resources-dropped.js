@@ -43,8 +43,8 @@ define(function(require) {
 		},
 		get: function(uri) {
 			var index = parseInt(uri.split("/").shift(), 10);
-			var item = allDroppedItems()[index];
-			
+			var item = allDroppedItems()[index] || { readerResult: `${uri} no longer valid` };
+
 			if((item.text || item.readerResult) instanceof Promise) {
 				(item.text || item.readerResult).then(() => alert(item.text));
 			}

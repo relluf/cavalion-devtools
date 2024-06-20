@@ -128,7 +128,6 @@ function traverseFileTree(item, path) {
 				if(this.isEnabled()) {
 					evt.preventDefault();
 					this.setTimeout("hide", () => this.hide(), 500);
-					
 				}
 			}
 		});
@@ -153,8 +152,12 @@ function traverseFileTree(item, path) {
 	visible: false
 }, [
 	["vcl/Action", ("drop-opened-files"), {
-		hotkey: "MetaCtrl+O",
-		on() { this.vars(["input"]).click(); },
+		hotkey: "MetaCtrl+O|Alt+MetaCtrl+O",
+		on(evt) { 
+			const input = this.vars(["input"]) || this.up().qsn("input");
+			input.webkitdirectory = evt.altKey;
+			input.click(); 
+		},
 		overrides: {
 			isHotkeyEnabled() { return this._owner.isEnabled(); },
 		}

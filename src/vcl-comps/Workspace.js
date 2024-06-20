@@ -351,7 +351,7 @@ const setDocumentTitle = (title) => { try { top.document.title = title; } catch(
 					return f && f.apply(this, args);
 				}, first = true;
 	            tab.once("editor-available", (e) => { first = false; callback(evt.onAvailable, [e]); });
-	            tab.on({
+	            tab.once({
 	            // 	"resource-rendered"(e) { callback(evt.onResourceRendered, [e]); },
 	            	"resource-loaded"(e) { 
 	            		if(first) { tab.emit("editor-available", [e]); }

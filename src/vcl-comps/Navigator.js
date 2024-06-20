@@ -183,6 +183,7 @@ function onNodesNeeded(parent) {
     onLoad: function () {
         var scope = this.scope();
         var me = this;
+        var ws = this.up("devtools/Workspace<>:root");
         
         var indexing = 0;
         var lists = {};
@@ -243,11 +244,17 @@ function onNodesNeeded(parent) {
         });
 
 		this.vars("listeners", this.app().qsa("devtools/DragDropHandler<>:root")
-			.on("dropped", () => this.qsa("#DragDropHandler_files").map(node => {
+			.on("dropped", (dataTransfer, dropped) => {
+				this.qsa("#DragDropHandler_files").map(node => {
 					node.show();
 					node.reloadChildNodes();
 					node.setExpanded(true);
-				}))
+				});
+				if(ws.isSelected()) {
+					const n = dropped.reduce((t, o) => (t += o.items.length), 0) - dropped[dropped.length - 1].items.length;
+					dataTransfer.files.forEach((f, i) => ws.open(`dropped://${i + n}/${f.name}`));
+				}
+			})
 		);
 
         return this.inherited(arguments);
@@ -884,6 +891,7 @@ console.log(node, js.sf("expandable: %s", item.expandable));
 	   		classes: "seperator top",
 	   		expandable: true,
 	   		visible: false,
+	   		index: 1,
 	        onNodesNeeded: onNodesNeeded
     	}],
     	// [("devtools/NavigatorNode"), ]

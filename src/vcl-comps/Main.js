@@ -421,7 +421,7 @@ try { fixThemeColor(); } catch(e) { }
     	// FIXME deactivate hotkeys
     }
 }, [
-    [["devtools/DragDropHandler<>:root"]],
+    [["devtools/DragDropHandler<>"], { isRoot: true }],
     [["devtools/CtrlCtrl<>"], "ctrlctrl", { visible: false}],
     
 	[("vcl/Action"), "⌘.", {
