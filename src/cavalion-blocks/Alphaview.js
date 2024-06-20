@@ -391,6 +391,14 @@ var css = {
 		},
 		source: "array", 
 		visible: false, 
+		onColumnGetValue(column, value, row, source) {
+			if(value instanceof Date) return value;
+			return js.sf("%n", value).substring(0, 1024);
+		},
+// 		onColumnRenderCell(cell, value, column, row, source, orgValue) {
+// console.log("onColumnRenderCell", value, arguments);
+// 			//(function(cell, value, column, row, source, orgValue) {})	
+// 		},
 		onSelectionChange() {
 			this.ud("#list-status").render();
 		},
@@ -428,6 +436,7 @@ var css = {
 		// 	this.open(selection.length === 1 ? selection[0] : selection);
 		// },
 		onScroll() {
+// console.log("onScroll", arguments)
 			var hasClass = this._header.hasClass("scrolled");
 			var scrollTop = this._nodes.body.scrollTop;
 			if(scrollTop > 20) {
@@ -451,8 +460,12 @@ var css = {
 			this.ud("#array").setArray([]);
 			this.setTimeout("change", () => {
 				if(newTab !== null) {
-					var n = this.ud("#list").nodeNeeded();
+					var list = this.ud("#list"), n = list.nodeNeeded();
 					this.ud("#array").setArray(newTab.vars("array"));
+					
+					list.destroyColumns();
+					list.updateColumns();
+					
 					this.setTimeout("change", () => {
 						var si = newTab.vars("scrollInfo");
 						si && (n.scrollLeft = si[0]);
