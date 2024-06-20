@@ -395,7 +395,10 @@ var DetailViews = {
     }],
     [("#print"), {
     	onLoad() {
-    		this.vars("eval", () => this.vars(["root"]));
+    		
+    		this.vars("eval", () => Parser.parse(
+    			this.ud("#ace").getValue(), 
+    			this.vars(["fast-xml-parser/options"]) || {ignoreAttributes : false}));
     		return this.inherited(arguments);
     	}
     }]
