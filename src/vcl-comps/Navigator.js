@@ -251,8 +251,12 @@ function onNodesNeeded(parent) {
 					node.setExpanded(true);
 				});
 				if(ws.isSelected()) {
-					const n = dropped.reduce((t, o) => (t += o.items.length), 0) - dropped[dropped.length - 1].items.length;
-					dataTransfer.files.forEach((f, i) => ws.open(`dropped://${i + n}/${f.name}`));
+					const foi = (o) => (o.files || o.items);
+					const n = dropped.reduce((t, o) => 
+						(t += foi(o).length), 0) - 
+						foi(dropped[dropped.length - 1]).length;
+					foi(dataTransfer).forEach((f, i) => 
+						ws.open(js.sf("dropped://%d/%s", i + n, f.name)));
 				}
 			})
 		);
