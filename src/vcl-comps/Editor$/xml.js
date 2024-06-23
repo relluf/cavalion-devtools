@@ -1,4 +1,4 @@
-"use blocks, fast-xml-parser, xml-funcs, veldapps-imsikb/util, veldapps-imkl/util, vcl/ui/ListColumn";
+"use blocks/Blocks, fast-xml-parser, xml-funcs, veldapps-imsikb/util, vcl/ui/ListColumn";
 
 function match(obj, q) {
 	q = q.toLowerCase();	
@@ -14,7 +14,7 @@ function match(obj, q) {
 	return false;
 }
 
-var Blocks = require("blocks");
+var Blocks = require("blocks/Blocks");
 var Parser = require("fast-xml-parser");
 var Xml = require("xml-funcs");
 var ListColumn = require("vcl/ui/ListColumn");

@@ -262,7 +262,7 @@ try { fixThemeColor(); } catch(e) { }
         console_scope.toolbar && console_scope.toolbar.setVisible(false);
         console_scope.size_handle && console_scope.size_handle.setParent(scope['workspaces-tabs']);
         
-        var version = document.qs("html head script").text.split("\n")[1].split("\"")[3] || "from source";
+        var version = (document.qs("html head script").text.split("\n")[1] || "").split("\"")[3] || "from source";
         this.app().print("running version", version);
 
         return this.inherited(arguments);

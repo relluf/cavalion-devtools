@@ -89,7 +89,6 @@ function traverseFileTree(item, path) {
 		            dropped.push(dataTransfer);
 					// this.emit("dropped", [dataTransfer, dropped]);
 					this.nextTick(() => this.emit("dropped", [dataTransfer, dropped])); // TODO
-					
 					this.print("dropped", dataTransfer);
 	            });
 	        }

@@ -1,8 +1,7 @@
 define(function(require) {
 
-	var Hash = require("util/Hash");
-	
-	var allDroppedItems = () => require("vcl/Application").get()
+	let Hash = require("util/Hash");
+	let allDroppedItems = () => require("vcl/Application").get()
 			.qsa("devtools/DragDropHandler<>:root")
 			.map(_ => _.vars("dropped") || []).flat()
 			.map(_ => _.items || _.files)
@@ -58,6 +57,8 @@ define(function(require) {
 			});
 		},
 		
+		set_allDroppedItems: function(impl) { allDroppedItems = impl; },
+		
 	/** not implemented below here */
 		create: function(path, resource) {
 		},
@@ -67,6 +68,5 @@ define(function(require) {
 		},
 		link: function(path) {
 		}
-
 	};
 });

@@ -171,6 +171,54 @@ define([], function() {
 	    }
 	});
 	
+	define("clipboard-copy", [], () => {
+		return function clipboardCopy (text) {
+		  // Use the Async Clipboard API when available. Requires a secure browsing
+		  // context (i.e. HTTPS)
+		  if (navigator.clipboard) {
+		    return navigator.clipboard.writeText(text).catch(function (err) {
+		      throw (err !== undefined ? err : new DOMException('The request is not allowed', 'NotAllowedError'))
+		    })
+		  }
+		
+		  // ...Otherwise, use document.execCommand() fallback
+		
+		  // Put the text to copy into a <span>
+		  var span = document.createElement('span')
+		  span.textContent = text
+		
+		  // Preserve consecutive spaces and newlines
+		  span.style.whiteSpace = 'pre'
+		  span.style.webkitUserSelect = 'auto'
+		  span.style.userSelect = 'all'
+		
+		  // Add the <span> to the page
+		  document.body.appendChild(span)
+		
+		  // Make a selection object representing the range of text selected by the user
+		  var selection = window.getSelection()
+		  var range = window.document.createRange()
+		  selection.removeAllRanges()
+		  range.selectNode(span)
+		  selection.addRange(range)
+		
+		  // Copy text to the clipboard
+		  var success = false
+		  try {
+		    success = window.document.execCommand('copy')
+		  } catch (err) {
+		    console.log('error', err)
+		  }
+		
+		  // Cleanup
+		  selection.removeAllRanges()
+		  window.document.body.removeChild(span)
+		
+		  return success
+		    ? Promise.resolve()
+		    : Promise.reject(new DOMException('The request is not allowed', 'NotAllowedError'))
+		}
+	});
 	define("vcl/Component.storage-pouchdb", ["cavalion-pouch/Component.storageDB"], function() { return arguments[0]; });
 	define("vcl/Factory.fetch-resources", ["vcl/Factory", "vcl/Component", "devtools/Resources", "vcl/Component.storage-pouchdb"], (Factory, Component, Resources) => {
 		Factory.fetch = function(name) {
@@ -247,13 +295,14 @@ define([], function() {
 		init() {
 			return new Promise((resolve, reject) => {
 				require(["console/Printer", "veldapps-gds-devtools/index", "vcl/Component.storage-pouchdb", 
-					"vcl/Factory.fetch-resources", "blocks/Factory.fetch-resources", "cavalion-pouch/db",
+					"vcl/Factory.fetch-resources", "blocks/Factory.fetch-resources", "cavalion-pouch/db", "util/net/Url",
 				], () => {
 					try {
 						var ComponentNode = require("console/node/vcl/Component");
 						var Factory = require("vcl/Factory");
 						var Url = require("util/net/Url");
 						var JsObject = require("js/JsObject");
+						var Url = require("util/net/Url");
 
 						require("vcl/Component.storage-pouchdb");
 						require("vcl/Factory.fetch-resources");
@@ -261,6 +310,7 @@ define([], function() {
 						// require("stylesheet!styles.less");
 						
 						window.app = require("vcl/Application").instances[0];
+						app.vars("url", new Url());
 
 						resolve(true);
 					} catch(e) {
