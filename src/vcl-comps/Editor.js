@@ -353,21 +353,21 @@ var getKey = (tab) => {
             var editor = scope.ace.getEditor();
             var mode = editor.session.$modeId || "";
             switch (mode.split("/").pop()) {
-            case "javascript":
-            case "json":
-                editor.setValue(js.b(editor.getValue()));
-                break;
-
-            case "xml":
-            case "svg":
-            case "html":
-            case "xsd":
-                editor.setValue(Xml.beautify(editor.getValue()));
-                break;
-
-            default:
-                alert("Don't know how to format this (yet)");
-
+	            case "javascript":
+	            case "json":
+	                editor.setValue(js.b(editor.getValue()));
+	                break;
+	
+	            case "xml":
+	            case "svg":
+	            case "html":
+	            case "xsd":
+	                editor.setValue(Xml.beautify(editor.getValue()));
+	                break;
+	
+	            default:
+	                alert("Don't know how to format this (yet)");
+	
             }
         }
     }],

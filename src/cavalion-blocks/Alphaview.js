@@ -84,9 +84,9 @@ var css = {
 	}
 }, [
 	["Executable", ("load"), {
-		on() {
-			var sel, cons = this.vars(["console"]);
-			sel = this.vars(["sel"]);
+		on(evt) {
+			var sel, cons = (evt && evt.cons) || this.vars(["console"]);
+			sel = (evt && evt.sel) || (!(evt && evt.cons) && this.vars(["sel"]));
 			
 			if(!cons && !sel) {
 				var ws = this.up("devtools/Workspace<>");
@@ -139,8 +139,8 @@ var css = {
 				this.vars("value", value);
 				
 				if(value instanceof Array) {
-					root.down("#list").show();
-					root.down("#array").setArray(value);
+					root.qs("#list").show();
+					root.qs("#array").setArray(value);
 				} else if(value !== null) {
 					if(typeof value === "object") {
 						var tabs = [], values = Object.values(value);
@@ -162,7 +162,7 @@ var css = {
 						
 						if(tabs.length) {						
 							B.i(["Container", tabs]).then(c => {
-								var tabs = root.down("#tabs");
+								var tabs = root.qs("#tabs");
 								tabs.clearState("acceptChildNodes");
 								[].concat(c._controls).forEach(tab => tab.setParent(tabs));
 								tabs.setState("acceptChildNodes", true);
@@ -171,15 +171,20 @@ var css = {
 						} else {
 							var arr = [];
 							for(var k in value) arr.push({key:k, value:value[k]});
-							root.down("#array").setArray(arr.sort((i1, i2) => i1.key < i2.key ? -1 : 1));
+							root.qs("#array").setArray(arr.sort((i1, i2) => i1.key < i2.key ? -1 : 1));
 						}
-						root.down("#list").show();
-						
-						// root.down("#array").setArray(Object.values(value));
+						root.qs("#list").show();
+
+						// root.qs("#array").setArray(Object.values(value));
 					} else if(typeof value === "function") {
-						// root.down("#ace").show();
+						// root.qs("#ace").show();
 					}
 				}
+			}).then(_ => {
+
+				root.qs("#list").destroyColumns();
+				root.qs("#list").updateColumns();
+										
 			});
 		}
 	}],
@@ -192,7 +197,7 @@ var css = {
 	}],
 	["Executable", ("print"), {
 		hotkey: "MetaCtrl+Enter",
-		on() {
+		on(evt) {
 			var a = this.ud("#array");
 			var q = this.ud("#q");
 			var ws = this.up("devtools/Workspace<>");
@@ -203,6 +208,8 @@ var css = {
 			if(objs.length === 0) {
 				ws = null;
 				objs = [].concat(a.getObjects());
+			} else if(objs.length === 1) {
+				objs = objs[0];
 			}
 			
 			(ws || q._owner).print(q.getValue() || selected || "*" , objs);
@@ -212,6 +219,37 @@ var css = {
 		on(evt) {
 			// var selection = this.getSelection(true);
 			// this.ud("#print").execute(selection.length === 1 ? selection[0] : selection);
+			
+			if(evt.shiftKey !== true) {
+				const list = this.ud("#list");
+				const sel = list.getSelection(true);
+				if(sel.length) {
+					let nsel;
+					if(Object.keys(sel[0]).length === 2 && sel[0].hasOwnProperty("key") && sel[0].hasOwnProperty("value")) {
+						nsel = sel[0].value;
+					} else {
+						nsel = sel;
+					}
+					
+					if(nsel !== undefined) {
+						const history = list.vars(["history"]);
+						history.push(list._source._array);
+						this.ud("#back").show();
+						
+						if(!(nsel instanceof Array)) {
+							nsel = [nsel];
+						} 
+
+						if(nsel.length === 1) {
+							nsel = [Object.keys(nsel[0]).map(key => ({key: key, value: nsel[0][key]}))];
+						} else {
+							nsel = [nsel];
+						}
+
+						return this.ud("#load").execute({ sel: nsel });
+					}
+				}
+			}
 			this.ud("#print").execute(evt);
 		}	
 	}],
@@ -306,7 +344,7 @@ var css = {
 			return (this._arr[index] || {})[name]; 
 		}
 	}],
-	["Bar", ("bar") , [
+	["Bar", ("bar") , { onDblClick() { this.ud("#reload").toggle("visible"); } }, [
 		["Group", ("left"), [
 			["Button", ("back"), { 
 				content: "&lt;",
@@ -318,11 +356,14 @@ var css = {
 						this.ud("#array").setArray([]);
 						this.nextTick(() => this.ud("#array").setArray(value));
 					}
-					// this.setVisible(history.length);
+					this.setVisible(history.length > 0);
+					this.ud("#list").destroyColumns();
+					this.ud("#list").updateColumns();
 				}
 			}],
 			["Button", ("reload"), {
-				action: "load"
+				action: "load",
+				visible: false
 			}]
 		]],
 		["Input", ("q"), { 
@@ -412,6 +453,10 @@ var css = {
 					this.ud("#array").setArray(null);
 					this.ud("#array").setArray(arr.filter(_ => _ !== undefined));
 					this.ud("#back").show();
+					
+					this.ud("#list").destroyColumns();
+					this.ud("#list").updateColumns();
+					
 				})
 			} else if(name === "click") {
 				this.setTimeout("clicked", () => {
@@ -431,10 +476,11 @@ var css = {
 				}, 300);
 			}
 		},
-		// onDblClick() { 
-		// 	var selection = this.getSelection(true);
-		// 	this.open(selection.length === 1 ? selection[0] : selection);
-		// },
+		onDblClick() { 
+			// var selection = this.getSelection(true);
+			// this.open(selection.length === 1 ? selection[0] : selection);
+			window.getSelection().removeAllRanges();
+		},
 		onScroll() {
 // console.log("onScroll", arguments)
 			var hasClass = this._header.hasClass("scrolled");
@@ -455,14 +501,20 @@ var css = {
 			
 			if(oldTab !== null) {
 				oldTab.vars("scrollInfo", [n.scrollLeft, n.scrollTop]);
-				console.log("scrollInfo", oldTab.vars().scrollInfo);
+				// console.log("scrollInfo", oldTab.vars().scrollInfo);
 			}
 			this.ud("#array").setArray([]);
 			this.setTimeout("change", () => {
 				if(newTab !== null) {
 					var list = this.ud("#list"), n = list.nodeNeeded();
-					this.ud("#array").setArray(newTab.vars("array"));
+					var arr = newTab.vars("array");
 					
+					if(arr.length === 1) {
+						arr = Object.keys(arr[0]).map(key => ({key: key, value: arr[0][key]}));
+					}
+					
+					this.ud("#array").setArray(arr);
+
 					list.destroyColumns();
 					list.updateColumns();
 					

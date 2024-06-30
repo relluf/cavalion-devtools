@@ -45,7 +45,15 @@ define(function(require) {
 			var item = allDroppedItems()[index] || { readerResult: `${uri} no longer valid` };
 
 			if((item.text || item.readerResult) instanceof Promise) {
-				(item.text || item.readerResult).then(() => alert(item.text));
+				// no problem, but why wasn't this case anticipated for (@20240623)
+				return Promise.resolve(item.text || item.readerResult)
+					.then(text => ({
+						path: js.up(uri),
+						name: uri.split("/").pop(),
+						uri: uri,
+						type: "File",
+						text: text
+					}));
 			}
 			
 			return Promise.resolve({
