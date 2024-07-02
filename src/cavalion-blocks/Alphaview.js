@@ -160,9 +160,10 @@ var css = {
 							}
 						}
 						
-						if(tabs.length) {						
+						if(tabs.length) {
 							B.i(["Container", tabs]).then(c => {
 								var tabs = root.qs("#tabs");
+								tabs.destroyControls();
 								tabs.clearState("acceptChildNodes");
 								[].concat(c._controls).forEach(tab => tab.setParent(tabs));
 								tabs.setState("acceptChildNodes", true);
