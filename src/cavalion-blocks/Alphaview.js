@@ -170,6 +170,9 @@ var css = {
 								tabs._controls[1].setSelected(true);
 							});
 						} else {
+							root.qs("#tabs").hide();
+							root.qs("#bar").hide();
+							
 							var arr = [];
 							for(var k in value) arr.push({key:k, value:value[k]});
 							root.qs("#array").setArray(arr.sort((i1, i2) => i1.key < i2.key ? -1 : 1));
@@ -235,13 +238,13 @@ var css = {
 					if(nsel !== undefined) {
 						const history = list.vars(["history"]);
 						history.push(list._source._array);
-						this.ud("#back").show();
+						this.ud("#back").show(); this.ud("#bar").show();
 						
 						if(!(nsel instanceof Array)) {
 							nsel = [nsel];
 						} 
 
-						if(nsel.length === 1) {
+						if(nsel.length === 1 && typeof nsel[0] === "object" && nsel[0] !== null) {
 							nsel = [Object.keys(nsel[0]).map(key => ({key: key, value: nsel[0][key]}))];
 						} else {
 							nsel = [nsel];
@@ -453,7 +456,7 @@ var css = {
 					history.push(this._source._array);
 					this.ud("#array").setArray(null);
 					this.ud("#array").setArray(arr.filter(_ => _ !== undefined));
-					this.ud("#back").show();
+					this.ud("#back").show(); this.ud("#bar").show();
 					
 					this.ud("#list").destroyColumns();
 					this.ud("#list").updateColumns();
