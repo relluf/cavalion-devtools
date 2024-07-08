@@ -75,14 +75,11 @@ var css = {
 			// this.print("notifyEvent-" + event, data);
 			if(event === "columnsChanged") {
 				this.setTimeout("update", () => {
-					const columns = this
-						.qsa("vcl/ui/ListColumn")
+					let columns; (columns = this
+						.qsa("vcl/ui/ListColumn"))
 						.filter(_ => _._attribute === "_")
 						.map(_ => _.set("index", 0));
-this.print("list.syncClasses", {
-						a: ["max-width-320", "max-width-500", "max-width-750"],
-						b: [columns.length > 6, columns.length > 3 && columns.length <= 6, columns.length === 3]
-});
+
 					list.syncClasses(
 						["max-width-320", "max-width-500", "max-width-750"],
 						[columns.length > 6, columns.length > 3 && columns.length <= 6, columns.length === 3]
