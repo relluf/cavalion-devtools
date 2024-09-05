@@ -79,6 +79,7 @@ define(function(require) {
         },
         statics: {
         	icons: {
+        		package: "/shared/vcl/images/folder.svg",
         		folder: "/shared/vcl/images/folder.svg",
         		file: "/shared/vcl/images/file.svg",
         		// folder: "/home/Library/assets/icons/./905767-business/svg/049-folder.svg",

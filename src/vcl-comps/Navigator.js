@@ -464,6 +464,11 @@ function onNodesNeeded(parent) {
                     "background-position-y": "0px",
 					"background-size": "16px 16px"
                 },
+                "&.package >.icon": {
+                    // "background-image": "url(https://www.svgrepo.com/show/122150/package.svg)",
+                    // "background-image": "url(https://image.flaticon.com/icons/svg/148/148953.svg)"
+                    "background-image": `url(${NavigatorNode.icons.package})`
+                },
                 "&.folder >.icon": {
                     // "background-image": "url(https://www.svgrepo.com/show/122150/folder.svg)",
                     // "background-image": "url(https://image.flaticon.com/icons/svg/148/148953.svg)"

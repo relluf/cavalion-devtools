@@ -24,6 +24,7 @@ var ExtensionToMode = {
         "rdf": "xml",
         "wsdl": "xml",
         "xsd": "xml",
+        "ti": "xml",
         "xml": "xml",
         "kml": "xml",
         "xsl": "xml",
@@ -581,5 +582,5 @@ var getKey = (tab) => {
                 }
             });
         }
-    }]
+    }],
 ]];

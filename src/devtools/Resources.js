@@ -5,6 +5,8 @@ function(FS, Pouch, Dropbox, Dropped) {
 			return FS.index(typeof uris === "string" ? [uris] : uris);
 		},
 		list: function(uri) {
+			uri = uri || "/";
+
 			if(uri.startsWith("pouchdb://")) {
 				return Pouch.list(uri.substring("pouchdb://".length))
 					.then(resources => resources.map(function(resource) {
@@ -26,6 +28,7 @@ function(FS, Pouch, Dropbox, Dropped) {
 						return resource;	
 					}));
 			}
+
 			return FS.list(uri).then(function(res) {
 				// if(uri === "/" || uri === "") {
 				// 	res.push({ uri: "pouchdb://", name: "pouchdb://", type: "Folder", link: false });
@@ -116,6 +119,15 @@ function(FS, Pouch, Dropbox, Dropped) {
 					});
 			}
 			return FS.link(uri);
+		},
+
+		isZipped: function(uri, ext) {
+			ext = ext || uri.split(".").pop();
+			return ["zip", "kmz", "ti", "gz"].includes(ext);
+		},
+		isPackage: function(uri, ext) {
+			ext = ext || uri.split(".").pop();
+			return ["zip", "kmz", "gz"].includes(ext);
 		}
 		
 		// paging
