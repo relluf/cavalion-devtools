@@ -1,7 +1,8 @@
-"use vcl/ui/ListColumn, util/Event";
+"use vcl/ui/Console, vcl/ui/ListColumn, util/Event";
 
 /*- ### 2023/07/20 #focus-q stabilized
 /*- ### 2022/07/24 #q.placeholder reflects location in tree (more or less) */
+/*- ### 2024/09/03 Loads of features added */
 /*- ### 2022/01/10 ... */
 /*- ### 2021/09/18 Hooking devtools/Editor<xml>'s console */
 /*- ### 2021/09/11 Whatvar? console or sel */
@@ -11,6 +12,7 @@
 
 var ListColumn = require("vcl/ui/ListColumn");
 var Event = require("util/Event");
+var Console = require("vcl/ui/Console");
 
 /*- Object.keys(VO.em.instances)
 		.reduce((a, k) => { 
@@ -33,6 +35,13 @@ function match(obj, q) {
 }
 function objectAsTabs() {
 	
+}
+
+function nameOf(ft) {
+	if(/\s/.test(ft) === false) {
+		return ft.split(":").pop();
+	}
+	return ft;	
 }
 
 var css = {
@@ -97,6 +106,16 @@ var css = {
 			var sel, cons = (evt && evt.cons) || this.vars(["console"]);
 			sel = (evt && evt.sel) || (!(evt && evt.cons) && this.vars(["sel"]));
 			
+			this.ud("#reload").set("visible", cons instanceof Console);
+			
+			const keys = cons ? cons.getNode().qsa(".node.selected").map(node => {
+				const key = node.qs(".key"), content = key && key.textContent;
+				if(content) {
+					return content.replace(/: $/, "");
+				}
+				return "";
+			}) : [];
+
 			if(!cons && !sel) {
 				var ws = this.up("devtools/Workspace<>");
 				if(ws) {
@@ -110,31 +129,21 @@ var css = {
 				} else {
 					sel = this.app().down("vcl/ui/Console#console").sel || [];
 				}
+			} else if(!sel && (cons && cons.sel && cons.sel.length > 1)) {
+				sel = [
+					Promise.all(cons.sel.map(o => Promise.resolve(o)))
+						.then(values => values.reduce((t, o, i) => { 
+							t[keys[i]] = o instanceof Array ? o : [o]; return t; }, {}))
+				];
 			} else {
 				sel = sel || cons.sel || [];
 			}
 			
-			if(cons) {
-				var node = cons.getNode().qsa(".node.object.selected").pop();
-				if(node) {
-					node = node.qs(".key");
-					var content = node.textContent;
-					if(content) {
-						var parent = node.parentNode.parentNode.parentNode.qs(".key");
-						if(parent.textContent.startsWith(0) === "Array[") {
-							parent = parent.parentNode.parentNode.parentNode.qs(".key");
-						}
-						if(parent) {
-							parent = parent.textContent;
-							this.ud("#q").setPlaceholder(js.sf("%s/%s", parent.replace(/: $/, ""), content.replace(/: $/, "")));
-						
-						} else {
-							this.ud("#q").setPlaceholder(js.sf("%s", content.replace(/: $/, "")));
-						}
-					}
-				}
+			if(!evt || !evt.leaveTabs) {
+				this.ud("#tabs").destroyControls();
 			}
-			
+			this.ud("#tabs").set("visible", true);//sel.length > 1);
+			this.ud("#q").setPlaceholder(keys.length === 1 ? keys.join(", ") : "");
 			this.ud("#reflect").execute(sel);
 		}
 	}],
@@ -144,7 +153,6 @@ var css = {
 			var value = sel[sel.length - 1];
 			
 			return Promise.resolve(value).then(value => {
-// console.log("#reflect value", value);
 				this.vars("value", value);
 				
 				if(value instanceof Array) {
@@ -153,7 +161,7 @@ var css = {
 				} else if(value !== null) {
 					if(typeof value === "object") {
 						var tabs = [], values = Object.values(value);
-						if(values.every(value => value instanceof Array)) {
+						if(values.length && values.every(value => value instanceof Array)) {
 							tabs.push(["Tab", {
 								textReflects: "innerHTML",
 								text: js.sf("<small>(%d)</small>", values.flat().length), 
@@ -163,7 +171,7 @@ var css = {
 							for(var ft in value) {
 								tabs.push(["Tab", { 
 									textReflects: "innerHTML",
-									text: js.sf("%H <small>(%d)</small>", ft.split(":").pop(), value[ft].length), 
+									text: js.sf("%H <small>(%d)</small>", nameOf(ft), value[ft].length), 
 									vars: { array: value[ft], key: ft }
 								}]);
 							}
@@ -177,11 +185,14 @@ var css = {
 								[].concat(c._controls).forEach(tab => tab.setParent(tabs));
 								tabs.setState("acceptChildNodes", true);
 								tabs._controls[tabs._controls.length > 1 ? 1 : 0].setSelected(true);
+								tabs.show();
+								root.qs("#bar").show();
 							});
 						} else {
-							root.qs("#tabs").hide();
-							root.qs("#bar").hide();
-							
+							// root.qs("#tabs").hide();
+							// root.qs("#bar").hide();
+							// root.qs("#tabs").destroyControls();
+
 							var arr = [];
 							for(var k in value) arr.push({key:k, value:value[k]});
 							root.qs("#array").setArray(arr.sort((i1, i2) => i1.key < i2.key ? -1 : 1));
@@ -233,7 +244,7 @@ var css = {
 			// var selection = this.getSelection(true);
 			// this.ud("#print").execute(selection.length === 1 ? selection[0] : selection);
 			
-			if(evt.shiftKey !== true) {
+			if(evt.shiftKey !== true && evt.metactrlKey !== true) {
 				const list = this.ud("#list");
 				const sel = list.getSelection(true);
 				if(sel.length) {
@@ -258,8 +269,8 @@ var css = {
 						} else {
 							nsel = [nsel];
 						}
-
-						return this.ud("#load").execute({ sel: nsel });
+						
+						return this.ud("#load").execute({ sel: nsel, leaveTabs: true });
 					}
 				}
 			}
@@ -376,6 +387,7 @@ var css = {
 			}],
 			["Button", ("reload"), {
 				action: "load",
+				content: "<i class='fa fa-refresh'></i>",
 				visible: false
 			}]
 		]],
@@ -517,7 +529,7 @@ var css = {
 			this.ud("#list")._nodes.body.scrollTop = scrollTop;
 		}
 	}],
-	["Ace", ("ace"), { visible: false }],
+	// ["Ace", ("ace"), { visible: false }],
 	["Tabs", ("tabs"), {
 		onChange(newTab, oldTab) {
 			var list = this.scope().list;
