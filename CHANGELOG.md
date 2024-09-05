@@ -1,3 +1,24 @@
+### `2024/07/07` 1.0.87 July Release
+
+* Adds clipboard-copy 
+* Allows to override allDroppedItems-determination 
+* **Alphaview<>**
+	* Develops features for Veldoffice-docs
+	* Finetunes object browsing XP
+	* Auto sizing for columns is adjusted according to number of columns (320, 500, 750) - fixes rendering #status
+	* Fixes a bug where the tabs would not be reset correctly upon selection change
+* **Resources-dropped**
+	* Fixes issue with dropped resource where item.readerResult would be Promise
+	* Anticipates non-existent dropped://-uris alt-key controls whether webkitdirectory-attribute is set, off by default improves drag/drop-resource experience dramatically fixes :root:root-sympton
+* **Navigator**
+	* Improves drag and drop handling
+* **Editor**
+	* Makes me wonder how it is possible this wasn't bugfixed before
+* **Editor<xsd>**:
+	* Fixes issues with references to elements within complex types definitions
+* **Editor<xml>**:
+	* Updates #print to use xml currently active in #ace
+
 ### `2024/05/20` 1.0.86 May Release
 
 * Changes were made
