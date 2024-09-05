@@ -338,7 +338,7 @@ document.addEventListener("click", (evt) => {
 
 		if(href.startsWith("://")) { // TODO anticipate ! and *
 			var pre = blocks ? "/cavalion-blocks" : comps ? "/vcl-comps" : "";
-			href = js.sf("pouchdb://%s%s/%s", Component.storageDB.name, pre, href.substring(3) || anchor.textContent);
+			href = js.sf("pouchdb://%s%s/%s", getDB_name(control), pre, href.substring(3) || anchor.textContent);
 		}
 		
 		var backtick_params = [
@@ -517,6 +517,20 @@ const e_v_a_l1 = (s, E) => {
 	"})", s, s));
 };
 const startsWithProtocol = (url) => url.match(/^[^\s]*:\/\//) !== null;
+const getDB_name = (control) => {
+	var ws = control.up("devtools/Workspace<>:root");
+	if(ws) {
+		var CS = ws.qs("#Component_storage");
+		if(CS) {
+			var uri = CS.vars("resource.uri");
+			if(uri.startsWith("pouchdb://")) {
+				return uri.split("/")[2];
+			}
+		}
+	}
+	
+	return Component.storageDB.name;
+}
 
 const Handlers = {
     onResize() {

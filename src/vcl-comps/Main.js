@@ -9,6 +9,7 @@ var hotkeys = {
 	"Shift+Ctrl+38": "editors-previous",
 	"Shift+Ctrl+39": "editor-next", 
 	"Shift+Ctrl+37": "editor-previous", 
+	"Shift+Alt+C": "editor-toggle-align",
 	
 	"Shift+Ctrl+186": "editors-next",
 	"Shift+Ctrl+189": "editors-previous",
@@ -143,7 +144,7 @@ var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c
 	css: {
 	    ".tabs-hidden_": tabs_hidden,
 	    
-	    "background-color": "rgba(255,255,255,0.975)",
+	    // "background-color": "rgba(255,255,255,0.975)",
 	    
 	    "&.workspace-tabs-hidden": {
 	    	"#editors-tabs": tabs_hidden,
@@ -421,7 +422,7 @@ try { fixThemeColor(); } catch(e) { }
     	// FIXME deactivate hotkeys
     }
 }, [
-    [["devtools/DragDropHandler<>"], { isRoot: true }],
+    [["devtools/DragDropHandler<>"], ("ddh"), { isRoot: true }],
     [["devtools/CtrlCtrl<>"], "ctrlctrl", { visible: false}],
     
 	[("vcl/Action"), "⌘.", {
