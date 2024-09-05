@@ -563,6 +563,17 @@ const setDocumentTitle = (title) => { try { top.document.title = title; } catch(
     		ws.vars(this._name, state);
     	}
     }],
+    ["vcl/Action", ("editor-toggle-align"), {
+    	on() {
+    		const focused = req("vcl/Control").focused;
+    		
+    		if(focused instanceof req("vcl/ui/Ace")) {
+    			const inh = focused.getPropertyValue("align");
+    			focused.set("align", focused.get("align") === inh ? "client" : inh);
+    		}
+    		
+    	}	
+    }],
     
     ["vcl/Action", ("update-title"), {
     	on(evt) {
