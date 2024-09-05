@@ -32,7 +32,7 @@ const bubbleIframeMouseMove = function( iframe ){
 	onRender() {
 		var src = this.vars(["frame-src"]) || this.getSpecializer();
 		this._node.innerHTML = js.sf("<iframe src='%s'>", src);
-		if(this.up("vcl/ui/Form").getParam("run") === true) {
+		if(this.up("vcl/ui/Form")?.getParam("run") === true) {
 			this.udr("#bottom-tabs").set("css", "display:none;height:0;"); 
 		}
 		
