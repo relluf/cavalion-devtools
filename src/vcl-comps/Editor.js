@@ -1,4 +1,4 @@
-"devtools/Resources, util/Xml, vcl/ui/Tab, ace/range, util/Event, ace/ext/modelist";
+"devtools/Resources, util/Xml, vcl/ui/Tab, ace/range, util/Event, ace/ext-modelist";
 
 /*- 
 	#evaluate.vars

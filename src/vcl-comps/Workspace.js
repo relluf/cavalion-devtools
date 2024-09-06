@@ -1,4 +1,4 @@
-"use vcl/ui/Ace, vcl/ui/FormContainer, vcl/ui/Tab, ace/range, locale";
+"use vcl/ui/Ace, vcl/ui/FormContainer, vcl/ui/Tab, locale";
 
 var Tab = {
 	_content:
@@ -569,9 +569,9 @@ const setDocumentTitle = (title) => { try { top.document.title = title; } catch(
     		
     		if(focused instanceof req("vcl/ui/Ace")) {
     			const inh = focused.getPropertyValue("align");
-    			focused.set("align", focused.get("align") === inh ? "client" : inh);
+    			const inv = inh === "client" ? "left" : "client";
+    			focused.set("align", focused.get("align") === inv ? inh : inv);
     		}
-    		
     	}	
     }],
     
