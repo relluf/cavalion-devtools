@@ -35,24 +35,27 @@ define(function(require) {
 		// TODO cache result, ie. only rebuild when necessary (VA-20240904-1-DragDropHandler)
 
 		const folders = {};
-		items[index].items.forEach(item => (folders[item.path] = (folders[item.path] || [])).push(item));
+		return Promise.resolve(items[index].items)
+			.then(items => {
+				items.forEach(item => (folders[item.path] = (folders[item.path] || [])).push(item));
 
-		Object.keys(folders).map(path => path.split("/")).filter(path => path.length > 1)
-			.forEach(path => {
-				const name = path.pop();
-				path = path.join("/");
-				
-				if(folders[path]) {
-					folders[path].push({
-						path: path, name: name, type: "Folder",
-						uri: js.sf("%s/%s", path, name)
+				Object.keys(folders).map(path => path.split("/")).filter(path => path.length > 1)
+					.forEach(path => {
+						const name = path.pop();
+						path = path.join("/");
+						
+						if(folders[path]) {
+							folders[path].push({
+								path: path, name: name, type: "Folder",
+								uri: js.sf("%s/%s", path, name)
+							});
+						} else {
+							console.warn("TODO this is unexpected at this point");
+						}
 					});
-				} else {
-					console.warn("TODO this is unexpected at this point");
-				}
-			});
 		
-		return folders;
+				return folders;
+			});
 	};
 
 	let allDroppedItems = () => {
@@ -91,23 +94,31 @@ define(function(require) {
 				}));
 			} 
 			
-			return Promise.resolve(items[index].readerResult).then(res => {
+			return Promise.resolve(items[index].readerResult || items[index].items).then(res => {
 				if(res instanceof Array) {
-					var itemz = res[0].map(item => ({
-						text: item.content,
+					// TODO fix this
+					var itemz = (res[0].map ? res[0] : res);
+					return Promise.resolve(itemz.map(item => item instanceof File ? ({
+						name: item.name,
+						path: path.join("/"),
+						type: "File",
+						uri: js.sf("%s/%s/%s", index, path, item.name),
+					}) : ({
+						// text: item.content,
 						name: item.zipEntry.name,
 						path: path.join("/"),
 						type: item.zipEntry.dir ? "Folder" : "File",
 						uri: js.sf("%s/%s/%s", index, path, item.zipEntry.name),
-					}));
-					return Promise.resolve(itemz);
+					})));
 				}
 				
-				const folders = getFolders(items, index);
-				return Promise.resolve(folders[path.join("/")].map(Mapper).map(item => {
-					item.uri = js.sf("%s/%s/%s", index, item.path, item.name);
-					return item;
-				}));
+				return getFolders(items, index).then(folders => {
+					const folder = folders[path.join("/")];
+					return Promise.resolve(folder).map(Mapper).map(item => {
+						item.uri = js.sf("%s/%s/%s", index, item.path, item.name);
+						return item;
+					});
+				});
 			});
 			
 		},
@@ -142,7 +153,7 @@ define(function(require) {
 				} else {
 					let folder = getFolders(items, index)[path.substring(2)] || [];
 					let entry = folder.find(item => item.name === name);
-					if(typeof entry.text === "function") {
+					if(entry && typeof entry.text === "function") {
 						return entry.text().then(text => ({
 							path: js.up(uri),
 							name: uri.split("/").pop(),
@@ -153,7 +164,7 @@ define(function(require) {
 					}
 				}
 
-				return Promise.resolve("no longer valid");
+				return Promise.resolve({uri: uri, text: "not a valid resource"});
 			}
 
 			if((item.text || item.readerResult) instanceof Promise) {
