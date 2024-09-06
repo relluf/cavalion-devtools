@@ -207,7 +207,7 @@ function print(comp, msg, value) {
 		selected: "state"
     }],
     
-    ["#ace", { align: "left", width: 750 }],
+    ["#ace", { align: "client", width: 750 }],
     
 	["vcl/ui/Tabs", ("bottom-tabs"), { 
 		align: "bottom", classes: "bottom inset", 
