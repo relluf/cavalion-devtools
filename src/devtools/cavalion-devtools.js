@@ -91,7 +91,7 @@ define([], function() {
 	        "xml-formatter": "lib/node_modules/xml-formatter/dist/browser/xml-formatter",
 	
 			/*- bower */
-	        "ace": "lib/bower_components/ace/lib/ace",
+	        "ace": "../lib/node_modules/ace-builds/src",
 	        "less": "lib/bower_components/less/dist/less",
 	        "moment": "lib/bower_components/moment/moment",
 	        "moment-locale": "lib/bower_components/moment/locale",

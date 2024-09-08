@@ -1,4 +1,4 @@
-"devtools/Resources, util/Xml, vcl/ui/Tab, ace/range, util/Event, ace/ext-modelist";
+"devtools/Resources, util/Xml, vcl/ui/Tab, util/Event, ace/ext-modelist";
 
 /*- 
 	#evaluate.vars
@@ -109,13 +109,17 @@ var getKey = (tab) => {
         var ext = name.split(".").pop();
         var session = ed.getSession();
 
-		var ace_mode = require("ace/ext/modelist").getModeForPath(resource.uri);
+		var ace_mode = require("ace" + "/ext/modelist").getModeForPath(resource.uri);
+// this.print("ace/ext/modelist", req("ace/ext/modelist"))
+// this.print("ace_mode", ace_mode)
 		var ext_mode = ExtensionToMode[type || ext || this.getSpecializer()];
         var mode = "ace/mode/" + (ext_mode ? ext_mode : ace_mode ? ace_mode.name : (type || ext || this.getSpecializer() || "js"));
         
-        require([mode], 
-        	function() { session.setMode(mode); }, 
-        	function() { console.log("Unknown mode " + mode); });
+        // require([mode], 
+        // 	function() { session.setMode(mode); }, 
+        // 	function() { console.log("Unknown mode " + mode); });
+        
+        session.setMode(mode);
         
         session.setUseWrapMode(false);
         session.setWrapLimitRange(null, null);
