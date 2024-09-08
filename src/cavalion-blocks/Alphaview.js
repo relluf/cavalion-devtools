@@ -115,6 +115,8 @@ var css = {
 				}
 				return "";
 			}) : [];
+			
+			const now = this.vars("now", Date.now());
 
 			if(!cons && !sel) {
 				var ws = this.up("devtools/Workspace<>");
@@ -130,11 +132,26 @@ var css = {
 					sel = this.app().down("vcl/ui/Console#console").sel || [];
 				}
 			} else if(!sel && (cons && cons.sel && cons.sel.length > 1)) {
+				
+				const wait = () => this.setTimeout("waiting", () => {
+					if(now === this.vars("now")) {
+						this.ud("#q").set("placeholder", "waiting for promises...");
+					}
+					wait();
+				} , 500);
+
 				sel = [
 					Promise.all(cons.sel.map(o => Promise.resolve(o)))
 						.then(values => values.reduce((t, o, i) => { 
 							t[keys[i]] = o instanceof Array ? o : [o]; return t; }, {}))
+						.then(_ => {
+							this.setTimeout("waiting", () => {}, 0);
+							this.ud("#q").set("placeholder", "");
+							return _;
+						})
 				];
+				
+				wait();
 			} else {
 				sel = sel || cons.sel || [];
 			}
@@ -194,7 +211,8 @@ var css = {
 							// root.qs("#tabs").destroyControls();
 
 							var arr = [];
-							for(var k in value) arr.push({key:k, value:value[k]});
+							// for(var k in value) arr.push({key:k, value:value[k]});\
+							js.keys(value).forEach(k => arr.push({key: k, value: value[k]}));
 							root.qs("#array").setArray(arr.sort((i1, i2) => i1.key < i2.key ? -1 : 1));
 						}
 						root.qs("#list").show();
