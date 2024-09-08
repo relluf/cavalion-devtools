@@ -83,7 +83,7 @@ define(function(require) {
 				}))
 			};
 		},
-		list: function(path) {
+		list: function(path, opts) {
 			const items = allDroppedItems();
 			const index = parseInt((path = path.split("/")).shift(), 10);
 
