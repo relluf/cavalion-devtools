@@ -1,10 +1,10 @@
-define(["devtools/Resources-node", "devtools/Resources-pouchdb", "devtools/Resources-dropbox", "devtools/Resources-dropped"], 
-function(FS, Pouch, Dropbox, Dropped) {
+define(["devtools/Resources-node", "devtools/Resources-pouchdb", "devtools/Resources-dropbox", "devtools/Resources-dropped", "devtools/Resources-ddh"], 
+function(FS, Pouch, Dropbox, Dropped, DragDropHandler) {
 	return {
 		index: function(uris) {
 			return FS.index(typeof uris === "string" ? [uris] : uris);
 		},
-		list: function(uri) {
+		list: function(uri, opts) {
 			uri = uri || "/";
 
 			if(uri.startsWith("pouchdb://")) {
@@ -22,9 +22,9 @@ function(FS, Pouch, Dropbox, Dropped) {
 					}));
 			}
 			if(uri.startsWith("dropped://")) {
-				return Dropped.list(uri.substring("dropped://".length))
+				return DragDropHandler.list(uri.substring("dropped://".length), opts)
 					.then(resources => resources.map(function(resource) {
-						resource.uri = "dropped://" + resource.uri;
+						resource.uri = "dropped://" + resource.uri.replace(/^\//, "");
 						return resource;	
 					}));
 			}
@@ -52,7 +52,7 @@ function(FS, Pouch, Dropbox, Dropped) {
 					});
 			}
 			if(uri.startsWith("dropped://")) {
-				return Dropped.get(uri.substring("dropped://".length))
+				return DragDropHandler.get(uri.substring("dropped://".length))
 					.then(resource => {
 						resource.uri = "dropped://" + resource.uri;
 						return resource;
