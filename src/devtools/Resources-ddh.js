@@ -1,5 +1,5 @@
 // Tree structure to hold the file metadata
-const fileTree = {
+const rootNode = {
 	name: "root",
 	files: [],
 	directories: []
@@ -8,95 +8,81 @@ const fileTree = {
 const knownPackageExtensions = ['gz', 'kmz', 'ti', 'tar', 'tar.gz', 'zip']; // Add more package extensions as needed
 
 const handleChange = function (event) {
-	// Handle the change event
-	const files = event.target.files;
+    // Handle the change event
+    const files = event.target.files;
 
-	let promises = [];
+    return Promise.all(Array.from(files).map(file => {
+        const path = file.webkitRelativePath || file.name;
+        const parts = path.split('/');
 
-	// Process each file
-	for (let i = 0; i < files.length; i++) {
-		const file = files[i];
-		const path = file.webkitRelativePath || file.name;
-		const parts = path.split('/');
+        // Traverse the directory structure
+        let currentDir = rootNode;
+        for (let j = 0; j < parts.length - 1; j++) {
+            let dirName = parts[j];
+            let dir = currentDir.directories.find(d => d.name === dirName);
 
-		// Create the directory structure in the fileTree
-		let currentDir = fileTree;
-		for (let j = 0; j < parts.length - 1; j++) {
-			let dirName = parts[j];
-			let dir = currentDir.directories.find(d => d.name === dirName);
+            if (!dir) {
+                dir = { name: dirName, files: [], directories: [] };
+                currentDir.directories.push(dir);
+            }
 
-			if (!dir) {
-				dir = { name: dirName, files: [], directories: [] };
-				currentDir.directories.push(dir);
-			}
+            currentDir = dir;
+        }
 
-			currentDir = dir;
-		}
-
-		// Add the file to the current directory
-		promises.push(
-			processFile(file, currentDir)
-		);
-	}
-
-	// Wait for all files to be processed
-	Promise.all(promises)
-		.then(() => {
-		})
-		.catch((error) => {
-			console.error("Error processing files: ", error);
-		});
+        // Use traverseFileEntry to process the file
+        return traverseFileEntry(file, currentDir);
+    }));
 };
 const handleDrop = function (event) {
-	// Handle the drop event
 	event.preventDefault();
 
-	const items = event.dataTransfer.items;
-
-	let promises = [];
-
-	for (let i = 0; i < items.length; i++) {
-		const item = items[i].webkitGetAsEntry();
-		if (item) {
-			// Recursively process files and directories, pushing promises into the array
-			promises.push(traverse_F_ileTree(item, fileTree));
-		}
-	}
-
-	// After all promises resolve, log the final structure
-	Promise.all(promises)
-		.then(() => {})
-		.catch((error) => {
-			console.error("Error processing the files: ", error);
-		});
+	return Promise.all(Array
+		.from(event.dataTransfer.items)
+		.map(item => item.webkitGetAsEntry())
+		.filter(Boolean)
+		.map(item => traverseFileEntry(item, rootNode)));
 };
-const traverse_F_ileTree = function(item, directoryNode) {
+const traverseFileEntry = function(item, directoryNode) {
     if (item.isFile) {
         return getFile(item).then((file) => {
-            return processFile(file, directoryNode);
+            // return processFile(file, directoryNode);
+		    const fileNode = {
+		        name: file.name,
+		        isPackage: false,
+		        size: file.size,
+		        lastModified: file.lastModified,
+		        type: file.type,
+		        getContent: () => readFileAsArrayBuffer(file) // Use the helper function for file content
+		    };
+		
+		    directoryNode.files.push(fileNode); // Ensure file is added to the directory node
+		    return fileNode;
         });
     } else if (item.isDirectory) {
         const dirNode = { name: item.name, files: [], directories: [] };
         directoryNode.directories.push(dirNode);
 
         const reader = item.createReader();
-        return readAllDirectoryEntries(reader, dirNode);
+        return readAllDirectoryEntries(reader, dirNode).then((entries) => {
+        	return dirNode;
+        });
     }
 };
 
-const processFile = function (fileEntry, directoryNode) {
-	// Process individual files and add them to the fileTree
+const processFile = function (file, directoryNode) {
+	// Process individual files and add them to the rootNode
     return new Promise((resolve) => {
         const fileNode = {
-            name: fileEntry.name,
-            size: fileEntry.size,
-            lastModified: fileEntry.lastModified,
-            type: fileEntry.type,
-            getContent: () => readFileAsArrayBuffer(fileEntry) // Use the helper function for file content
+            name: file.name,
+            isPackage: false,
+            size: file.size,
+            lastModified: file.lastModified,
+            type: file.type,
+            getContent: () => readFileAsArrayBuffer(file) // Use the helper function for file content
         };
 
         directoryNode.files.push(fileNode); // Ensure file is added to the directory node
-        resolve();
+        resolve(fileNode);
     });
 };
 function processZipFile(file) {
@@ -201,8 +187,10 @@ const readAllDirectoryEntries = function (directoryReader, dirNode) {
 			directoryReader.readEntries((result) => {
 				if (result.length > 0) {
 					let promises = result.map((entry) => {
-						return traverse_F_ileTree(entry, dirNode); // Recursively process the directory
+						return traverseFileEntry(entry, dirNode); // Recursively process the directory
 					});
+					
+					entries.push(result);
 
 					// Process all entries before continuing
 					Promise.all(promises)
@@ -213,7 +201,7 @@ const readAllDirectoryEntries = function (directoryReader, dirNode) {
 							reject(error);
 						});
 				} else {
-					resolve(); // Resolve when no more entries
+					resolve(entries); // Resolve when no more entries
 				}
 			}, (error) => {
 				console.error(`Error reading directory entries: ${error}`);
@@ -308,7 +296,7 @@ function getFileContent(fileNode, fileName, path) {
 	        }));
 	});
 }
-function findDirectoryByPath(path, currentNode = fileTree) {
+function findDirectoryByPath(path, currentNode = rootNode) {
 // Retrieve a directory node by path
 	const parts = path.split('/').filter(Boolean);
 	let node = currentNode;
@@ -323,7 +311,7 @@ function findDirectoryByPath(path, currentNode = fileTree) {
 	}
 	return node;
 }
-function findFileByPath(path, currentNode = fileTree) {
+function findFileByPath(path, currentNode = rootNode) {
     const parts = path.split('/').filter(Boolean);
     let node = currentNode;
 
@@ -351,57 +339,63 @@ function readFileAsArrayBuffer(file) {
 }
 function isZipFileBySignature(file) {
     return new Promise((resolve, reject) => {
-        // Use the file's getContent method to retrieve the content
-        file.getContent().then(content => {
-            // Convert content to Uint8Array and check for ZIP signature
-            const buffer = new Uint8Array(content);
-            const zipSignature = [0x50, 0x4B, 0x03, 0x04]; // PK.. signature
-
-            // Ensure there are at least 4 bytes to check
-            if (buffer.length < 4) {
-                return resolve(false);
-            }
-
-            // Compare the first 4 bytes with the ZIP signature
-            const isZip = buffer[0] === zipSignature[0] &&
-                          buffer[1] === zipSignature[1] &&
-                          buffer[2] === zipSignature[2] &&
-                          buffer[3] === zipSignature[3];
-
-            resolve(isZip);
-        }).catch(error => {
-            reject("Failed to read file content: " + error);
-        });
+    	if(file.isZip !== undefined) {
+    		resolve(file.isZip);
+    	} else {
+	        // Use the file's getContent method to retrieve the content
+	        file.getContent().then(content => {
+	            // Convert content to Uint8Array and check for ZIP signature
+	            const buffer = new Uint8Array(content);
+	            const zipSignature = [0x50, 0x4B, 0x03, 0x04]; // PK.. signature
+	
+	            // Ensure there are at least 4 bytes to check
+	            if (buffer.length < 4) {
+	                return resolve(false);
+	            }
+	
+	            // Compare the first 4 bytes with the ZIP signature
+	            file.isZip = buffer[0] === zipSignature[0] &&
+	                          buffer[1] === zipSignature[1] &&
+	                          buffer[2] === zipSignature[2] &&
+	                          buffer[3] === zipSignature[3];
+	
+	            resolve(file.isZip);
+	        }).catch(error => {
+	            reject("Failed to read file content: " + error);
+	        });
+    	}
     });
 }
-function isPackage(file) {
+async function isPackage(file) {
+	if(file.isPackage !== undefined) {
+		return file.isPackage;
+	}
+	
     const extension = getFileExtension(file.name).toLowerCase();
 
     // Check if the extension is a known package extension
     if (knownPackageExtensions.includes(extension)) {
-        return Promise.resolve(true);
+        return Promise.resolve(file.isPackage = true);
     }
 
     // For unknown extensions, check the file signature (e.g., ZIP signature)
-    return isZipFileBySignature(file);
+    return isZipFileBySignature(file).then(res => (file.isPackage = res));
 }
 
 // API definition
 define(function(require) {
-
-	document.addEventListener('dragover', (event) => event.preventDefault());
-	document.addEventListener('drop', handleDrop);
-
 	return {
+		root: rootNode,
+
 		index: function(uris) {
 			// Index the initial URIs (here, we assume files have been added via drag/drop or otherwise)
-			// You can modify this function to initialize the fileTree based on URIs
+			// You can modify this function to initialize the rootNode based on URIs
 			return {
 				status: "Files indexed successfully",
-				files: uris // Or file metadata from fileTree
+				files: uris // Or file metadata from rootNode
 			};
 		},
-		list: async function(path, opts = { recursive: false }) {
+		list: async function(path, opts = { recursive: false, recursePackages: false }) {
 		    // Find the directory node based on the provided path
 		    const dirNode = findDirectoryByPath(path);
 		
@@ -416,7 +410,7 @@ define(function(require) {
 		        const entries = await processPackageFile(packageNode);
 		        return entries.map(entry => ({
 		            name: entry.name,
-		            path: path,
+		            path: `${path}`,
 		            type: entry.isFile ? "File" : "Folder",
 		            fileSize: entry.fileSize,
 		            uri: `${path}/${entry.name}`,
@@ -424,41 +418,68 @@ define(function(require) {
 		        }));
 		    }
 		
-		    // If recursive option is enabled, recursively list the directory structure
-		    if (opts.recursive) {
-		        const flattenDirectoryRecursively = (node, currentPath) => {
-		            let result = [];
+		    // Helper function to flatten directories and packages
+		    const flattenDirectoryRecursively = async (node, currentPath) => {
+		        let result = [];
 		
-		            // Process directories
-		            node.directories.forEach(dir => {
-		                const dirPath = `${currentPath}/${dir.name}`;
-		                result.push({
-		                    uri: dirPath,
-		                    name: dir.name,
-		                    path: currentPath,
-		                    type: "Folder"
-		                });
-		
-		                // Recursively flatten the directory structure
-		                result = result.concat(flattenDirectoryRecursively(dir, dirPath));
+		        // Process directories
+		        for (const dir of node.directories) {
+		            const dirPath = `${currentPath}/${dir.name}`;
+		            result.push({
+		                uri: dirPath,
+		                name: dir.name,
+		                path: currentPath,
+		                type: "Folder"
 		            });
 		
-		            // Process files
-		            node.files.forEach(file => {
+		            // Recursively flatten the directory structure
+		            const subdirResult = await flattenDirectoryRecursively(dir, dirPath);
+		            result = result.concat(subdirResult);
+		        }
+		
+		        // Process files and check for packages
+		        for (const file of node.files) {
+		            const filePath = `${currentPath}/${file.name}`;
+		
+		            if (opts.recursePackages && await isPackage(file)) {
+		                // Treat package as a folder and recursively list its contents
+console.log("recursing packages", filePath)
+		                const packageEntries = await processPackageFile(file);
+		                for (const entry of packageEntries) {
+		                    const packagePath = `${filePath}/${entry.name}`;
+		                    result.push({
+		                        uri: packagePath,
+		                        name: entry.name,
+		                        path: filePath,
+		                        type: entry.isFile ? "File" : "Folder",
+		                        fileSize: entry.fileSize,
+		                        contentType: entry.contentType
+		                    });
+		
+		                    // If the entry is another package or folder, recurse again
+		                    if (opts.recursive && entry.isDirectory) {
+		                        const packageSubdirResult = await flattenDirectoryRecursively(entry, packagePath);
+		                        result = result.concat(packageSubdirResult);
+		                    }
+		                }
+		            } else {
+		                // Regular file processing
 		                result.push({
-		                    uri: `${currentPath}/${file.name}`,
+		                    uri: filePath,
 		                    name: file.name,
 		                    path: currentPath,
 		                    type: "File",
 		                    fileSize: file.size,
 		                    contentType: file.type || null
 		                });
-		            });
+		            }
+		        }
 		
-		            return result;
-		        };
+		        return result;
+		    };
 		
-		        // Recursively flatten the directory structure starting from the dirNode
+		    // If recursive option is enabled, recursively list the directory structure
+		    if (opts.recursive) {
 		        return flattenDirectoryRecursively(dirNode, path);
 		    }
 		
@@ -467,13 +488,13 @@ define(function(require) {
 		        ...dirNode.directories.map(dir => ({
 		            uri: `${path}/${dir.name}`,
 		            name: dir.name,
-		            path: path,
+		            path: `${path}`,
 		            type: "Folder"
 		        })),
 		        ...dirNode.files.map(file => ({
 		            uri: `${path}/${file.name}`,
 		            name: file.name,
-		            path: path,
+		            path: `${path}`,
 		            type: "File",
 		            fileSize: file.size,
 		            contentType: file.type || null
@@ -527,6 +548,5 @@ define(function(require) {
 		
 		handle_document_drop: handleDrop,
 		handle_input_change: handleChange
-
 	};
 });
