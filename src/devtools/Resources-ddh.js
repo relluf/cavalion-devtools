@@ -44,20 +44,19 @@ const handleDrop = function (event) {
 };
 const traverseFileEntry = function(item, directoryNode) {
     if (item.isFile) {
-        return getFile(item).then((file) => {
-            // return processFile(file, directoryNode);
-		    const fileNode = {
-		        name: file.name,
-		        isPackage: false,
-		        size: file.size,
-		        lastModified: file.lastModified,
-		        type: file.type,
-		        getContent: () => readFileAsArrayBuffer(file) // Use the helper function for file content
-		    };
+        return getFile(item).then((file) => processFile(file, directoryNode));
+		    // const fileNode = {
+		    //     name: file.name,
+		    //     isPackage: false,
+		    //     size: file.size,
+		    //     lastModified: file.lastModified,
+		    //     type: file.type,
+		    //     getContent: () => readFileAsArrayBuffer(file) // Use the helper function for file content
+		    // };
 		
-		    directoryNode.files.push(fileNode); // Ensure file is added to the directory node
-		    return fileNode;
-        });
+		    // directoryNode.files.push(fileNode); // Ensure file is added to the directory node
+		    // return fileNode;
+      //  });
     } else if (item.isDirectory) {
         const dirNode = { name: item.name, files: [], directories: [] };
         directoryNode.directories.push(dirNode);
@@ -74,7 +73,8 @@ const processFile = function (file, directoryNode) {
     return new Promise((resolve) => {
         const fileNode = {
             name: file.name,
-            isPackage: false,
+            isPackage: knownPackageExtensions.includes(getFileExtension(file.name).toLowerCase()),
+            contentType: getFileContentType(file.name),
             size: file.size,
             lastModified: file.lastModified,
             type: file.type,
@@ -94,6 +94,7 @@ function processZipFile(file) {
 	            zip.forEach(function(relativePath, zipEntry) {
 	                entries.push({
 	                    name: zipEntry.name,
+	                    isPackage: knownPackageExtensions.includes(getFileExtension(zipEntry.name).toLowerCase()),
 	                    isFile: !zipEntry.dir, // Determine if it's a file or directory
 	                    fileSize: [js.get("_data.uncompressedSize", zipEntry), js.get("_data.compressedSize", zipEntry)],
 	                    getContent: () => zipEntry.async("arraybuffer") // Correct way to extract content from ZIP entry
@@ -213,10 +214,7 @@ const readAllDirectoryEntries = function (directoryReader, dirNode) {
 	});
 };
 
-function getFileExtension(fileName) {
-    const parts = fileName.split('.');
-    return parts.length > 1 ? parts.pop() : ''; // Returns the extension or an empty string
-}
+const getFileExtension = (fileName) => fileName.split('.').slice(1).pop() || "";
 function getFileContentType(fileName) {
     const extension = getFileExtension(fileName).toLowerCase();
     const mimeTypes = {
@@ -236,27 +234,26 @@ function getFileContentType(fileName) {
 
     return mimeTypes[extension] || 'application/octet-stream'; // Default to binary stream if unknown
 }
-function getFileContent(fileNode, fileName, path) {
+function getFileContent(fileNode, fileName, path, opts) {
     // If the file is not a ZIP, return the content directly
     path = path || fileNode.path;
     return isPackage(fileNode).then(is => {
         if(!is) {
-        	return fileNode.getContent()
-	            .then(content => {
-	                // Assuming content is an ArrayBuffer, convert it to text
-	                const text = new TextDecoder().decode(content);
-	                return {
-	                    uri: `${path}/${fileNode.name}`,
-	                    name: fileNode.name,
-	                    path: path,
-	                    size: fileNode.size || fileNode.fileSize || 0,
-	                    text: text,
-	                    contentType: fileNode.type || null
-	                };
-	            })
-	            .catch(error => ({
-	                error: "Failed to retrieve file content"
-	            }));
+        	if(opts.arrayBuffer === true) {
+        		return fileNode.getContent();
+        	}
+        	return fileNode.getContent().then(content => {
+                // Assuming content is an ArrayBuffer, convert it to text
+                const text = new TextDecoder().decode(content);
+                return {
+                    uri: `${path}/${fileNode.name}`,
+                    name: fileNode.name,
+                    path: path,
+                    size: fileNode.size || fileNode.fileSize || 0,
+                    text: text,
+                    contentType: fileNode.type || null
+                };
+            });
 	    }
 
 	    // The file is a ZIP, process it
@@ -271,7 +268,11 @@ function getFileContent(fileNode, fileName, path) {
 	            // Recursively call getFileContent if the entry is another ZIP
 	            return isPackage(entry).then(is => {
 	                if(is) {
-	                	return getFileContent(entry, fileName, path);
+	                	return getFileContent(entry, fileName, path, opts);
+	                }
+	                
+	                if(opts.arrayBuffer === true) {
+	                	return entry.getContent();
 	                }
 	            	
 		            // Retrieve the content of the file inside the ZIP
@@ -289,11 +290,7 @@ function getFileContent(fileNode, fileName, path) {
 		                    };
 		                });
 	            });
-	
-	        })
-	        .catch(error => ({
-	            error: "Failed to retrieve file from ZIP archive"
-	        }));
+	        });
 	});
 }
 function findDirectoryByPath(path, currentNode = rootNode) {
@@ -411,7 +408,8 @@ define(function(require) {
 		        return entries.map(entry => ({
 		            name: entry.name,
 		            path: `${path}`,
-		            type: entry.isFile ? "File" : "Folder",
+		            // type: entry.isFile ? "File" : "Folder",
+                    type: entry.isPackage ? "Package" : entry.isFile ? "File" : "Folder",
 		            fileSize: entry.fileSize,
 		            uri: `${path}/${entry.name}`,
 		            contentType: entry.contentType
@@ -452,6 +450,7 @@ console.log("recursing packages", filePath)
 		                        name: entry.name,
 		                        path: filePath,
 		                        type: entry.isFile ? "File" : "Folder",
+		                        type_: entry.isPackage ? "Package" : entry.isFile ? "File" : "Folder",
 		                        fileSize: entry.fileSize,
 		                        contentType: entry.contentType
 		                    });
@@ -469,6 +468,7 @@ console.log("recursing packages", filePath)
 		                    name: file.name,
 		                    path: currentPath,
 		                    type: "File",
+	                        type_: file.isPackage ? "Package" : "File",
 		                    fileSize: file.size,
 		                    contentType: file.type || null
 		                });
@@ -495,7 +495,7 @@ console.log("recursing packages", filePath)
 		            uri: `${path}/${file.name}`,
 		            name: file.name,
 		            path: `${path}`,
-		            type: "File",
+		            type: file.isPackage ? "Package" : "File",
 		            fileSize: file.size,
 		            contentType: file.type || null
 		        }))
@@ -503,12 +503,14 @@ console.log("recursing packages", filePath)
 		
 		    return items;
 		},
-		get: async function(uri) {
+		get: async function(uri, opts) {
 			// Get file content on demand (for both regular files and ZIP contents)
 		    const parts = uri.split('/');
 		    const fileName = parts.pop();
 		    const directoryPath = parts.join('/');
 		    let dirNode = findDirectoryByPath(directoryPath);
+		    
+		    opts = opts || {};
 		
 		    if (!dirNode) {
 		        // If no directory is found, search for a matching package (ZIP or other package file)
@@ -529,7 +531,7 @@ console.log("recursing packages", filePath)
 		            }
 		
 		            // Treat the entry as a fileNode and call getFileContent
-		            return await getFileContent(entry, fileName, directoryPath);
+		            return await getFileContent(entry, fileName, directoryPath, opts);
 		        } catch (error) {
 		            return { error: "Error processing package: " + error };
 		        }
@@ -543,7 +545,7 @@ console.log("recursing packages", filePath)
 		    }
 		
 		    // Call getFileContent to retrieve the file content, whether it's a regular file or inside a package
-		    return await getFileContent(fileNode, fileName, directoryPath);
+		    return await getFileContent(fileNode, fileName, directoryPath, opts);
 		},
 		
 		handle_document_drop: handleDrop,
