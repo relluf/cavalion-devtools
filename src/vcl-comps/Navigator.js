@@ -458,6 +458,7 @@ function onNodesNeeded(parent) {
                 //
             	">.text": "padding-left:0;",
                 ">.icon": {
+                	'::before': "transform: none;",
                     width: "32px",
                     "background-repeat": "no-repeat",
                     "background-position-x": "14px",

@@ -39,6 +39,7 @@ define(function(require) {
 
  			return getDropbox(name)
  				.filesListFolder({ path: path.substring(name.length) })
+ 				.then(res => res.result || res)
  				.then(res => res.entries.map(e => singleton({
 	 					name: e.name,
 	 					type: e['.tag'] === "folder" ? "Folder" : "File",
@@ -54,6 +55,7 @@ define(function(require) {
 
 			return getDropbox(name)
 				.filesGetTemporaryLink({ path: path })
+ 				.then(res => res.result || res)
 				.then(res => fetch(res.link)
 					.then(resource => resource.text())
 					.then(text => singleton({ 
@@ -124,6 +126,7 @@ define(function(require) {
 			path = path.substring(name.length);
 
 			return getDropbox(name).filesGetTemporaryLink({ path: path })
+ 				.then(res => res.result || res)
 				.then(res => res.link);
 		}
 
