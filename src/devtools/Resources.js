@@ -36,7 +36,7 @@ function(FS, Pouch, Dropbox, Dropped, DragDropHandler) {
 				return res;
 			});
 		},
-		get: function(uri) {
+		get: function(uri, opts) {
 			if(uri.startsWith("pouchdb://")) {
 				return Pouch.get(uri.substring("pouchdb://".length))
 					.then(resource => {
@@ -52,7 +52,7 @@ function(FS, Pouch, Dropbox, Dropped, DragDropHandler) {
 					});
 			}
 			if(uri.startsWith("dropped://")) {
-				return DragDropHandler.get(uri.substring("dropped://".length))
+				return DragDropHandler.get(uri.substring("dropped://".length), opts)
 					.then(resource => {
 						resource.uri = "dropped://" + resource.uri;
 						return resource;
