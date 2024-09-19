@@ -43,7 +43,7 @@ const handleDrop = function (event) {
 		.map(item => traverseFileEntry(item, rootNode)));
 };
 const traverseFileEntry = function(item, directoryNode) {
-    if (item.isFile) {
+    if (item.isFile || item instanceof File) {
         return getFile(item).then((file) => processFile(file, directoryNode));
 		    // const fileNode = {
 		    //     name: file.name,
@@ -170,6 +170,8 @@ function flattenDirectoryRecursively(node, currentPath) {
 const getFile = function (item) {
 	// Helper function to get the file from the fileEntry object
 	return new Promise((resolve, reject) => {
+		if(item instanceof File) return resolve(item);
+		
 		item.file((file) => {
 			if (file) {
 				resolve(file); // Return the file if successfully retrieved
@@ -308,15 +310,33 @@ function findDirectoryByPath(path, currentNode = rootNode) {
 	}
 	return node;
 }
-function findFileByPath(path, currentNode = rootNode) {
+async function findFileByPath(path, currentNode = rootNode, opts = { recursePackages: true }) {
     const parts = path.split('/').filter(Boolean);
     let node = currentNode;
 
     for (let i = 0; i < parts.length - 1; i++) {
         const dir = node.directories.find(d => d.name === parts[i]);
+
+        // If directory is not found, check if it's a package
         if (!dir) {
+            const file = node.files.find(f => f.name === parts[i]);
+
+            // If the file is found and it's a package (e.g., ZIP), process it
+            if (file && opts.recursePackages && await isPackage(file)) {
+                const entries = await processPackageFile(file);
+                const packageNode = {
+                    name: file.name,
+                    directories: entries.filter(e => !e.isFile),
+                    files: entries.filter(e => e.isFile),
+                };
+
+                // Recursively call findFileByPath for the remaining path parts
+                return findFileByPath(parts.slice(i + 1).join('/'), packageNode, opts);
+            }
+
             return null; // Path not found
         }
+
         node = dir;
     }
 
@@ -398,7 +418,7 @@ define(function(require) {
 		
 		    if (!dirNode) {
 		        // If no directory is found, check for a package (ZIP file)
-		        const packageNode = findFileByPath(path);
+		        const packageNode = await findFileByPath(path);
 		        if (!packageNode || !(await isPackage(packageNode))) {
 		            return { error: "Path not found" };
 		        }
@@ -514,7 +534,7 @@ console.log("recursing packages", filePath)
 		
 		    if (!dirNode) {
 		        // If no directory is found, search for a matching package (ZIP or other package file)
-		        const packageNode = findFileByPath(directoryPath);
+		        const packageNode = await findFileByPath(directoryPath);
 		
 		        // Use isPackage() to check if the file is a package
 		        if (!packageNode || !(await isPackage(packageNode))) {

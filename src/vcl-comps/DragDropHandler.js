@@ -135,8 +135,10 @@ function syncAttribute(node, name, should) {
 		this.vars("input", input);
 	    input.addEventListener("change", (evt) => {
 	        if (evt.target.files.length > 0) {
-	    		Resources_ddh.handle_input_change(evt).then(res => {
-	    			this.emit("dropped", [dataTransfer, dropped, evt]);
+	    		Resources_ddh.handle_input_change(evt).then(resources => {
+					evt.resources = resources;
+	    			this.emit("dropped", [evt.dataTransfer, dropped, evt]);
+					Object.values(this.vars("targets") || {}).forEach(target => target.dropped(evt));	    			
 	    		});
             	evt.target.value = ""; // TODO HOWTO  control this "auto-clear"-feature
 	        }

@@ -1,5 +1,5 @@
-define(["devtools/Resources-node", "devtools/Resources-pouchdb", "devtools/Resources-dropbox", "devtools/Resources-dropped", "devtools/Resources-ddh"], 
-function(FS, Pouch, Dropbox, Dropped, DragDropHandler) {
+define(["devtools/Resources-node", "devtools/Resources-pouchdb", "devtools/Resources-dropbox", "devtools/Resources-gdrive", "devtools/Resources-dropped", "devtools/Resources-ddh"], 
+function(FS, Pouch, Dropbox, GDrive, Dropped, DragDropHandler) {
 	return {
 		index: function(uris) {
 			return FS.index(typeof uris === "string" ? [uris] : uris);
@@ -18,6 +18,13 @@ function(FS, Pouch, Dropbox, Dropped, DragDropHandler) {
 				return Dropbox.list(uri.substring("dropbox://".length))
 					.then(resources => resources.map(function(resource) {
 						resource.uri = "dropbox://" + resource.uri;
+						return resource;	
+					}));
+			}
+			if(uri.startsWith("gdrive://")) {
+				return GDrive.list(uri.substring("gdrive://".length))
+					.then(resources => resources.map(function(resource) {
+						resource.uri = "gdrive://" + resource.uri;
 						return resource;	
 					}));
 			}
@@ -48,6 +55,13 @@ function(FS, Pouch, Dropbox, Dropped, DragDropHandler) {
 				return Dropbox.get(uri.substring("dropbox://".length))
 					.then(resource => {
 						resource.uri = "dropbox://" + resource.uri;
+						return resource;
+					});
+			}
+			if(uri.startsWith("gdrive://")) {
+				return GDrive.get(uri.substring("gdrive://".length))
+					.then(resource => {
+						resource.uri = "gdrive://" + resource.uri;
 						return resource;
 					});
 			}
@@ -103,6 +117,12 @@ function(FS, Pouch, Dropbox, Dropped, DragDropHandler) {
 						return res;	
 					});
 			}
+			if(uri.startsWith("gdrive://")) {
+				return GDrive.update(uri.substring("gdrive://".length), resource)
+					.then(function(res) {
+						return res;	
+					});
+			}
 			return FS.update(uri, resource);
 		},
 		link: function(uri) {
@@ -118,9 +138,16 @@ function(FS, Pouch, Dropbox, Dropped, DragDropHandler) {
 						return res;	
 					});
 			}
+			if(uri.startsWith("gdrive://")) {
+				return GDrive.link(uri.substring("gdrive://".length))
+					.then(function(res) {
+						return res;	
+					});
+			}
 			return FS.link(uri);
 		},
 
+// still necessary?
 		isZipped: function(uri, ext) {
 			ext = ext || uri.split(".").pop();
 			return ["zip", "kmz", "ti", "gz"].includes(ext);

@@ -16,160 +16,160 @@ define([], function() {
 	var veldoffice_js = ls('veldoffice-js-path', true) || "lib/node_modules/veldoffice-js/src/";
 	var veldoffice_js_ = veldoffice_js.substring(veldoffice_js.charAt(0) === '/' ? 1 : 0);
 
-	window.require.config({
-		// baseUrl: "src/",
-	    paths: {
-	        "cavalion-blocks/$HOME": "/home",
-	        "home": "/home",
-	        "$HOME": "/home",
+	// window.require.config({
+	// 	// baseUrl: "src/",
+	//     paths: {
+	//         "cavalion-blocks/$HOME": "/home",
+	//         "home": "/home",
+	//         "$HOME": "/home",
 	
-	        "Projects": "/home/Projects",
-	        "Library": "/home/Library",
-	        "Workspaces": "/home/Workspaces",
+	//         "Projects": "/home/Projects",
+	//         "Library": "/home/Library",
+	//         "Workspaces": "/home/Workspaces",
 	
-	        /*- bangers! */
-	        "stylesheet": cavalion_js + "stylesheet",
-	        "script": cavalion_js + "script",
-	        "text": cavalion_js + "text",
-	        "json": cavalion_js + "json",
-	        "locale": cavalion_js + "locale",
+	//         /*- bangers! */
+	//         "stylesheet": cavalion_js + "stylesheet",
+	//         "script": cavalion_js + "script",
+	//         "text": cavalion_js + "text",
+	//         "json": cavalion_js + "json",
+	//         "locale": cavalion_js + "locale",
 	
-	        /*- cavalion.org */
-	        "js": cavalion_js + "js",
-	        "console": cavalion_js + "console",
-	        "vcl": cavalion_vcl,
-	        "blocks": cavalion_blocks,
-	        "pouch": cavalion_pouch,
+	//         /*- cavalion.org */
+	//         "js": cavalion_js + "js",
+	//         "console": cavalion_js + "console",
+	//         "vcl": cavalion_vcl,
+	//         "blocks": cavalion_blocks,
+	//         "pouch": cavalion_pouch,
 	
-	        "data": cavalion_js + "data",
-	        "persistence": cavalion_js + "persistence",
-	        "features": cavalion_js + "features",
-	        "entities": cavalion_js + "entities",
+	//         "data": cavalion_js + "data",
+	//         "persistence": cavalion_js + "persistence",
+	//         "features": cavalion_js + "features",
+	//         "entities": cavalion_js + "entities",
 	
-	        "util": cavalion_js + "util",
-	        "on": cavalion_js + "on",
-	        "yell": cavalion_js + "yell",
+	//         "util": cavalion_js + "util",
+	//         "on": cavalion_js + "on",
+	//         "yell": cavalion_js + "yell",
 	        
-			"cavalion-pouch": "/home/Workspaces/cavalion.org/cavalion-pouch",
-	        "xslt": "lib/node_modules/xslt/dist/xslt",
-	        "eswbo": "/home/Workspaces/eae.com/BBT-1.5.3/WebContent/app/src",
-	        "mapbox-gl": "lib/node_modules/mapbox-gl/dist/mapbox-gl-unminified",
+	// 		"cavalion-pouch": "/home/Workspaces/cavalion.org/cavalion-pouch",
+	//         "xslt": "lib/node_modules/xslt/dist/xslt",
+	//         "eswbo": "/home/Workspaces/eae.com/BBT-1.5.3/WebContent/app/src",
+	//         "mapbox-gl": "lib/node_modules/mapbox-gl/dist/mapbox-gl-unminified",
 	
-			// "veldapps-ol": "/home/Workspaces/veldapps.com/veldapps-ol/src",
-			"veldapps-ol": "lib/node_modules/veldapps-ol/src",
-			// "veldapps-xml": "/home/Workspaces/veldapps.com/veldapps-xml/src",
-			"veldapps-xml": "lib/node_modules/veldapps-xml/src",
-			// "veldapps-imkl": "/home/Workspaces/veldapps.com/veldapps-imkl/src",
-			"veldapps-imkl": "lib/node_modules/veldapps-imkl/src",
-			// "veldapps-imsikb": "/home/Workspaces/veldapps.com/veldapps-imsikb/src",
-			"veldapps-imsikb": "lib/node_modules/veldapps-imsikb/src",
-			// "veldapps-imbro": "/home/Workspaces/veldapps.com/veldapps-imbro/src",
-			"veldapps-imbro": "lib/node_modules/veldapps-imbro/src",
-			// "vo": "/home/Workspaces/veldapps.com/veldapps-vo/src",
-			// "vo": "lib/node_modules/veldapps-vo/src",
-			"veldapps-gds-devtools": "/home/Workspaces/veldapps.com/veldapps-gds-devtools/src",
-			// "veldapps-gds-devtools": "lib/node_modules/veldapps-gds-devtools/src",
+	// 		// "veldapps-ol": "/home/Workspaces/veldapps.com/veldapps-ol/src",
+	// 		"veldapps-ol": "lib/node_modules/veldapps-ol/src",
+	// 		// "veldapps-xml": "/home/Workspaces/veldapps.com/veldapps-xml/src",
+	// 		"veldapps-xml": "lib/node_modules/veldapps-xml/src",
+	// 		// "veldapps-imkl": "/home/Workspaces/veldapps.com/veldapps-imkl/src",
+	// 		"veldapps-imkl": "lib/node_modules/veldapps-imkl/src",
+	// 		// "veldapps-imsikb": "/home/Workspaces/veldapps.com/veldapps-imsikb/src",
+	// 		"veldapps-imsikb": "lib/node_modules/veldapps-imsikb/src",
+	// 		// "veldapps-imbro": "/home/Workspaces/veldapps.com/veldapps-imbro/src",
+	// 		"veldapps-imbro": "lib/node_modules/veldapps-imbro/src",
+	// 		// "vo": "/home/Workspaces/veldapps.com/veldapps-vo/src",
+	// 		// "vo": "lib/node_modules/veldapps-vo/src",
+	// 		"veldapps-gds-devtools": "/home/Workspaces/veldapps.com/veldapps-gds-devtools/src",
+	// 		// "veldapps-gds-devtools": "lib/node_modules/veldapps-gds-devtools/src",
 			
-			"veldoffice": veldoffice_js + "veldapps.com/veldoffice",
-			"vcl-veldoffice": veldoffice_js + "veldapps.com/veldoffice/vcl-veldoffice",
-			// "vcl/veldoffice": veldoffice_js + "veldapps.com/veldoffice/vcl-veldoffice",
-			/*- veldapps.com/leaflet */
+	// 		"veldoffice": veldoffice_js + "veldapps.com/veldoffice",
+	// 		"vcl-veldoffice": veldoffice_js + "veldapps.com/veldoffice/vcl-veldoffice",
+	// 		// "vcl/veldoffice": veldoffice_js + "veldapps.com/veldoffice/vcl-veldoffice",
+	// 		/*- veldapps.com/leaflet */
 	
-			/*- veldapps-leaflet/3rd party */
-			"proj4": "lib/node_modules/veldapps-leaflet-js/src/proj4js.org/proj4-src",
-			"epsg": "lib/node_modules/veldapps-leaflet-js/src/proj4js.org/epsg",
-			"leaflet": "lib/node_modules/veldapps-leaflet-js/src/leafletjs.com",
-			"famous": "lib/node_modules/famous",
+	// 		/*- veldapps-leaflet/3rd party */
+	// 		"proj4": "lib/node_modules/veldapps-leaflet-js/src/proj4js.org/proj4-src",
+	// 		"epsg": "lib/node_modules/veldapps-leaflet-js/src/proj4js.org/epsg",
+	// 		"leaflet": "lib/node_modules/veldapps-leaflet-js/src/leafletjs.com",
+	// 		"famous": "lib/node_modules/famous",
 	
-			"ipfs": "lib/node_modules/ipfs/dist/index.min",
+	// 		"ipfs": "lib/node_modules/ipfs/dist/index.min",
 	
-			// TODO now in veldapps-xml
-	        "xml-js": "lib/node_modules/xml-js/dist/xml-js",
-	        "handlebars": "lib/node_modules/handlebars/dist/handlebars.min",
+	// 		// TODO now in veldapps-xml
+	//         "xml-js": "lib/node_modules/xml-js/dist/xml-js",
+	//         "handlebars": "lib/node_modules/handlebars/dist/handlebars.min",
 	        
-	        "sikb0101": "lib/node_modules/veldapps-xmlgen-imsikb",
-	        "xml-formatter": "lib/node_modules/xml-formatter/dist/browser/xml-formatter",
+	//         "sikb0101": "lib/node_modules/veldapps-xmlgen-imsikb",
+	//         "xml-formatter": "lib/node_modules/xml-formatter/dist/browser/xml-formatter",
 	
-			/*- bower */
-	        "ace": "../lib/node_modules/ace-builds/src",
-	        "less": "lib/bower_components/less/dist/less",
-	        "moment": "lib/bower_components/moment/moment",
-	        "moment-locale": "lib/bower_components/moment/locale",
-	        "jquery": "lib/bower_components/jquery/dist/jquery",
-	        "backbone": "lib/bower_components/backbone/backbone",
-	        "underscore": "lib/bower_components/underscore/underscore",
-	        "js-yaml": "lib/bower_components/js-yaml/dist/js-yaml",
-	        // "csv-js": "lib/bower_components/CSV-JS/csv",
-	        // "relational-pouch": "lib/bower_components/relational-pouch/dist/pouchdb.relational-pouch",
+	// 		/*- bower */
+	//         "ace": "../lib/node_modules/ace-builds/src",
+	//         "less": "lib/bower_components/less/dist/less",
+	//         "moment": "lib/bower_components/moment/moment",
+	//         "moment-locale": "lib/bower_components/moment/locale",
+	//         "jquery": "lib/bower_components/jquery/dist/jquery",
+	//         "backbone": "lib/bower_components/backbone/backbone",
+	//         "underscore": "lib/bower_components/underscore/underscore",
+	//         "js-yaml": "lib/bower_components/js-yaml/dist/js-yaml",
+	//         // "csv-js": "lib/bower_components/CSV-JS/csv",
+	//         // "relational-pouch": "lib/bower_components/relational-pouch/dist/pouchdb.relational-pouch",
 	        
-	        /*- dojo */
-	        "dojo": "lib/bower_components/dojo",
-	        "dgrid": "lib/bower_components/dgrid",
-	        "dstore": "lib/bower_components/dstore",
+	//         /*- dojo */
+	//         "dojo": "lib/bower_components/dojo",
+	//         "dgrid": "lib/bower_components/dgrid",
+	//         "dstore": "lib/bower_components/dstore",
 	        
-			"chartjs": "lib/node_modules/chart.js/dist",
-			"dygraphs/Dygraph": "lib/node_modules/dygraphs/dist/dygraph",
+	// 		"chartjs": "lib/node_modules/chart.js/dist",
+	// 		"dygraphs/Dygraph": "lib/node_modules/dygraphs/dist/dygraph",
 	
-	        "fast-xml-parser": "lib/fast-xml-parser/parser",
-			"papaparse": "lib/node_modules/papaparse",
-			"jspdf": "lib/node_modules/jspdf/dist/jspdf.umd",
-			"html2canvas": "lib/node_modules/html2canvas/dist/html2canvas.min",
+	//         "fast-xml-parser": "lib/fast-xml-parser/parser",
+	// 		"papaparse": "lib/node_modules/papaparse",
+	// 		"jspdf": "lib/node_modules/jspdf/dist/jspdf.umd",
+	// 		"html2canvas": "lib/node_modules/html2canvas/dist/html2canvas.min",
 	
-			/*- amcharts3 */
-	        "amcharts": "lib/bower_components/amcharts3/amcharts/amcharts",
-	        "amcharts.funnel": "lib/bower_components/amcharts3/amcharts/funnel",
-	        "amcharts.gauge": "lib/bower_components/amcharts3/amcharts/gauge",
-	        "amcharts.pie": "lib/bower_components/amcharts3/amcharts/pie",
-	        "amcharts.radar": "lib/bower_components/amcharts3/amcharts/radar",
-	        "amcharts.serial": "lib/bower_components/amcharts3/amcharts/serial",
-	        "amcharts.xy": "lib/bower_components/amcharts3/amcharts/xy"
+	// 		/*- amcharts3 */
+	//         "amcharts": "lib/bower_components/amcharts3/amcharts/amcharts",
+	//         "amcharts.funnel": "lib/bower_components/amcharts3/amcharts/funnel",
+	//         "amcharts.gauge": "lib/bower_components/amcharts3/amcharts/gauge",
+	//         "amcharts.pie": "lib/bower_components/amcharts3/amcharts/pie",
+	//         "amcharts.radar": "lib/bower_components/amcharts3/amcharts/radar",
+	//         "amcharts.serial": "lib/bower_components/amcharts3/amcharts/serial",
+	//         "amcharts.xy": "lib/bower_components/amcharts3/amcharts/xy"
 	
-	    },
-		shim: {
-			"amcharts.funnel": {
-	            "deps": ["amcharts"],
-	            "exports": "AmCharts",
-	            "init": function () {
-	                AmCharts.isReady = true;
-	            }
-	        },
-	        "amcharts.gauge": {
-	            "deps": ["amcharts"],
-	            "exports": "AmCharts",
-	            "init": function () {
-	                AmCharts.isReady = true;
-	            }
-	        },
-	        "amcharts.pie": {
-	            "deps": ["amcharts"],
-	            "exports": "AmCharts",
-	            "init": function () {
-	                AmCharts.isReady = true;
-	            }
-	        },
-	        "amcharts.radar": {
-	            "deps": ["amcharts"],
-	            "exports": "AmCharts",
-	            "init": function () {
-	                AmCharts.isReady = true;
-	            }
-	        },
-	        "amcharts.serial": {
-	            "deps": ["amcharts"],
-	            "exports": "AmCharts",
-	            "init": function () {
-	                AmCharts.isReady = true;
-	            }
-	        },
-	        "amcharts.xy": {
-	            "deps": ["amcharts"],
-	            "exports": "AmCharts",
-	            "init": function () {
-	                AmCharts.isReady = true;
-	            }
-	        }
-	    }
-	});
+	//     },
+	// 	shim: {
+	// 		"amcharts.funnel": {
+	//             "deps": ["amcharts"],
+	//             "exports": "AmCharts",
+	//             "init": function () {
+	//                 AmCharts.isReady = true;
+	//             }
+	//         },
+	//         "amcharts.gauge": {
+	//             "deps": ["amcharts"],
+	//             "exports": "AmCharts",
+	//             "init": function () {
+	//                 AmCharts.isReady = true;
+	//             }
+	//         },
+	//         "amcharts.pie": {
+	//             "deps": ["amcharts"],
+	//             "exports": "AmCharts",
+	//             "init": function () {
+	//                 AmCharts.isReady = true;
+	//             }
+	//         },
+	//         "amcharts.radar": {
+	//             "deps": ["amcharts"],
+	//             "exports": "AmCharts",
+	//             "init": function () {
+	//                 AmCharts.isReady = true;
+	//             }
+	//         },
+	//         "amcharts.serial": {
+	//             "deps": ["amcharts"],
+	//             "exports": "AmCharts",
+	//             "init": function () {
+	//                 AmCharts.isReady = true;
+	//             }
+	//         },
+	//         "amcharts.xy": {
+	//             "deps": ["amcharts"],
+	//             "exports": "AmCharts",
+	//             "init": function () {
+	//                 AmCharts.isReady = true;
+	//             }
+	//         }
+	//     }
+	// });
 	
 	define("clipboard-copy", [], () => {
 		return function clipboardCopy (text) {
@@ -294,8 +294,9 @@ define([], function() {
 	return {
 		init() {
 			return new Promise((resolve, reject) => {
-				require(["console/Printer", "veldapps-gds-devtools/index", "vcl/Component.storage-pouchdb", 
-					"vcl/Factory.fetch-resources", "blocks/Factory.fetch-resources", "cavalion-pouch/db", "util/net/Url",
+				require(["console/Printer", "vcl/Component.storage-pouchdb", 
+					"vcl/Factory.fetch-resources", "blocks/Factory.fetch-resources", 
+					"cavalion-pouch/db", "util/net/Url",
 				], () => {
 					try {
 						var ComponentNode = require("console/node/vcl/Component");

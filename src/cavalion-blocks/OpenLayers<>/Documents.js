@@ -47,7 +47,7 @@ function isResourceSupported(resource) {
 			index: 0,
 			onLoad() {
 				// TODO need to respect nodes that are already instantiated
-				this.app().qs("devtools/DragDropHandler<> #ddh").on("dropped", (evt) => {
+				this.app().qs("#ddh").on("dropped", (evt) => {
 					const files = evt.files;
 
 					if(this._childNodesLoaded === false) {
@@ -57,7 +57,7 @@ function isResourceSupported(resource) {
 					const parent = this, owner = this.up();
 					const uris = this.getControls().map(c => c.vars("resource.uri"));
 					const dropped = this.app()
-						.qs("devtools/DragDropHandler<> #ddh").vars("dropped")
+						.qs("#ddh").vars("dropped")
 						.map(d => d.files)
 						.flat()
 						.map((f, i) => js.sf("dropped://%d/%s", i, f.name));
@@ -91,7 +91,7 @@ function isResourceSupported(resource) {
 			},
 			onNodesNeeded(parent) {
 				var dropped = this.app()
-					.qs("devtools/DragDropHandler<> #ddh").vars("dropped")
+					.qs("#ddh").vars("dropped")
 					.map(d => d.files)
 					.flat()
 					.map((f, i) => ({ 
