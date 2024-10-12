@@ -91,7 +91,7 @@ var css = {
 
 					list.syncClasses(
 						["max-width-320", "max-width-500", "max-width-750"],
-						[columns.length > 6, columns.length > 3 && columns.length <= 6, columns.length === 3]
+						[columns.length > 6, columns.length > 3 && columns.length <= 6, columns.length <= 3]
 					);
 					
 				}, 200);
@@ -168,12 +168,13 @@ var css = {
 		on(sel) {
 			var root = this._owner;
 			var value = sel[sel.length - 1];
+			var list = root.qs("#list");
 			
 			return Promise.resolve(value).then(value => {
 				this.vars("value", value);
 				
 				if(value instanceof Array) {
-					root.qs("#list").show();
+					list.show();
 					root.qs("#array").setArray(value);
 				} else if(value !== null) {
 					if(typeof value === "object") {
@@ -215,17 +216,20 @@ var css = {
 							js.keys(value).forEach(k => arr.push({key: k, value: value[k]}));
 							root.qs("#array").setArray(arr.sort((i1, i2) => i1.key < i2.key ? -1 : 1));
 						}
-						root.qs("#list").show();
+						list.show();
 
 						// root.qs("#array").setArray(Object.values(value));
 					} else if(typeof value === "function") {
 						// root.qs("#ace").show();
 					}
+					root.qs("#list-status").render();
 				}
 			}).then(_ => {
 
-				root.qs("#list").destroyColumns();
-				root.qs("#list").updateColumns();
+				list.destroyColumns();
+				list.updateColumns();
+				
+				list._columns.forEach(c => c._onSortValues = Array.sortValues);
 										
 			});
 		}
@@ -410,7 +414,7 @@ var css = {
 			}]
 		]],
 		["Input", ("q"), { 
-			placeholder: "Filter", 
+			placeholder: "Filter (⌘/)", 
 			onChange() { 
 				var array = this.ud("#array");
 				this.setTimeout("updateFilter", () => {
