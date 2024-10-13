@@ -259,9 +259,11 @@ try { fixThemeColor(); } catch(e) { }
             }, 200);
         });
 
-        var console_scope = this.app().scope().console.scope();
-        console_scope.toolbar && console_scope.toolbar.setVisible(false);
-        console_scope.size_handle && console_scope.size_handle.setParent(scope['workspaces-tabs']);
+		if(app.getUri().startsWith("App<code.")) {
+	        var console_scope = this.app().scope().console.scope();
+	        console_scope.toolbar && console_scope.toolbar.setVisible(false);
+	        console_scope.size_handle && console_scope.size_handle.setParent(scope['workspaces-tabs']);
+		}
         
         var version = (document.qs("html head script").text.split("\n")[1] || "").split("\"")[3] || "from source";
         this.app().print("running version", version);
@@ -308,7 +310,7 @@ try { fixThemeColor(); } catch(e) { }
                 			input.setFocus();
                 		} else {
                 			console.log("focus editor");
-                			me.down('*:selected #editor-setfocus').execute(evt, me);
+                			me.down("*:selected #editor-setfocus").execute(evt, me);
                 		}
                 	}
                 	

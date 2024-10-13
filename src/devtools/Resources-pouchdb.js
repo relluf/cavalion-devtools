@@ -32,7 +32,7 @@ define(function(require) {
 		index: function(uris) {
 			return Promise.resolve([]);
 		},
-		list: function(parent) {
+		list: function(parent, opts) {
 			var db = parent.split("/").shift(); 
 			
 			if(!parent.endsWith("/")) parent += "/";

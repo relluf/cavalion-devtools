@@ -457,8 +457,10 @@ function onNodesNeeded(parent) {
                 "&.no-icon >.icon": "width:14px;",
                 //
             	">.text": "padding-left:0;",
+                ">.icon:not(.v-center)": {
+                	'::before': "transform: translate(0, 1px);"
+                },
                 ">.icon": {
-                	'::before': "transform: none;",
                     width: "32px",
                     "background-repeat": "no-repeat",
                     "background-position-x": "14px",

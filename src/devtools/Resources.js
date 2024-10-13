@@ -1,5 +1,6 @@
 define(["devtools/Resources-node", "devtools/Resources-pouchdb", "devtools/Resources-dropbox", "devtools/Resources-gdrive", "devtools/Resources-dropped", "devtools/Resources-ddh"], 
 function(FS, Pouch, Dropbox, GDrive, Dropped, DragDropHandler) {
+
 	return {
 		index: function(uris) {
 			return FS.index(typeof uris === "string" ? [uris] : uris);
@@ -8,21 +9,21 @@ function(FS, Pouch, Dropbox, GDrive, Dropped, DragDropHandler) {
 			uri = uri || "/";
 
 			if(uri.startsWith("pouchdb://")) {
-				return Pouch.list(uri.substring("pouchdb://".length))
+				return Pouch.list(uri.substring("pouchdb://".length), opts)
 					.then(resources => resources.map(function(resource) {
 						resource.uri = "pouchdb://" + resource.uri;
 						return resource;	
 					}));
 			}
 			if(uri.startsWith("dropbox://")) {
-				return Dropbox.list(uri.substring("dropbox://".length))
+				return Dropbox.list(uri.substring("dropbox://".length), opts)
 					.then(resources => resources.map(function(resource) {
 						resource.uri = "dropbox://" + resource.uri;
 						return resource;	
 					}));
 			}
 			if(uri.startsWith("gdrive://")) {
-				return GDrive.list(uri.substring("gdrive://".length))
+				return GDrive.list(uri.substring("gdrive://".length), opts)
 					.then(resources => resources.map(function(resource) {
 						resource.uri = "gdrive://" + resource.uri;
 						return resource;	
@@ -155,9 +156,9 @@ function(FS, Pouch, Dropbox, GDrive, Dropped, DragDropHandler) {
 		isPackage: function(uri, ext) {
 			ext = ext || uri.split(".").pop();
 			return ["zip", "kmz", "gz"].includes(ext);
-		}
+		},
 		
-		// paging
-		//
+		ls() { return this.list.apply(this, arguments); }
+
 	};
 });
