@@ -1,3 +1,33 @@
+### `2024/10/24` 1.0.88
+
+* 20241024 adds support for ://-resources prevents reloading page without warning fixes a bug in DragDropHandler introducing cc()
+* 20241012 adds opts to Resources.list() changes the rules for stealing the console bar updates styles in the Navigator
+* 20241012 updates the docs
+* 20241012 introduces devtools/Parser first commit
+* 20241012 optimizes column width based on number of columns optimizes sorting values with Array.sortValues
+* 20240919 identifies #ddh by name now (instead of uri/componentclass (although relative querying is now available)) adds/starts support for GDrive (first commit) adds/fixes support for ZIP-files implements event handlers for opening files adds support for opening files (Cmd+O) updates cavalion-devtools unit to be more useful
+* 20240911 enhances support for packages and ZIP-files specifically adds support for arrayBuffer-manipulation
+* 20240911 adds opts to get() - however, link() is necessary, I think
+* 20240911 anticipates changes in Dropbox API updates style of caret in Navigator
+* 20240908 adjusts to #ddh convention (query for name of DragDropHandler (which must be a singleton afterall) instead of its class (which must be allowed to change forpluggability)
+* 20240908 optimizes handling of promises
+* 20240908 adjusts to usage of latest ace-builds package
+* 20240908 optimizes code
+* 20240908 introduces Resources-ddh (refactor of -dropped-v2)
+* 20240908 adds opts to list()
+* 20240908 optimizes code
+* 20240906 suggests client as default alignment
+* 20240906 updating ace
+* 20240906 developing Resources-dropped
+* 20240906 starts refactoring/rewriting of Resources-dropped (AI-driven)
+* 20240904 adds support for multiple selected values displays multiple tabs when multiple values are selected in linked Console
+* 20240904 updates the docs
+* 20240904 add support for workspace specific storageDB while referencing vcl-comps and cavalion-blocks in Mardkown documents names DragDropHandler ddh
+* 20240904 introduces hotkey for aligning #ace client
+* 20240904 fixes reading nil-reference
+* 20240904 adds support for folders and packages (ZIP-files)
+
+
 ### `2024/07/07` 1.0.87 July Release
 
 * Adds clipboard-copy 
