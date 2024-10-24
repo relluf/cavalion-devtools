@@ -193,7 +193,7 @@ function syncAttribute(node, name, should) {
 							.filter(target => target.dropped && (evt.target === target.node || HE.hasParent(evt.target, target.node)))
 							.forEach(target => target.dropped(evt));
 						
-						this.emit("dropped", [evt]);
+						this.emit("dropped", [evt, dropped]);
 					});
 				}
 				

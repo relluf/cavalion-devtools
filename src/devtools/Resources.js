@@ -1,12 +1,23 @@
 define(["devtools/Resources-node", "devtools/Resources-pouchdb", "devtools/Resources-dropbox", "devtools/Resources-gdrive", "devtools/Resources-dropped", "devtools/Resources-ddh"], 
-function(FS, Pouch, Dropbox, GDrive, Dropped, DragDropHandler) {
+function(FS, Pouch, Dropbox, GDrive, Dropped, DragDropHandler, Resources) {
+	
+	const resolve = (uri) => { 
+		if(uri.startsWith("://")) {
+			uri = Resources.getDefaultURIBase(uri) + uri.substring("://".length);
+		}
+		return uri;
+	};
 
-	return {
+	return (Resources = {
+		getDefaultURIBase(uri) {
+			return "pouchdb://Resources/";
+		},
+		
 		index: function(uris) {
 			return FS.index(typeof uris === "string" ? [uris] : uris);
 		},
 		list: function(uri, opts) {
-			uri = uri || "/";
+			uri = resolve(uri || "/");
 
 			if(uri.startsWith("pouchdb://")) {
 				return Pouch.list(uri.substring("pouchdb://".length), opts)
@@ -45,6 +56,8 @@ function(FS, Pouch, Dropbox, GDrive, Dropped, DragDropHandler) {
 			});
 		},
 		get: function(uri, opts) {
+			uri = resolve(uri);
+			
 			if(uri.startsWith("pouchdb://")) {
 				return Pouch.get(uri.substring("pouchdb://".length))
 					.then(resource => {
@@ -76,6 +89,8 @@ function(FS, Pouch, Dropbox, GDrive, Dropped, DragDropHandler) {
 			return FS.get(uri);
 		},
 		create: function(uri, resource) {
+			uri = resolve(uri);
+
 			if(uri.startsWith("pouchdb://")) {
 				return Pouch.create(uri.substring("pouchdb://".length), resource)
 					.then(function(res) {
@@ -91,6 +106,8 @@ function(FS, Pouch, Dropbox, GDrive, Dropped, DragDropHandler) {
 			return FS.create(uri, resource);
 		},
 		'delete': function(uri) {
+			uri = resolve(uri);
+
 			if(uri.startsWith("pouchdb://")) {
 				return Pouch.delete(uri.substring("pouchdb://".length))
 					.then(function(res) {
@@ -106,6 +123,8 @@ function(FS, Pouch, Dropbox, GDrive, Dropped, DragDropHandler) {
 			return FS.delete(uri);
 		},
 		update: function(uri, resource) {
+			uri = resolve(uri);
+
 			if(uri.startsWith("pouchdb://")) {
 				return Pouch.update(uri.substring("pouchdb://".length), resource)
 					.then(function(res) {
@@ -127,6 +146,8 @@ function(FS, Pouch, Dropbox, GDrive, Dropped, DragDropHandler) {
 			return FS.update(uri, resource);
 		},
 		link: function(uri) {
+			uri = resolve(uri);
+
 			if(uri.startsWith("pouchdb://")) {
 				return Pouch.link(uri.substring("pouchdb://".length))
 					.then(function(res) {
@@ -145,20 +166,25 @@ function(FS, Pouch, Dropbox, GDrive, Dropped, DragDropHandler) {
 						return res;	
 					});
 			}
+
 			return FS.link(uri);
 		},
 
 // still necessary?
 		isZipped: function(uri, ext) {
+			// uri = resolve(uri);
+
 			ext = ext || uri.split(".").pop();
 			return ["zip", "kmz", "ti", "gz"].includes(ext);
 		},
 		isPackage: function(uri, ext) {
+			// uri = resolve(uri);
+
 			ext = ext || uri.split(".").pop();
 			return ["zip", "kmz", "gz"].includes(ext);
 		},
 		
 		ls() { return this.list.apply(this, arguments); }
 
-	};
+	});
 });

@@ -227,7 +227,9 @@ try { fixThemeColor(); } catch(e) { }
                     });
             });
         }
-        
+
+this.app().vars("canunload", () => false);
+
         var url = app.vars("url");
         var workspaces = url.getParamValue("workspaces");
         var title = url.getParamValue("title");

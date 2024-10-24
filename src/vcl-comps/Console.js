@@ -2,6 +2,15 @@
 
 var Resources = require("devtools/Resources");
 
+let cc = function() { // HM-20241010-1-method-auto-require-in-first-call
+	// const args = js.copy_args(arguments);
+	return Promise.resolve(req("clipboard-copy")).then(cc_ => {
+		cc = cc_;
+		
+		return cc.apply(window, arguments);
+	});
+};
+
 ["vcl/ui/Form", (""), { activeControl: "console" }, [
 	["vcl/ui/Console", ("console"), { 
 		classes: "no-time",
