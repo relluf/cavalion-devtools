@@ -85,8 +85,8 @@ const processFile = function (file, directoryNode) {
         resolve(fileNode);
     });
 };
-function processZipFile(file) {
-    return new Promise((resolve, reject) => require(["jszip"], 
+function processZipFile(file, req = require) {
+    return new Promise((resolve, reject) => req(["jszip"], 
     	(JSZip) => file.getContent().then(arrayBuffer => {
 	        const zip = new JSZip();
 	        zip.loadAsync(arrayBuffer).then(zipContents => {

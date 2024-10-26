@@ -5,7 +5,7 @@ define(function(require) {
 
 	const Xml = require("veldapps-xml/index");
 	const XmlUtils = require("util/Xml");
-	const Papaparse = require("papaparse/papaparse");
+	const Papaparse = require("papaparse");
 	const Markdown = require("markdown");
 
 	const parseCsv = (text, opts) => {

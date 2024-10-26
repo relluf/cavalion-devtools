@@ -1,21 +1,45 @@
 define(function(require) {
 
-	var $ = require("jquery");
-	var js = require("js");
+	const js = require("js");
+	const BASE_URL = "/fs/";
 	
-	var BASE_URL = "/fs/";
-
-	function promise(request) {
-		return Promise.resolve(request);
-	}
 	function adjust(uri) {
 		if(uri.charAt(0) === "/") uri = uri.substring(1);
 		return BASE_URL + (window.escape(uri) || "");
 	}
+	function request(urlOrOpts, opts = {}) {
+	    let url, options;
+	
+	    // Check if the first parameter is a string (URL) or an options object
+	    if (typeof urlOrOpts === 'string') {
+	        url = urlOrOpts;
+	        options = opts;
+	    } else {
+	        url = urlOrOpts.url;
+	        options = urlOrOpts;
+	    }
+	
+	    // Set defaults and destructure options
+	    const { method = 'GET', data = null, headers = {} } = options;
+	
+	    return fetch(url, {
+	        method,
+	        headers: {
+	            'Content-Type': 'application/json',
+	            ...headers
+	        },
+	        body: data ? JSON.stringify(data) : null
+	    }).then(response => {
+	    	if(opts.method === "DELETE") return response;
+	    	
+	        if (!response.ok) throw new Error(response.statusText);
+	        return response.json();
+	    });
+	}
 
 	return {
 		index: function(uris) {
-			return promise($.ajax(adjust("") + "?index&uris=" + window.escape(uris.join(";"))))
+			return (request(adjust("") + "?index&uris=" + window.escape(uris.join(";"))))
 				.then(function(res) {
 					/*- TODO Current devtools/Navigator expects weird structure/processing */
 					var dirs = {}, files = {};
@@ -53,7 +77,7 @@ define(function(require) {
 			if(typeof uri === "string" && uri !== "/" && uri.charAt(uri.length - 1) !== "/") {
 				uri += "/";
 			}
-			return promise($.ajax(adjust(uri))).then(function(res) {
+			return (request(adjust(uri))).then(function(res) {
 					var arr = [];
 					for(var k in res) {
 						var resource = res[k];
@@ -68,7 +92,7 @@ define(function(require) {
 				});
 		},
 		get: function(uri) {
-			return promise($.ajax(adjust(uri)).then(function(res) {
+			return (request(adjust(uri)).then(function(res) {
 					return js.mixIn({
 						name: uri.split("/").pop(),
 						uri: uri,
@@ -77,10 +101,10 @@ define(function(require) {
 				}));
 		},
 		create: function(uri, resource) {
-			return promise($.ajax(adjust(uri), {
+			return (request(adjust(uri), {
 				method: "POST",
 				contentType: "application/json",
-				data: JSON.stringify({
+				data: ({
 					"text": resource.text,
 					"revision": resource.revision,
 					"position": 0
@@ -88,15 +112,13 @@ define(function(require) {
 			}));
 		},
 		'delete': function(uri) {
-		    return promise($.ajax(adjust(uri), {
-		        method: "DELETE"
-		    }));
+		    return request(adjust(uri), { method: "DELETE" });
 		},
 		update: function(uri, resource) {
-			return promise($.ajax(adjust(uri), {
+			return (request(adjust(uri), {
 				method: "PUT",
 				contentType: "application/json",
-				data: JSON.stringify({
+				data: ({
 					"text": resource.text,
 					"revision": resource.revision,
 					"position": 0

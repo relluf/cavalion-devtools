@@ -184,7 +184,8 @@ function(FS, Pouch, Dropbox, GDrive, Dropped, DragDropHandler, Resources) {
 			return ["zip", "kmz", "gz"].includes(ext);
 		},
 		
-		ls() { return this.list.apply(this, arguments); }
+		ls() { return this.list.apply(this, arguments); },
+		resolve: resolve
 
 	});
 });

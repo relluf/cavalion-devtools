@@ -19,7 +19,7 @@ var Blocks = require("blocks/Blocks");
 	/*- $HOME - thingy */
 	Method.override(Factory, {
 		resolveUri: function(uri) {
-			var r = js.inherited(this, arguments);
+			var r = Method.callInherited(this, arguments);
 			var i = uri.indexOf("/vcl-comps/"), l = "/vcl-comps/".length;
 				
 			if(uri.indexOf("vcl/prototypes/$HOME/") === 0 && i !== -1) { // #
