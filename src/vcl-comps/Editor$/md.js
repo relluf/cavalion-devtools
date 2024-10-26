@@ -148,9 +148,13 @@ function render() {
 		return impl(value, this);
 	}
 	
-	var root = markdown.toHTMLTree(value);
+	var root = markdown.toHTMLTree(value, 
+			this.vars(["markdown.dialect"]), 
+			this.vars(["markdown.options"]));
+
 	var resource = this.vars(["resource"]);
-	this.up().vars("root", markdown.toHTMLTree(value));//[].concat(root));
+
+	this.up().vars("root", root);
     this.up().qsa("#output").forEach(_ => {
     	_.setContent(markdown.renderJsonML(root));
     	_.update(function() {
@@ -336,10 +340,12 @@ document.addEventListener("click", (evt) => {
 			href = href + anchor.textContent;
 		}
 
-		if(href.startsWith("://")) { // TODO anticipate ! and *
-			var pre = blocks ? "/cavalion-blocks" : comps ? "/vcl-comps" : "";
-			href = js.sf("pouchdb://%s%s/%s", getDB_name(control), pre, href.substring(3) || anchor.textContent);
-		}
+		/*- 20241025 obsolete - implemented by Resource.resolve(uri)
+			if(href.startsWith("://")) { // TODO anticipate ! and *
+				var pre = blocks ? "/cavalion-blocks" : comps ? "/vcl-comps" : "";
+				href = js.sf("pouchdb://%s%s/%s", getDB_name(control), pre, href.substring(3) || anchor.textContent);
+			} 
+		*/
 		
 		var backtick_params = [
 			control.app(), 
