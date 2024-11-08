@@ -24,15 +24,14 @@ define(function(require) {
 	
 	    return fetch(url, {
 	        method,
-	        headers: {
-	            'Content-Type': 'application/json',
-	            ...headers
-	        },
+	        headers: js.mi({ 'Content-Type': 'application/json' }, headers),
 	        body: data ? JSON.stringify(data) : null
 	    }).then(response => {
 	    	if(opts.method === "DELETE") return response;
 	    	
-	        if (!response.ok) throw new Error(response.statusText);
+	        if (!response.ok) {
+	        	throw response;
+	        }
 	        return response.json();
 	    });
 	}
@@ -101,7 +100,7 @@ define(function(require) {
 				}));
 		},
 		create: function(uri, resource) {
-			return (request(adjust(uri), {
+			return request(adjust(uri), {
 				method: "POST",
 				contentType: "application/json",
 				data: ({
@@ -109,7 +108,7 @@ define(function(require) {
 					"revision": resource.revision,
 					"position": 0
 				})
-			}));
+			});
 		},
 		'delete': function(uri) {
 		    return request(adjust(uri), { method: "DELETE" });
