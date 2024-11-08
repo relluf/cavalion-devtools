@@ -51,13 +51,7 @@ var DetailViews = {
 			// 	});
 			// }
 		}
-	}, [
-		["#load", {
-			on() {
-				this.ud("#reflect").execute(sel);
-			}
-		}]
-	]],
+	}],
 	// Alpha, Geo, Profiles
 	imsikb0101_: ["Container", { 
 			css: {

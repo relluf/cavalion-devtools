@@ -274,7 +274,10 @@ var xsTypes = {};
 						var features = js.get(at__ + ".features", this.elems_map[ref]);
 						if(features) {
 							// console.log("adjusted features", ct)
-							Object.keys(features).forEach(key => js.set(at__ + ".features." + key, features[key], ct));
+							// TODO volgens mij klopt dit niet eens (!!!)
+							// Object.keys(features).forEach(key => js.set(at__ + ".features." + key, features[key], ct));
+						} else {
+							// console.log("no features for @ref'd", ref, ct)
 						}
 					});
 				},
@@ -450,6 +453,7 @@ var xsTypes = {};
 						this.stamp(xsel);
 						if(xsel['@_ref']) {
 							// TODO this must be done later
+							// console.warn("not handled", xsel, xstype);
 						} else {
 							this.inheritElement(xselem, xsel, xsel['@_type'] || xsel['@_name']);
 						}

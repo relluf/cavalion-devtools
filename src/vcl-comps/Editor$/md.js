@@ -311,7 +311,9 @@ document.addEventListener("click", (evt) => {
         	href = "comps:" + comps[1].substring(1).split(")")[0];
         	comps_vars = comps[2];
         }
-
+        
+        if(href === "{}") href = "{:}"
+        
         if(href.startsWith(":") && !href.startsWith("://")) {
         	href = anchor.textContent + href.substring(1);
         } else if(href.startsWith("blocks:")) {
@@ -465,8 +467,15 @@ document.addEventListener("click", (evt) => {
 			});
 		} else {
 			swp = startsWithProtocol(href);//.match("^[/]*[^:]*://");
+			
 			if(!swp) {
-				uri = js.normalize(base, href.charAt(0) === "/" ? href.substring(1) : ("./" + href));
+				var _ = window.require.s.contexts._;
+		        if(href.startsWith("{") && href.endsWith("}")) {
+		        	uri = _.nameToUrl(href.substring(1, href.length - 1));
+		        	uri = uri.replace(/^\.\/lib/, "/Library/");
+		        } else {
+					uri = js.normalize(base, href.charAt(0) === "/" ? href.substring(1) : ("./" + href));
+		        }
 			} else {
 				uri = href;
 			}
