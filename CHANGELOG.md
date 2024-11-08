@@ -1,3 +1,13 @@
+### `2024/11/08` 1.0.89
+
+* Service build for cavalion-code
+	* 20241108 adds support for linking to Library-based source files with curly brackets updates docs removes dead code
+	* 20241108 gets rid of jquery-usage updates requirejs configs
+	* 20241026 adds/starts support for Markdown-dialects
+	* 20241026 updates the docs
+	* 20241026 adds Res(ources).resolve makes all leaner and meaner removes jquery dependencies refactors js.override and js.inherited
+
+
 ### `2024/10/24` 1.0.88
 
 * 20241024 adds support for ://-resources prevents reloading page without warning fixes a bug in DragDropHandler introducing cc()
