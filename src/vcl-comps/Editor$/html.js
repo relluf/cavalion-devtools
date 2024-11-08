@@ -17,8 +17,6 @@
 	
 */
 
-var q$ = require("jquery");
-
 ["", {
 	// onLoad: function() {
 	// 	var resource = this.getVar("resource", true);
@@ -101,10 +99,10 @@ var q$ = require("jquery");
     		evt = evt || {value: scope.ace.getValue()};
     		
             /*- reference to root node of current HTML */
-            var root = scope.preview._node; 
+            var root = scope.preview.getNode();
             /*- save all scrollTop values which are not equal to 0 */
             // var pos = Array.from(root.querySelectorAll("*").filter(_ => _.scrollTop).map(_ => { 
-            var pos = q$("*", root).toArray().filter(_ => _.scrollTop).map(_ => { 
+            var pos = Array.from(root.qsa("*")).filter(_ => _.scrollTop).map(_ => { 
             	var n = _, s = []; 
             	while(n !== root) { 
             		/*- build the selector */
@@ -129,7 +127,7 @@ var q$ = require("jquery");
         	
         	/* restore scrollTop positions */
         	try { 
-        		scope.preview.update(_ => pos.forEach(p => q$(p[0]).scrollTop(p[1])));
+        		scope.preview.update(_ => pos.forEach(p => p[0].scrollTop = p[1]));
         		// scope.preview.update(_ => pos.forEach(p => document.querySelector(p[0]).scrollTop = p[1]));
 				this._owner.emit("resource-rendered", [{sender: this.up()}]);
         	} catch(e) {
