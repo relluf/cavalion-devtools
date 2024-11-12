@@ -21,7 +21,7 @@ var Parser = require("lib/bower_components/papaparse/papaparse");
         
 		// TODO pinpoint specific event (not all)
 		this.vars("listeners", scope.array.on("event", () => { 
-			scope.count.setContent(scope.array.getSize()); 
+			scope.count?.setContent(scope.array.getSize()); 
 		}));
 		
 		this.readStorage("search-input-value", (value) => {
@@ -156,6 +156,13 @@ this.print("parsed", parsed);
 			
 			scope.array.setArray(arr);
 			
+			const reflect = scope.alphaview.qs("#reflect");
+			if(reflect) {
+				reflect.execute([arr]);
+			} else {
+				scope.alphaview.once("container-ready", () => scope.alphaview.qs("#reflect").execute([arr]));
+			}
+			
 			this.up("vcl/ui/Tab").emit("resource-rendered", [{sender: this, data: arr}]);
 		}
 	}],
@@ -166,22 +173,24 @@ this.print("parsed", parsed);
 			return (this._arr[index] || {})[name]; 
 		}
 	}],
-	[("vcl/ui/Bar"), ("menu"), [
-		["vcl/ui/Input", ("search-input"), { placeholder: locale("Search.placeholder") }],
-		["vcl/ui/Element", "count", { content: "-" }]
-	]],
-	["vcl/ui/List", ("list"), { 
-		align: "client", autoColumns: true, source: "array",
-		css: "background-color: white; min-width:100%;", 
-		onDblClick: function() {
-			this.print(this.getSelection(true));	
-		},
-		// onColumnGetValue: function(column, value, row, source) {
-		// 	value = this._source._arr[row][column._attribute];
-		// 	if(column.getIndex() === 0) {
-		// 		return row + " - " + value;
-		// 	}
-		// 	return value;
-		// }
-	}]
+	// [("vcl/ui/Bar"), ("menu"), [
+	// 	["vcl/ui/Input", ("search-input"), { placeholder: locale("Search.placeholder") }],
+	// 	["vcl/ui/Element", "count", { content: "-" }]
+	// ]],
+	// ["vcl/ui/List", ("list"), { 
+	// 	align: "client", autoColumns: true, source: "array",
+	// 	css: "background-color: white; min-width:100%;", 
+	// 	onDblClick: function() {
+	// 		this.print(this.getSelection(true));	
+	// 	},
+	// 	// onColumnGetValue: function(column, value, row, source) {
+	// 	// 	value = this._source._arr[row][column._attribute];
+	// 	// 	if(column.getIndex() === 0) {
+	// 	// 		return row + " - " + value;
+	// 	// 	}
+	// 	// 	return value;
+	// 	// }
+	// }]
+	
+	[["cavalion-blocks<devtools/Alphaview>"], "alphaview", { }]
 ]];

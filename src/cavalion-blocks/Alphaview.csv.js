@@ -18,7 +18,7 @@ var valueOf = (value, column) => value instanceof Array ? value.length : js.name
 			
 			/* build the header based upon Object.keys(selection) */
 			var columnByH = (h) => list._columns.filter(c => c._attribute === h)[0];
-			var columnsOf = (header) => header.map(h => columnByH(h).getContent());
+			var columnsOf = (header) => header.map(h => columnByH(h)._attribute);//getContent());
 			
 			var header = [], list = this.ud("#list");
 			selection.forEach(_ => Object.keys(_).forEach(key => !header.includes(key) ? header.push(key) : []));
