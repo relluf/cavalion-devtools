@@ -111,6 +111,9 @@ var css = {
 			const keys = cons ? cons.getNode().qsa(".node.selected").map(node => {
 				const key = node.qs(".key"), content = key && key.textContent;
 				if(content) {
+					if(content.startsWith("/* ")) {
+						return content.substring(3, content.indexOf(" */"));
+					}
 					return content.replace(/: $/, "");
 				}
 				return "";
