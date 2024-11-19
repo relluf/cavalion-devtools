@@ -178,8 +178,13 @@ function print(comp, msg, value) {
         visible: "state",
         state: false,
         
-        onExecute: function() {
-        	this.setState(!this.getState());
+        onExecute: function(evt, value) {
+        	this.setState(value = !this.getState());
+        	if(value === true) {
+        		ace.set("align", "left");
+        	}
+        	
+        	
         	// var preview = this.scope().preview;
         	// preview.setSelected(!preview.isSelected());
         }
@@ -189,14 +194,14 @@ function print(comp, msg, value) {
 		onExecute: function(evt) {
 			// TODO source might be lost because of #refresh
 			var scope = this.scope();
-			var tc = scope['toggle-component'];
-			if(tc.getState() !== true) {
-				tc.setState(true);
-				tc.setTimeout("reload-execute", function() {
-					scope.refresh.execute(evt, scope['@this']);
-				}, 200);
+			var toggle = scope['toggle-component'];
+			if(toggle.getState() !== true) {
+        		scope.ace.set("align", "left");
+				toggle.setState(true);
+				toggle.setTimeout("reload-execute", () => 
+					scope.refresh.execute(evt, scope['@this']), 200);
 			} else {
-				tc.setState(false);
+				toggle.setState(false);
 			}
 		}    	
     }],
