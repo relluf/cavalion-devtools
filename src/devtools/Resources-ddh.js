@@ -2,8 +2,8 @@ define(function(require) {
 	const PackageHandlerRegistry = {
 	    handlers: {},
 	
-	    registerHandler: (extension, handler) => {
-	        PackageHandlerRegistry.handlers[extension] = handler;
+	    registerHandler: (extension, handler, dependencies = {}) => {
+	        PackageHandlerRegistry.handlers[extension] = { handler, dependencies };
 	    },
 	    getHandler: (extension) => {
 	        return PackageHandlerRegistry.handlers[extension];
@@ -13,9 +13,10 @@ define(function(require) {
 	    },
 	    processFile: async (file, uri) => {
 	        const extension = FileUtils.getFileExtension(file.name);
-	        const handler = PackageHandlerRegistry.getHandler(extension);
-	        if (handler) {
-	            return handler(file, uri);
+	        const registered = PackageHandlerRegistry.getHandler(extension);
+	        if (registered) {
+	            const { handler, dependencies } = registered;
+	            return handler(file, uri, dependencies);
 	        }
 	        throw new Error(`No handler registered for extension: ${extension}`);
 	    },
@@ -168,175 +169,6 @@ define(function(require) {
 	        }, rootNode);
 	    },
 	};
-	
-	// Default Handlers
-	PackageHandlerRegistry.registerHandler('zip', async (file, uri) => {
-	    return new Promise((resolve, reject) => {
-	        require(['jszip'], (JSZip) => {
-	            file.getContent()
-	                .then(buffer => new JSZip().loadAsync(buffer))
-	                .then(zip => {
-	                    const entries = Object.entries(zip.files).map(([name, zipEntry]) => ({
-	                        name,
-	                        isFile: !zipEntry.dir,
-	                        size: zipEntry._data.uncompressedSize,
-	                        getContent: () => zipEntry.async('arraybuffer'),
-	                        isPackage: PackageUtils.knownExtensions.includes(FileUtils.getFileExtension(name)),
-	                    }));
-	                    resolve(entries.filter(e => !e.name.startsWith("__MACOSX/")));
-	                })
-	                .catch(reject);
-	        }, reject);
-	    });
-	});
-	PackageHandlerRegistry.registerHandler('shp', async (file, uri) => {
-	    return new Promise((resolve, reject) => {
-	        require(['shapefile'], (shapefile) => {
-	        	const base = js.up(uri) + "/" + file.name.replace(/\.shp$/, '');
-	        	Promise.all([
-	            	file.getContent(),
-	            	get(base + ".dbf", { arrayBuffer: true })
-	        	])
-	                .then(buffers => shapefile.open(new Uint8Array(buffers[0]), new Uint8Array(buffers[1])))
-	                .then(source => {
-	                    const features = [];
-	                    const readNextFeature = () => {
-	                        return source.read().then(result => {
-	                            if (!result.done) {
-	                                features.push(result.value);
-	                                return readNextFeature();
-	                            }
-	                            return features;
-	                        });
-	                    };
-	
-	                    return readNextFeature().then(() => {
-	                        resolve([{
-		                		uri: uri + "/features.json",
-		                		// text: text,
-		                		// size: text.length,
-		                		name: "features.json",
-		                		type: "File",
-		                		contentType: "application/json",
-		                		getContent: () => (new TextEncoder()).encode(JSON.stringify(features))
-		                	}]);
-	                    });
-	                })
-	                .catch(reject);
-	        }, reject);
-	    });
-	});
-	PackageHandlerRegistry.registerHandler('gz', async (file, uri) => {
-	    return new Promise((resolve, reject) => {
-	        require(['pako'], (pako) => {
-	            file.getContent()
-	                .then(buffer => {
-	                    const decompressed = pako.inflate(new Uint8Array(buffer));
-	                    const decompressedFileName = file.name.replace(/\.gz$/, '');
-	                    const extension = FileUtils.getFileExtension(decompressedFileName);
-	
-	                    // Create a virtual file object for the decompressed content
-	                    const decompressedFile = {
-	                        name: decompressedFileName,
-	                        getContent: () => Promise.resolve(decompressed),
-	                    };
-	
-	                    // Check if a handler exists for the decompressed file type
-	                    if (PackageHandlerRegistry.canHandle(extension)) {
-	                        return PackageHandlerRegistry.processFile(decompressedFile, uri);
-	                    }
-	
-	                    // If no handler exists, return the raw decompressed content
-	                    return [{
-	                        name: decompressedFileName,
-	                        size: decompressed.length,
-	                        content: new TextDecoder().decode(decompressed),
-	                        type: FileUtils.getFileContentType(decompressedFileName),
-	                    }];
-	                })
-	                .then(resolve)
-	                .catch(reject);
-	        }, reject);
-	    });
-	});
-	PackageHandlerRegistry.registerHandler('qgz', async (file, uri) => {
-	    const zipHandler = PackageHandlerRegistry.getHandler('zip');
-	    if (!zipHandler) {
-	        throw new Error("ZIP handler is not registered.");
-	    }
-	
-	    // Delegate processing to the ZIP handler
-	    const zipResult = await zipHandler(file);
-	
-	    // Optionally, locate and emphasize the .qgs file
-	    const projectFile = zipResult.find(entry => entry.name.endsWith('.qgs'));
-	
-	    return zipResult || [{
-	        projectFileName: projectFile?.name || null,
-	        projectContent: projectFile ? await projectFile.getContent() : null,
-	        resources: zipResult, // All extracted files
-	    }];
-	});
-	PackageHandlerRegistry.registerHandler('sqlite', async (file, uri) => {
-	
-		// Helper: Convert SQLite data to TSV
-		function dataToTSV(data) {
-		    const headers = data.columns.join('\t');
-		    const rows = data.values.map(row => row.join('\t')).join('\n');
-		    return `${headers}\n${rows}`;
-		}
-	
-	
-	    return new Promise((resolve, reject) => {
-			require(["sqlite"], initSqlJs => {
-				initSqlJs({
-					// Required to load the wasm binary asynchronously. Of course, you can host it wherever you want
-					// You can omit locateFile completely when running in node
-					locateFile: file => `https://sql.js.org/dist/${file}`
-				}).then(SQL => file.getContent().then(content => {
-				    const db = new SQL.Database(new Uint8Array(content));
-				
-				    const tables = db.exec("SELECT name FROM sqlite_master WHERE type='table';")[0].values.flat();
-				    const views = [];//db.exec("SELECT name FROM sqlite_master WHERE type='view';")[0]?.values.flat();
-				
-				    const entries = [];
-				
-				    // Add tables as folders
-				    for (const table of tables) {
-				        const schema = db.exec(`PRAGMA table_info(${table});`);
-				        const data = db.exec(`SELECT * FROM ${table};`);
-				
-				        entries.push({
-				            name: `${table}/data.tsv`,
-				            isFile: true,
-				            size: JSON.stringify(data).length,
-				            getContent: () => Promise.resolve(new TextEncoder().encode(dataToTSV(data)))
-				        });
-				
-				        entries.push({
-				            name: `${table}/schema.json`,
-				            isFile: true,
-				            size: JSON.stringify(schema).length,
-				            getContent: () => Promise.resolve(new TextEncoder().encode(JSON.stringify(schema))),
-				        });
-				    }
-				
-				    // Add views as files
-				    for (const view of views) {
-				        const viewData = db.exec(`SELECT * FROM ${view};`);
-				        entries.push({
-				            name: `${view}.tsv`,
-				            isFile: true,
-				            size: JSON.stringify(viewData).length,
-				            getContent: () => Promise.resolve(new TextEncoder().encode(dataToTSV(viewData))),
-				        });
-				    }
-				
-				    resolve(entries);
-			    }));
-			});
-		});
-	});
 
     const rootNode = TreeUtils.createNode("root");
 
@@ -420,6 +252,21 @@ define(function(require) {
 	    const fileNode = node.files.find(f => f.name === fileName);
 	    return fileNode || null; // Return the file node or null if not found
 	};
+
+	const getRelatedFiles = async (baseUri, extensions, getFileFn) => {
+	    const relatedFiles = {};
+	    await Promise.all(
+	        extensions.map(async (ext) => {
+	            try {
+	                const file = await getFileFn(`${baseUri}.${ext}`, { arrayBuffer: true });
+	                if (file) relatedFiles[ext] = file;
+	            } catch (err) {
+	                console.warn(`Related file .${ext} not found for base ${baseUri}`);
+	            }
+	        })
+	    );
+	    return relatedFiles;
+	};
     const getFileFromEntry = (entry) => new Promise((resolve, reject) => entry.file(resolve, reject));
     const getFileContent = async (fileNode, opts) => {
         if (fileNode.isPackage) {
@@ -430,109 +277,115 @@ console.log("!!! could not determine uri"); debugger;
         const content = await fileNode.getContent();
         return opts?.arrayBuffer ? content : new TextDecoder().decode(content);
     };
+	const getPackageFile = async (packageFile, fileName, baseUri, opts) => {
+	    // Ensure the file is a package
+	    if (!PackageUtils.isPackage(packageFile)) {
+	        throw new Error(`File at URI "${baseUri}" is not a recognized package.`);
+	    }
+	
+	    // Process the package and look for the specified file
+	    const entries = await PackageUtils.processPackageFile(packageFile, baseUri);
+	    const entry = entries.find(e => e.name === fileName);
+	
+	    if (!entry) {
+	        return { error: `File "${fileName}" not found in package at "${baseUri}".` };
+	    }
+	
+	    // Return content or metadata
+	    const content = await entry.getContent();
+	    return opts.arrayBuffer
+	        ? content
+	        : {
+	              text: new TextDecoder().decode(content),
+	              uri: `${baseUri}/${entry.name}`,
+	              name: entry.name,
+	              size: entry.size || content.length,
+	              contentType: entry.contentType || FileUtils.getFileContentType(entry.name),
+	          };
+	};
 
+	const listPackageContents = async (packageFile, uri, opts) => {
+	    // Check if the file is a package
+	    if (!PackageUtils.isPackage(packageFile)) {
+	        throw new Error(`File at URI "${uri}" is not a recognized package.`);
+	    }
+	
+	    // Process the package and return its entries
+	    const entries = await PackageUtils.processPackageFile(packageFile, uri);
+	
+	    // Map entries with full URIs and metadata
+	    return entries.map(entry => ({
+	        uri: `${uri}/${entry.name}`,
+	        name: entry.name,
+	        type: entry.isPackage ? "Package" : "File",
+	        size: entry.size || 0,
+	        contentType: entry.contentType || FileUtils.getFileContentType(entry.name),
+	    }));
+	};
 	const list = async (path, opts = { recursive: false, recursePackages: false }) => {
 	    const dirNode = TreeUtils.findNodeByPath(path, rootNode);
 	
 	    if (!dirNode) {
 	        const packageNode = await findFileByPath(path);
-	        if (!packageNode || !(PackageUtils.isPackage(packageNode))) {
-	            return { error: "Path not found" };
+	        if (!packageNode) {
+	            return { error: `Path "${path}" not found` };
 	        }
 	
-	        const entries = await PackageUtils.processPackageFile(packageNode, path);
-	        return entries.map(entry => ({
-	            uri: `${path}/${entry.name}`,
-	            name: entry.name,
-	            path,
-	            type: PackageUtils.isPackage(entry) ? "Package" : "File",
-	            size: entry.size || 0,
-	            contentType: entry.contentType || FileUtils.getFileContentType(entry.name),
-	        }));
+	        // Delegate package-specific logic to listPackageContents
+	        return listPackageContents(packageNode, path, opts);
 	    }
 	
-	    // Normal directory processing
+	    // Handle standard directory listing
 	    const items = [
 	        ...dirNode.directories.map(dir => ({
 	            uri: `${path}/${dir.name}`,
 	            name: dir.name,
-	            path: path,
 	            type: "Folder",
 	        })),
 	        ...dirNode.files.map(file => ({
 	            uri: `${path}/${file.name}`,
 	            name: file.name,
-	            path: path,
 	            type: PackageUtils.isPackage(file) ? "Package" : "File",
 	            size: file.size,
-	            contentType: file.type || FileUtils.getFileContentType(file.name),
+	            contentType: FileUtils.getFileContentType(file.name),
 	        })),
 	    ];
 	
-	    return opts.recursive
-	        ? flattenDirectoryRecursively(dirNode, path)
-	        : items;
+	    return opts.recursive ? flattenDirectoryRecursively(dirNode, path) : items;
 	};
 	const get = async (uri, opts = {}) => {
 	    const parts = uri.split('/');
 	    const name = parts.pop();
 	    const path = parts.join('/');
-	    let dirNode = TreeUtils.findNodeByPath(path, rootNode);
+	    const dirNode = TreeUtils.findNodeByPath(path, rootNode);
 	
 	    if (!dirNode) {
-	        // If the directory is not found, search for a package (e.g., ZIP file)
-	        const packageNode = await findFileByPath(path, rootNode);
-	        if (!packageNode || !(PackageUtils.isPackage(packageNode))) {
-	            return { error: "Directory or package not found" };
+	        // If directory is not found, check for a package
+	        const packageNode = await findFileByPath(path);
+	        if (!packageNode) {
+	            return { error: `Path "${path}" not found` };
 	        }
 	
-	        try {
-	            // Process the package (ZIP) to find the matching entry (fileNode)
-	            const entries = await PackageUtils.processPackageFile(packageNode, path);
-	            const entry = entries.find(e => e.name === name);
-	
-	            if (!entry) {
-	                return { error: "File not found inside the package" };
-	            }
-	
-	            // Handle nested packages or files within the ZIP
-	            if (entry.isPackage) {
-	                return await get(`${path}/${entry.name}`, opts);
-	            }
-	
-	            // Return the file's content or arrayBuffer
-	            const content = await entry.getContent();
-	            return opts.arrayBuffer ? content : {
-	                      text: new TextDecoder().decode(content),
-	                      uri: `${path}/${entry.name}`,
-	                      name: entry.name,
-	                      path,
-	                      size: entry.size || content.length,
-	                      contentType: entry.contentType || FileUtils.getFileContentType(entry.name),
-	                  };
-	        } catch (error) {
-	            return { error: `Error processing package: ${error.message}` };
-	        }
+	        // Delegate package-specific logic to getPackageFile
+	        return getPackageFile(packageNode, name, path, opts);
 	    }
 	
-	    // Find the fileNode in the directory
+	    // Handle standard file retrieval
 	    const fileNode = dirNode.files.find(f => f.name === name);
-	
 	    if (!fileNode) {
-	        return { error: "File not found" };
+	        return { error: `File "${name}" not found at "${path}".` };
 	    }
 	
-	    // Return the file's content or arrayBuffer
 	    const content = await getFileContent(fileNode, opts);
-	
-	    return opts.arrayBuffer ? content : {
-              text: content,
-              uri: `${path}/${name}`,
-              name,
-              path,
-              size: fileNode.size || content.length,
-              contentType: fileNode.type || FileUtils.getFileContentType(fileNode.name),
-          };
+	    return opts.arrayBuffer
+	        ? content
+	        : {
+	              text: content,
+	              uri: `${path}/${name}`,
+	              name,
+	              size: fileNode.size || content.length,
+	              contentType: FileUtils.getFileContentType(fileNode.name),
+	          };
 	};
     const index = (uris) => {
         // This assumes `uris` contains a list of files to index
@@ -569,7 +422,185 @@ console.log("!!! could not determine uri"); debugger;
         return await Promise.all(promises);
     };
 
+
+	// Default Handlers
+	PackageHandlerRegistry.registerHandler('zip', async (file, uri) => {
+	    return new Promise((resolve, reject) => {
+	        require(['jszip'], (JSZip) => {
+	            file.getContent()
+	                .then(buffer => new JSZip().loadAsync(buffer))
+	                .then(zip => {
+	                    const entries = Object.entries(zip.files).map(([name, zipEntry]) => ({
+	                        name,
+	                        isFile: !zipEntry.dir,
+	                        size: zipEntry._data.uncompressedSize,
+	                        getContent: () => zipEntry.async('arraybuffer'),
+	                        isPackage: PackageUtils.knownExtensions.includes(FileUtils.getFileExtension(name)),
+	                    }));
+	                    resolve(entries.filter(e => !e.name.startsWith("__MACOSX/")));
+	                })
+	                .catch(reject);
+	        }, reject);
+	    });
+	});
+	PackageHandlerRegistry.registerHandler('shp', async (file, uri, { getFile }) => {
+	    return new Promise((resolve, reject) => {
+	        require(['shapefile'], (shapefile) => {
+	            const baseUri = uri.replace(/\.shp$/, '');
+	            getRelatedFiles(baseUri, ['dbf'/*, 'shx', 'prj'*/], getFile)
+	                .then((relatedFiles) => {
+	                    const { dbf } = relatedFiles;
+	                    return Promise.all([file.getContent(), dbf]);
+	                })
+	                .then(([shp, dbf]) => 
+	                    shapefile.open(new Uint8Array(shp), dbf ? new Uint8Array(dbf) : null)
+	                )
+	                .then((source) => {
+	                    const features = [];
+	                    const readNextFeature = () => {
+	                        return source.read().then((result) => {
+	                            if (!result.done) {
+	                                features.push(result.value);
+	                                return readNextFeature();
+	                            }
+	                            return features;
+	                        });
+	                    };
+	                    return readNextFeature();
+	                })
+	                .then((features) => {
+	                	features = { name: file.name, features };
+	                    resolve([
+	                        {
+	                            uri: `${uri}/features.geojson`,
+	                            name: 'features.geojson',
+	                            type: 'File',
+	                            contentType: 'application/json',
+	                            getContent: () => Promise.resolve(new TextEncoder().encode(JSON.stringify(features))),
+	                        }
+	                    ]);
+	                })
+	                .catch(reject);
+	        }, reject);
+	    });
+	}, { getFile: get });
+
+	PackageHandlerRegistry.registerHandler('gz', async (file, uri) => {
+	    return new Promise((resolve, reject) => {
+	        require(['pako'], (pako) => {
+	            file.getContent()
+	                .then(buffer => {
+	                    const decompressed = pako.inflate(new Uint8Array(buffer));
+	                    const decompressedFileName = file.name.replace(/\.gz$/, '');
+	                    const extension = FileUtils.getFileExtension(decompressedFileName);
 	
+	                    // Create a virtual file object for the decompressed content
+	                    const decompressedFile = {
+	                        name: decompressedFileName,
+	                        getContent: () => Promise.resolve(decompressed),
+	                    };
+	
+	                    // Check if a handler exists for the decompressed file type
+	                    if (PackageHandlerRegistry.canHandle(extension)) {
+	                        return PackageHandlerRegistry.processFile(decompressedFile, uri);
+	                    }
+	
+	                    // If no handler exists, return the raw decompressed content
+	                    return [{
+	                        name: decompressedFileName,
+	                        size: decompressed.length,
+	                        content: new TextDecoder().decode(decompressed),
+	                        type: FileUtils.getFileContentType(decompressedFileName),
+	                    }];
+	                })
+	                .then(resolve)
+	                .catch(reject);
+	        }, reject);
+	    });
+	});
+	PackageHandlerRegistry.registerHandler('qgz', async (file, uri, { zip }) => {
+	    if (!zip) {
+	        throw new Error("ZIP handler is required for .qgz files");
+	    }
+	
+	    const zipResult = await zip(file, uri);
+	    const projectFile = zipResult.find(entry => entry.name.endsWith('.qgs'));
+	
+	    return [
+	        ...(projectFile
+	            ? [{
+	                  uri: `${uri}/${projectFile.name}`,
+	                  name: projectFile.name,
+	                  type: 'File',
+	                  contentType: 'application/xml',
+	                  getContent: projectFile.getContent,
+	              }]
+	            : []),
+	        ...zipResult,
+	    ];
+	}, { zip: PackageHandlerRegistry.getHandler('zip').handler });
+	PackageHandlerRegistry.registerHandler('sqlite', async (file, uri) => {
+	
+		// Helper: Convert SQLite data to TSV
+		function dataToTSV(data) {
+		    const headers = data.columns.join('\t');
+		    const rows = data.values.map(row => row.join('\t')).join('\n');
+		    return `${headers}\n${rows}`;
+		}
+	
+	
+	    return new Promise((resolve, reject) => {
+			require(["sqlite"], initSqlJs => {
+				initSqlJs({
+					// Required to load the wasm binary asynchronously. Of course, you can host it wherever you want
+					// You can omit locateFile completely when running in node
+					locateFile: file => `https://sql.js.org/dist/${file}`
+				}).then(SQL => file.getContent().then(content => {
+				    const db = new SQL.Database(new Uint8Array(content));
+				
+				    const tables = db.exec("SELECT name FROM sqlite_master WHERE type='table';")[0].values.flat();
+				    const views = [];//db.exec("SELECT name FROM sqlite_master WHERE type='view';")[0]?.values.flat();
+				
+				    const entries = [];
+				
+				    // Add tables as folders
+				    for (const table of tables) {
+				        const schema = db.exec(`PRAGMA table_info(${table});`);
+				        const data = db.exec(`SELECT * FROM ${table};`);
+				
+				        entries.push({
+				            name: `${table}/data.tsv`,
+				            isFile: true,
+				            size: JSON.stringify(data).length,
+				            getContent: () => Promise.resolve(new TextEncoder().encode(dataToTSV(data)))
+				        });
+				
+				        entries.push({
+				            name: `${table}/schema.json`,
+				            isFile: true,
+				            size: JSON.stringify(schema).length,
+				            getContent: () => Promise.resolve(new TextEncoder().encode(JSON.stringify(schema))),
+				        });
+				    }
+				
+				    // Add views as files
+				    for (const view of views) {
+				        const viewData = db.exec(`SELECT * FROM ${view};`);
+				        entries.push({
+				            name: `${view}.tsv`,
+				            isFile: true,
+				            size: JSON.stringify(viewData).length,
+				            getContent: () => Promise.resolve(new TextEncoder().encode(dataToTSV(viewData))),
+				        });
+				    }
+				
+				    resolve(entries);
+			    }));
+			});
+		});
+	});
+
+
     // Return object matching the original structure
     return {
 
