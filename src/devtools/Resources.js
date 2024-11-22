@@ -1,191 +1,124 @@
 define(["devtools/Resources-node", "devtools/Resources-pouchdb", "devtools/Resources-dropbox", "devtools/Resources-gdrive", "devtools/Resources-dropped", "devtools/Resources-ddh"], 
-function(FS, Pouch, Dropbox, GDrive, Dropped, DragDropHandler, Resources) {
-	
-	const resolve = (uri) => { 
-		if(uri.startsWith("://")) {
-			uri = Resources.getDefaultURIBase(uri) + uri.substring("://".length);
-		}
-		return uri;
-	};
+function(FS, Pouch, Dropbox, GDrive, Dropped, DragDropHandler) {
+    // Registry for resource providers
+    const ResourceRegistry = {
+        providers: {},
 
-	return (Resources = {
-		getDefaultURIBase(uri) {
-			return "pouchdb://Resources/";
-		},
-		
-		index: function(uris) {
-			return FS.index(typeof uris === "string" ? [uris] : uris);
-		},
-		list: function(uri, opts) {
-			uri = resolve(uri || "/");
+        register(scheme, provider) {
+            this.providers[scheme] = provider;
+        },
 
-			if(uri.startsWith("pouchdb://")) {
-				return Pouch.list(uri.substring("pouchdb://".length), opts)
-					.then(resources => resources.map(function(resource) {
-						resource.uri = "pouchdb://" + resource.uri;
-						return resource;	
-					}));
-			}
-			if(uri.startsWith("dropbox://")) {
-				return Dropbox.list(uri.substring("dropbox://".length), opts)
-					.then(resources => resources.map(function(resource) {
-						resource.uri = "dropbox://" + resource.uri;
-						return resource;	
-					}));
-			}
-			if(uri.startsWith("gdrive://")) {
-				return GDrive.list(uri.substring("gdrive://".length), opts)
-					.then(resources => resources.map(function(resource) {
-						resource.uri = "gdrive://" + resource.uri;
-						return resource;	
-					}));
-			}
-			if(uri.startsWith("dropped://")) {
-				return DragDropHandler.list(uri.substring("dropped://".length), opts)
-					.then(resources => resources.map(function(resource) {
-						resource.uri = "dropped://" + resource.uri.replace(/^\//, "");
-						return resource;	
-					}));
-			}
+        getProvider(uri) {
+            const scheme = uri.split("://")[0];
+            return this.providers[scheme];
+        },
+    };
 
-			return FS.list(uri).then(function(res) {
-				// if(uri === "/" || uri === "") {
-				// 	res.push({ uri: "pouchdb://", name: "pouchdb://", type: "Folder", link: false });
-				// }
-				return res;
-			});
-		},
-		get: function(uri, opts) {
-			uri = resolve(uri);
-			
-			if(uri.startsWith("pouchdb://")) {
-				return Pouch.get(uri.substring("pouchdb://".length))
-					.then(resource => {
-						resource.uri = "pouchdb://" + resource.uri;
-						return resource;
-					});
-			} 
-			if(uri.startsWith("dropbox://")) {
-				return Dropbox.get(uri.substring("dropbox://".length))
-					.then(resource => {
-						resource.uri = "dropbox://" + resource.uri;
-						return resource;
-					});
-			}
-			if(uri.startsWith("gdrive://")) {
-				return GDrive.get(uri.substring("gdrive://".length))
-					.then(resource => {
-						resource.uri = "gdrive://" + resource.uri;
-						return resource;
-					});
-			}
-			if(uri.startsWith("dropped://")) {
-				return DragDropHandler.get(uri.substring("dropped://".length), opts)
-					.then(resource => {
-						resource.uri = "dropped://" + resource.uri;
-						return resource;
-					});
-			}
-			return FS.get(uri);
-		},
-		create: function(uri, resource) {
-			uri = resolve(uri);
+    // Default URI resolver
+    const resolve = (uri) => {
+        if (uri.startsWith("://")) {
+            uri = Resources.getDefaultURIBase(uri) + uri.substring("://".length);
+        }
+        return uri;
+    };
 
-			if(uri.startsWith("pouchdb://")) {
-				return Pouch.create(uri.substring("pouchdb://".length), resource)
-					.then(function(res) {
-						return res;	
-					});
-			}
-			if(uri.startsWith("dropbox://")) {
-				return Dropbox.create(uri.substring("dropbox://".length), resource)
-					.then(function(res) {
-						return res;	
-					});
-			}
-			return FS.create(uri, resource);
-		},
-		'delete': function(uri) {
-			uri = resolve(uri);
+    // Pluggable Resources system
+    const Resources = {
+        getDefaultURIBase(uri) {
+            return "pouchdb://Resources/";
+        },
 
-			if(uri.startsWith("pouchdb://")) {
-				return Pouch.delete(uri.substring("pouchdb://".length))
-					.then(function(res) {
-						return res;	
-					});
-			}
-			if(uri.startsWith("dropbox://")) {
-				return Dropbox.delete(uri.substring("dropbox://".length))
-					.then(function(res) {
-						return res;	
-					});
-			}
-			return FS.delete(uri);
-		},
-		update: function(uri, resource) {
-			uri = resolve(uri);
+        index(uris) {
+            return FS.index(typeof uris === "string" ? [uris] : uris);
+        },
 
-			if(uri.startsWith("pouchdb://")) {
-				return Pouch.update(uri.substring("pouchdb://".length), resource)
-					.then(function(res) {
-						return res;	
-					});
-			}
-			if(uri.startsWith("dropbox://")) {
-				return Dropbox.update(uri.substring("dropbox://".length), resource)
-					.then(function(res) {
-						return res;	
-					});
-			}
-			if(uri.startsWith("gdrive://")) {
-				return GDrive.update(uri.substring("gdrive://".length), resource)
-					.then(function(res) {
-						return res;	
-					});
-			}
-			return FS.update(uri, resource);
-		},
-		link: function(uri) {
-			uri = resolve(uri);
+        list(uri, opts) {
+            uri = resolve(uri || "/");
+            const provider = ResourceRegistry.getProvider(uri);
+            if (provider && provider.list) {
+                const scheme = uri.split("://")[0];
+                return provider.list(uri.substring(`${scheme}://`.length), opts)
+                    .then(resources => resources.map(resource => {
+                        resource.uri = `${scheme}://${resource.uri}`;
+                        return resource;
+                    }));
+            }
+            return FS.list(uri);
+        },
 
-			if(uri.startsWith("pouchdb://")) {
-				return Pouch.link(uri.substring("pouchdb://".length))
-					.then(function(res) {
-						return res;	
-					});
-			}
-			if(uri.startsWith("dropbox://")) {
-				return Dropbox.link(uri.substring("dropbox://".length))
-					.then(function(res) {
-						return res;	
-					});
-			}
-			if(uri.startsWith("gdrive://")) {
-				return GDrive.link(uri.substring("gdrive://".length))
-					.then(function(res) {
-						return res;	
-					});
-			}
+        get(uri, opts) {
+            uri = resolve(uri);
+            const provider = ResourceRegistry.getProvider(uri);
+            if (provider && provider.get) {
+                const scheme = uri.split("://")[0];
+                return provider.get(uri.substring(`${scheme}://`.length), opts)
+                    .then(resource => {
+                        resource.uri = `${scheme}://${resource.uri}`;
+                        return resource;
+                    });
+            }
+            return FS.get(uri);
+        },
 
-			return FS.link(uri);
-		},
+        create(uri, resource) {
+            uri = resolve(uri);
+            const provider = ResourceRegistry.getProvider(uri);
+            if (provider && provider.create) {
+                const scheme = uri.split("://")[0];
+                return provider.create(uri.substring(`${scheme}://`.length), resource);
+            }
+            return FS.create(uri, resource);
+        },
 
-// still necessary?
-		isZipped: function(uri, ext) {
-			// uri = resolve(uri);
+        delete(uri) {
+            uri = resolve(uri);
+            const provider = ResourceRegistry.getProvider(uri);
+            if (provider && provider.delete) {
+                const scheme = uri.split("://")[0];
+                return provider.delete(uri.substring(`${scheme}://`.length));
+            }
+            return FS.delete(uri);
+        },
 
-			ext = ext || uri.split(".").pop();
-			return ["zip", "kmz", "ti", "gz"].includes(ext);
-		},
-		isPackage: function(uri, ext) {
-			// uri = resolve(uri);
+        update(uri, resource) {
+            uri = resolve(uri);
+            const provider = ResourceRegistry.getProvider(uri);
+            if (provider && provider.update) {
+                const scheme = uri.split("://")[0];
+                return provider.update(uri.substring(`${scheme}://`.length), resource);
+            }
+            return FS.update(uri, resource);
+        },
 
-			ext = ext || uri.split(".").pop();
-			return ["zip", "kmz", "gz", "shp", "ti"].includes(ext);
-		},
-		
-		ls() { return this.list.apply(this, arguments); },
-		resolve: resolve
+        link(uri) {
+            uri = resolve(uri);
+            const provider = ResourceRegistry.getProvider(uri);
+            if (provider && provider.link) {
+                const scheme = uri.split("://")[0];
+                return provider.link(uri.substring(`${scheme}://`.length));
+            }
+            return FS.link(uri);
+        },
 
-	});
+        isZipped(uri, ext) {
+            ext = ext || uri.split(".").pop();
+            return ["zip", "kmz", "ti", "gz"].includes(ext);
+        },
+
+        isPackage(uri, ext) {
+            ext = ext || uri.split(".").pop();
+            return ["zip", "kmz", "gz", "shp", "ti"].includes(ext);
+        },
+
+        ls() { return this.list.apply(this, arguments); },
+        resolve: resolve
+    };
+
+    // Register default providers
+    ResourceRegistry.register("pouchdb", Pouch);
+    ResourceRegistry.register("dropbox", Dropbox);
+    ResourceRegistry.register("gdrive", GDrive);
+    ResourceRegistry.register("dropped", DragDropHandler);
+
+    return Resources;
 });
