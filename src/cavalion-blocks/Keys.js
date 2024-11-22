@@ -85,7 +85,7 @@ var getKeyName = (key) => {
 				
 			}
 		}));
-		this.print("just casually tracking keystrokes");
+		this.print("don't mind me,just casually tracking ur keystrokes");
 	},
 	onDestroy() {
 		var li = this.vars("li");

@@ -296,8 +296,9 @@ const setDocumentTitle = (title) => { try { top.document.title = title; } catch(
     		    }
     		    if(evt.resource.contentType && evt.resource.type !== "Folder") {
     		    	// TODO use contentType to determine which editor should be
-    		    	var type = evt.resource.contentType.split("/").pop();
-    		    	evt.editorUri = js.sf("devtools/Editor<%s>", type);
+    		    	// var type = evt.resource.contentType.split("/").pop();
+    		    	// var type = evt.resource.uri.split(".").pop();
+    		    	// evt.editorUri = js.sf("devtools/Editor<%s>", type);
     		    }
     		    if(evt.editorUri) {
     		    	// TODO form <---> editor
@@ -489,7 +490,8 @@ const setDocumentTitle = (title) => { try { top.document.title = title; } catch(
     }],
     ["vcl/Action", ("editor-setfocus"), {
     	on(evt) {
-			this._owner.qs("vcl/ui/Tab:selected:childOf(editors-tabs) #ace").setFocus();
+    		this.print("hiya", evt);
+    		this.nextTick(() => this._owner.qs("vcl/ui/Tab:selected:childOf(editors-tabs) #ace").setFocus());
     	}
     }],
     ["vcl/Action", ("editor-focus-in-navigator"), {

@@ -181,7 +181,7 @@ function(FS, Pouch, Dropbox, GDrive, Dropped, DragDropHandler, Resources) {
 			// uri = resolve(uri);
 
 			ext = ext || uri.split(".").pop();
-			return ["zip", "kmz", "gz"].includes(ext);
+			return ["zip", "kmz", "gz", "shp", "ti"].includes(ext);
 		},
 		
 		ls() { return this.list.apply(this, arguments); },

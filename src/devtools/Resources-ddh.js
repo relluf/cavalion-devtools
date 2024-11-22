@@ -1,574 +1,511 @@
-// Tree structure to hold the file metadata
-const rootNode = {
-	name: "root",
-	files: [],
-	directories: []
-};
-
-const knownPackageExtensions = ['gz', 'kmz', 'ti', 'tar', 'tar.gz', 'zip']; // Add more package extensions as needed
-
-const handleChange = function (event) {
-    // Handle the change event
-    const files = event.target.files;
-
-    return Promise.all(Array.from(files).map(file => {
-        const path = file.webkitRelativePath || file.name;
-        const parts = path.split('/');
-
-        // Traverse the directory structure
-        let currentDir = rootNode;
-        for (let j = 0; j < parts.length - 1; j++) {
-            let dirName = parts[j];
-            let dir = currentDir.directories.find(d => d.name === dirName);
-
-            if (!dir) {
-                dir = { name: dirName, files: [], directories: [] };
-                currentDir.directories.push(dir);
-            }
-
-            currentDir = dir;
-        }
-
-        // Use traverseFileEntry to process the file
-        return traverseFileEntry(file, currentDir);
-    }));
-};
-const handleDrop = function (event) {
-	event.preventDefault();
-
-	return Promise.all(Array
-		.from(event.dataTransfer.items)
-		.map(item => item.webkitGetAsEntry())
-		.filter(Boolean)
-		.map(item => traverseFileEntry(item, rootNode)));
-};
-const traverseFileEntry = function(item, directoryNode) {
-    if (item.isFile || item instanceof File) {
-        return getFile(item).then((file) => processFile(file, directoryNode));
-		    // const fileNode = {
-		    //     name: file.name,
-		    //     isPackage: false,
-		    //     size: file.size,
-		    //     lastModified: file.lastModified,
-		    //     type: file.type,
-		    //     getContent: () => readFileAsArrayBuffer(file) // Use the helper function for file content
-		    // };
-		
-		    // directoryNode.files.push(fileNode); // Ensure file is added to the directory node
-		    // return fileNode;
-      //  });
-    } else if (item.isDirectory) {
-        const dirNode = { name: item.name, files: [], directories: [] };
-        directoryNode.directories.push(dirNode);
-
-        const reader = item.createReader();
-        return readAllDirectoryEntries(reader, dirNode).then((entries) => {
-        	return dirNode;
-        });
-    }
-};
-
-const processFile = function (file, directoryNode) {
-	// Process individual files and add them to the rootNode
-    return new Promise((resolve) => {
-        const fileNode = {
-            name: file.name,
-            isPackage: knownPackageExtensions.includes(getFileExtension(file.name).toLowerCase()),
-            contentType: getFileContentType(file.name),
-            size: file.size,
-            lastModified: file.lastModified,
-            type: file.type,
-            getContent: () => readFileAsArrayBuffer(file) // Use the helper function for file content
-        };
-
-        directoryNode.files.push(fileNode); // Ensure file is added to the directory node
-        resolve(fileNode);
-    });
-};
-function processZipFile(file, req = require) {
-    return new Promise((resolve, reject) => req(["jszip"], 
-    	(JSZip) => file.getContent().then(arrayBuffer => {
-	        const zip = new JSZip();
-	        zip.loadAsync(arrayBuffer).then(zipContents => {
-	            const entries = [];
-	            zip.forEach(function(relativePath, zipEntry) {
-	                entries.push({
-	                    name: zipEntry.name,
-	                    isPackage: knownPackageExtensions.includes(getFileExtension(zipEntry.name).toLowerCase()),
-	                    isFile: !zipEntry.dir, // Determine if it's a file or directory
-	                    fileSize: [js.get("_data.uncompressedSize", zipEntry), js.get("_data.compressedSize", zipEntry)],
-	                    getContent: () => zipEntry.async("arraybuffer") // Correct way to extract content from ZIP entry
-	                });
-	            });
-	            resolve(entries);
-	        });
-	    })));
+const FileUtils = {
+    getFileExtension: (fileName) => fileName.split('.').pop().toLowerCase() || "",
     
-}
-function processPackageFile(file) {
-    return new Promise((resolve, reject) => {
-        const extension = getFileExtension(file.name).toLowerCase();
-
-        // Determine the type of package based on extension or other methods
-        if (extension === "zip" || extension === "ti") {
-            processZipFile(file)
-                .then(resolve) // Resolve with the ZIP file contents
-                .catch(reject); // Handle any errors in ZIP processing
-        } else {
-            // Future: Add other package processors (e.g., for TAR, GZ)
-            reject("Unsupported package type");
-        }
-    });
-}
-
-function createResourceItem(item, path, isFile = false) {
-    if (isFile) {
-        // For files, add size, extension, and contentType
-        return {
-            name: item.name,
-            path: path,
-            type: "File",
-            uri: `${path}/${item.name}`,
-            size: item.size, // File size in bytes
-            extension: getFileExtension(item.name), // Extract extension
-            contentType: item.type || getFileContentType(item.name) // MIME type or inferred
-        };
-    } else {
-        // For folders, include an empty array to hold the names of its sub-items
-        return {
-            name: item.name,
-            path: path,
-            type: "Folder",
-            uri: `${path}/${item.name}`,
-            items: [] // Array to hold the names of sub-items
-        };
-    }
-}
-function flattenDirectoryRecursively(node, currentPath) {
-    let result = [];
-
-    // Add directories at this level
-    node.directories.forEach(dir => {
-        const dirPath = `${currentPath}/${dir.name}`;
-        const dirResource = createResourceItem(dir, currentPath, false); // Use helper for folders
-        dirResource.items = [...dir.directories.map(d => d.name), ...dir.files.map(f => f.name)]; // Add names of sub-items
-
-        result.push(dirResource);
-
-        // Recursively add the contents of this directory
-        result = result.concat(flattenDirectoryRecursively(dir, dirPath));
-    });
-
-    // Add files at this level
-    node.files.forEach(file => {
-        result.push(createResourceItem(file, currentPath, true)); // Use helper for files
-    });
-
-    return result;
-}
-
-const getFile = function (item) {
-	// Helper function to get the file from the fileEntry object
-	return new Promise((resolve, reject) => {
-		if(item instanceof File) return resolve(item);
-		
-		item.file((file) => {
-			if (file) {
-				resolve(file); // Return the file if successfully retrieved
-			} else {
-				reject("Failed to get file");
-			}
-		});
-	});
-};
-const readAllDirectoryEntries = function (directoryReader, dirNode) {
-	// Read all entries in a directory using the reader, recursively, to ensure all entries are fetched
-	return new Promise((resolve, reject) => {
-		const entries = [];
-
-		const readEntries = function () {
-			directoryReader.readEntries((result) => {
-				if (result.length > 0) {
-					let promises = result.map((entry) => {
-						return traverseFileEntry(entry, dirNode); // Recursively process the directory
-					});
-					
-					entries.push(result);
-
-					// Process all entries before continuing
-					Promise.all(promises)
-						.then(() => {
-							readEntries(); // Recursively keep reading the next batch of entries
-						})
-						.catch((error) => {
-							reject(error);
-						});
-				} else {
-					resolve(entries); // Resolve when no more entries
-				}
-			}, (error) => {
-				console.error(`Error reading directory entries: ${error}`);
-				reject(error);
-			});
-		};
-
-		readEntries(); // Start reading entries
-	});
-};
-
-const getFileExtension = (fileName) => fileName.split('.').slice(1).pop() || "";
-function getFileContentType(fileName) {
-    const extension = getFileExtension(fileName).toLowerCase();
-    const mimeTypes = {
-        'txt': 'text/plain',
-        'html': 'text/html',
-        'css': 'text/css',
-        'js': 'application/javascript',
-        'json': 'application/json',
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        'png': 'image/png',
-        'gif': 'image/gif',
-        'pdf': 'application/pdf',
-        'zip': 'application/zip',
-        // Add other common file types here
-    };
-
-    return mimeTypes[extension] || 'application/octet-stream'; // Default to binary stream if unknown
-}
-function getFileContent(fileNode, fileName, path, opts) {
-    // If the file is not a ZIP, return the content directly
-    path = path || fileNode.path;
-    return isPackage(fileNode).then(is => {
-        if(!is) {
-        	if(opts.arrayBuffer === true) {
-        		return fileNode.getContent();
-        	}
-        	return fileNode.getContent().then(content => {
-                // Assuming content is an ArrayBuffer, convert it to text
-                const text = new TextDecoder().decode(content);
-                return {
-                    uri: `${path}/${fileNode.name}`,
-                    name: fileNode.name,
-                    path: path,
-                    size: fileNode.size || fileNode.fileSize || 0,
-                    text: text,
-                    contentType: fileNode.type || null
-                };
-            });
-	    }
-
-	    // The file is a ZIP, process it
-	    return processPackageFile(fileNode)
-	        .then(entries => {
-	            const entry = entries.find(e => e.name === fileName) || entries[0];
+	getFileContentType: (fileName) => {
+	    const mimeTypes = {
+	        // Text formats
+	        'txt': 'text/plain',
+	        'csv': 'text/csv',
+	        'tsv': 'text/tab-separated-values',
+	        'xml': 'application/xml',
+	        'xsd': 'application/xml-schema',
 	
-	            if (!entry) {
-	                return { error: "File not found inside the ZIP archive" };
-	            }
+	        // Document formats
+	        'pdf': 'application/pdf',
+	        'doc': 'application/msword',
+	        'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+	        'odt': 'application/vnd.oasis.opendocument.text',
+	        'rtf': 'application/rtf',
 	
-	            // Recursively call getFileContent if the entry is another ZIP
-	            return isPackage(entry).then(is => {
-	                if(is) {
-	                	return getFileContent(entry, fileName, path, opts);
-	                }
-	                
-	                if(opts.arrayBuffer === true) {
-	                	return entry.getContent();
-	                }
-	            	
-		            // Retrieve the content of the file inside the ZIP
-		            return entry.getContent()
-		                .then(content => {
-		                    // Assuming content is an ArrayBuffer, convert it to text
-		                    const text = new TextDecoder().decode(content);
-		                    return {
-		                        uri: `${entry.path}/${entry.name}`,
-		                        name: entry.name,
-		                        path: entry.path,
-		                        size: entry.fileSize,
-		                        text: text,
-		                        contentType: entry.type || null
-		                    };
-		                });
-	            });
-	        });
-	});
-}
-function findDirectoryByPath(path, currentNode = rootNode) {
-// Retrieve a directory node by path
-	const parts = path.split('/').filter(Boolean);
-	let node = currentNode;
+	        // Spreadsheet formats
+	        'xls': 'application/vnd.ms-excel',
+	        'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+	        'ods': 'application/vnd.oasis.opendocument.spreadsheet',
+	
+	        // Presentation formats
+	        'ppt': 'application/vnd.ms-powerpoint',
+	        'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+	
+	        // Geographic and CAD formats
+	        'shp': 'application/x-shapefile',
+	        'dwg': 'application/acad',
+	        'dxf': 'application/dxf',
+	        'gds': 'application/x-gds',
+	        'gef': 'application/x-gef',
+	        'svg': 'image/svg+xml',
+	        'stg': 'application/vnd.sla',
+	
+	        // Web development formats
+	        'html': 'text/html',
+	        'htm': 'text/html',
+	        'css': 'text/css',
+	        'js': 'application/javascript',
+	        'json': 'application/json',
+	
+	        // Image formats
+	        'jpg': 'image/jpeg',
+	        'jpeg': 'image/jpeg',
+	        'png': 'image/png',
+	        'gif': 'image/gif',
+	        'bmp': 'image/bmp',
+	        'tiff': 'image/tiff',
+	        'ico': 'image/vnd.microsoft.icon',
+	        'webp': 'image/webp',
+	
+	        // Audio formats
+	        'mp3': 'audio/mpeg',
+	        'wav': 'audio/wav',
+	        'ogg': 'audio/ogg',
+	        'flac': 'audio/flac',
+	
+	        // Video formats
+	        'mp4': 'video/mp4',
+	        'mkv': 'video/x-matroska',
+	        'mov': 'video/quicktime',
+	        'avi': 'video/x-msvideo',
+	        'webm': 'video/webm',
+	
+	        // Archive formats
+	        'zip': 'application/zip',
+	        'rar': 'application/x-rar-compressed',
+	        '7z': 'application/x-7z-compressed',
+	        'tar': 'application/x-tar',
+	        'gz': 'application/gzip',
+	
+	        // Miscellaneous formats
+	        'ics': 'text/calendar',
+	        'vcf': 'text/x-vcard',
+	        'md': 'text/markdown',
+	    };
+	
+	    return mimeTypes[FileUtils.getFileExtension(fileName)] || 'application/octet-stream';
+	},
 
-	for (let part of parts) {
-		const foundDir = node.directories.find(dir => dir.name === part);
-		if (foundDir) {
-			node = foundDir;
-		} else {
-			return null; // Path not found
-		}
-	}
-	return node;
-}
-async function findFileByPath(path, currentNode = rootNode, opts = { recursePackages: true }) {
-    const parts = path.split('/').filter(Boolean);
-    let node = currentNode;
-
-    for (let i = 0; i < parts.length - 1; i++) {
-        const dir = node.directories.find(d => d.name === parts[i]);
-
-        // If directory is not found, check if it's a package
-        if (!dir) {
-            const file = node.files.find(f => f.name === parts[i]);
-
-            // If the file is found and it's a package (e.g., ZIP), process it
-            if (file && opts.recursePackages && await isPackage(file)) {
-                const entries = await processPackageFile(file);
-                const packageNode = {
-                    name: file.name,
-                    directories: entries.filter(e => !e.isFile),
-                    files: entries.filter(e => e.isFile),
-                };
-
-                // Recursively call findFileByPath for the remaining path parts
-                return findFileByPath(parts.slice(i + 1).join('/'), packageNode, opts);
-            }
-
-            return null; // Path not found
-        }
-
-        node = dir;
-    }
-
-    const fileName = parts[parts.length - 1];
-    const fileNode = node.files.find(f => f.name === fileName);
-    return fileNode || null; // Return the file if found, or null
-}
-function readFileAsArrayBuffer(file) {
-    return new Promise((resolve, reject) => {
+    readAsArrayBuffer: (file) => new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = (event) => resolve(event.target.result);
-        reader.onerror = (err) => reject(err);
-
-        // Read the file as an ArrayBuffer
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
         reader.readAsArrayBuffer(file);
-    });
-}
-function isZipFileBySignature(file) {
-    return new Promise((resolve, reject) => {
-    	if(file.isZip !== undefined) {
-    		resolve(file.isZip);
-    	} else {
-	        // Use the file's getContent method to retrieve the content
-	        file.getContent().then(content => {
-	            // Convert content to Uint8Array and check for ZIP signature
-	            const buffer = new Uint8Array(content);
-	            const zipSignature = [0x50, 0x4B, 0x03, 0x04]; // PK.. signature
-	
-	            // Ensure there are at least 4 bytes to check
-	            if (buffer.length < 4) {
-	                return resolve(false);
-	            }
-	
-	            // Compare the first 4 bytes with the ZIP signature
-	            file.isZip = buffer[0] === zipSignature[0] &&
-	                          buffer[1] === zipSignature[1] &&
-	                          buffer[2] === zipSignature[2] &&
-	                          buffer[3] === zipSignature[3];
-	
-	            resolve(file.isZip);
-	        }).catch(error => {
-	            reject("Failed to read file content: " + error);
-	        });
-    	}
-    });
-}
-async function isPackage(file) {
-	if(file.isPackage !== undefined) {
-		return file.isPackage;
-	}
-	
-    const extension = getFileExtension(file.name).toLowerCase();
+    }),
 
-    // Check if the extension is a known package extension
-    if (knownPackageExtensions.includes(extension)) {
-        return Promise.resolve(file.isPackage = true);
-    }
+    isZipFileBySignature: async (file) => {
+        const zipSignature = [0x50, 0x4B, 0x03, 0x04];
+        const content = await FileUtils.readAsArrayBuffer(file);
+        const buffer = new Uint8Array(content);
+        return zipSignature.every((byte, i) => buffer[i] === byte);
+    },
+};
+const PackageUtils = {
+    knownExtensions: ['gz', 'kmz', 'ti', 'tar', 'tar.gz', 'zip'],
 
-    // For unknown extensions, check the file signature (e.g., ZIP signature)
-    return isZipFileBySignature(file).then(res => (file.isPackage = res));
-}
+    isPackage: async (file) => {
+        if (PackageUtils.knownExtensions.includes(FileUtils.getFileExtension(file.name))) {
+            return true;
+        }
+        return FileUtils.isZipFileBySignature(file);
+    },
+
+    // processZipFile: async (file) => req(["jszip"], (JSZip) => {
+    // 	return FileUtils.readAsArrayBuffer(file)
+    // 		.then(buffer => new JSZip().loadAsync(buffer))
+    // 		.then(zip => Object.entries(zip.files).map(([name, zipEntry]) => ({
+	   //         name,
+	   //         isFile: !zipEntry.dir,
+	   //         isPackage: PackageUtils.knownExtensions.includes(FileUtils.getFileExtension(name)),
+	   //         size: zipEntry._data.uncompressedSize,
+	   //         getContent: () => zipEntry.async('arraybuffer'),
+	   //     })));
+    // },
+	
+	processZipFile: (file) => {
+	    return new Promise((resolve, reject) => {
+	        require(["jszip"], (JSZip) => {
+	            file.getContent()
+	            	.then(buffer => new JSZip().loadAsync(buffer))
+	                .then(zip => {
+	                    const entries = Object.entries(zip.files).map(([name, zipEntry]) => ({
+	                        name,
+	                        isFile: !zipEntry.dir,
+	                        isPackage: PackageUtils.knownExtensions.includes(FileUtils.getFileExtension(name)),
+	                        size: zipEntry._data.uncompressedSize,
+	                        getContent: () => zipEntry.async('arraybuffer'),
+	                    }));
+	                    resolve(entries);
+	                })
+	                .catch(reject);
+	        }, reject);
+	    });
+	},
+
+    processPackageFile: async (file) => {
+        if (await PackageUtils.isPackage(file)) {
+            return PackageUtils.processZipFile(file);
+        }
+        throw new Error("Unsupported package type");
+    },
+};
+const TreeUtils = {
+    createNode: (name, isFile = false) => ({
+        name,
+        isFile,
+        files: [],
+        directories: [],
+    }),
+
+    addFileToNode: (node, file, r) => {
+        node.files.push(r = {
+            name: file.name,
+            size: file.size,
+            contentType: FileUtils.getFileContentType(file.name),
+            isPackage: PackageUtils.knownExtensions.includes(FileUtils.getFileExtension(file.name)),
+            getContent: () => FileUtils.readAsArrayBuffer(file),
+        });
+        return r;
+    },
+
+    findNodeByPath: (path, rootNode) => {
+        const parts = path.split('/').filter(Boolean);
+        return parts.reduce((currentNode, part) => {
+            if (!currentNode) return null;
+            return currentNode.directories.find(dir => dir.name === part) || null;
+        }, rootNode);
+    },
+};
 
 // API definition
 define(function(require) {
-	return {
-		root: rootNode,
+    const rootNode = TreeUtils.createNode("root");
 
-		index: function(uris) {
-			// Index the initial URIs (here, we assume files have been added via drag/drop or otherwise)
-			// You can modify this function to initialize the rootNode based on URIs
-			return {
-				status: "Files indexed successfully",
-				files: uris // Or file metadata from rootNode
-			};
-		},
-		list: async function(path, opts = { recursive: false, recursePackages: false }) {
-		    // Find the directory node based on the provided path
-		    const dirNode = findDirectoryByPath(path);
-		
-		    if (!dirNode) {
-		        // If no directory is found, check for a package (ZIP file)
-		        const packageNode = await findFileByPath(path);
-		        if (!packageNode || !(await isPackage(packageNode))) {
-		            return { error: "Path not found" };
-		        }
-		
-		        // Process the package (ZIP) and return its contents
-		        const entries = await processPackageFile(packageNode);
-		        return entries.map(entry => ({
-		            name: entry.name,
-		            path: `${path}`,
-		            // type: entry.isFile ? "File" : "Folder",
-                    type: entry.isPackage ? "Package" : entry.isFile ? "File" : "Folder",
-		            fileSize: entry.fileSize,
-		            uri: `${path}/${entry.name}`,
-		            contentType: entry.contentType
-		        }));
-		    }
-		
-		    // Helper function to flatten directories and packages
-		    const flattenDirectoryRecursively = async (node, currentPath) => {
-		        let result = [];
-		
-		        // Process directories
-		        for (const dir of node.directories) {
-		            const dirPath = `${currentPath}/${dir.name}`;
-		            result.push({
-		                uri: dirPath,
-		                name: dir.name,
-		                path: currentPath,
-		                type: "Folder"
-		            });
-		
-		            // Recursively flatten the directory structure
-		            const subdirResult = await flattenDirectoryRecursively(dir, dirPath);
-		            result = result.concat(subdirResult);
-		        }
-		
-		        // Process files and check for packages
-		        for (const file of node.files) {
-		            const filePath = `${currentPath}/${file.name}`;
-		
-		            if (opts.recursePackages && await isPackage(file)) {
-		                // Treat package as a folder and recursively list its contents
-console.log("recursing packages", filePath)
-		                const packageEntries = await processPackageFile(file);
-		                for (const entry of packageEntries) {
-		                    const packagePath = `${filePath}/${entry.name}`;
-		                    result.push({
-		                        uri: packagePath,
-		                        name: entry.name,
-		                        path: filePath,
-		                        type: entry.isFile ? "File" : "Folder",
-		                        type_: entry.isPackage ? "Package" : entry.isFile ? "File" : "Folder",
-		                        fileSize: entry.fileSize,
-		                        contentType: entry.contentType
-		                    });
-		
-		                    // If the entry is another package or folder, recurse again
-		                    if (opts.recursive && entry.isDirectory) {
-		                        const packageSubdirResult = await flattenDirectoryRecursively(entry, packagePath);
-		                        result = result.concat(packageSubdirResult);
-		                    }
-		                }
-		            } else {
-		                // Regular file processing
-		                result.push({
-		                    uri: filePath,
-		                    name: file.name,
-		                    path: currentPath,
-		                    type: "File",
-	                        type_: file.isPackage ? "Package" : "File",
-		                    fileSize: file.size,
-		                    contentType: file.type || null
-		                });
-		            }
-		        }
-		
-		        return result;
-		    };
-		
-		    // If recursive option is enabled, recursively list the directory structure
-		    if (opts.recursive) {
-		        return flattenDirectoryRecursively(dirNode, path);
-		    }
-		
-		    // Otherwise, return just one level deep for regular directories
-		    const items = [
-		        ...dirNode.directories.map(dir => ({
-		            uri: `${path}/${dir.name}`,
-		            name: dir.name,
-		            path: `${path}`,
-		            type: "Folder"
-		        })),
-		        ...dirNode.files.map(file => ({
-		            uri: `${path}/${file.name}`,
-		            name: file.name,
-		            path: `${path}`,
-		            type: file.isPackage ? "Package" : "File",
-		            fileSize: file.size,
-		            contentType: file.type || null
-		        }))
-		    ];
-		
-		    return items;
-		},
-		get: async function(uri, opts) {
-			// Get file content on demand (for both regular files and ZIP contents)
-		    const parts = uri.split('/');
-		    const fileName = parts.pop();
-		    const directoryPath = parts.join('/');
-		    let dirNode = findDirectoryByPath(directoryPath);
-		    
-		    opts = opts || {};
-		
-		    if (!dirNode) {
-		        // If no directory is found, search for a matching package (ZIP or other package file)
-		        const packageNode = await findFileByPath(directoryPath);
-		
-		        // Use isPackage() to check if the file is a package
-		        if (!packageNode || !(await isPackage(packageNode))) {
-		            return { error: "Directory or package not found" };
-		        }
-		
-		        try {
-		            // Process the package (ZIP) to find the matching entry (fileNode)
-		            const entries = await processPackageFile(packageNode);
-		            const entry = entries.find(e => e.name === fileName);
-		
-		            if (!entry) {
-		                return { error: "File not found inside the package" };
-		            }
-		
-		            // Treat the entry as a fileNode and call getFileContent
-		            return await getFileContent(entry, fileName, directoryPath, opts);
-		        } catch (error) {
-		            return { error: "Error processing package: " + error };
-		        }
-		    }
-		
-		    // Find the fileNode in the directory
-		    const fileNode = dirNode.files.find(file => file.name === fileName);
-		
-		    if (!fileNode) {
-		        return { error: "File not found" };
-		    }
-		
-		    // Call getFileContent to retrieve the file content, whether it's a regular file or inside a package
-		    return await getFileContent(fileNode, fileName, directoryPath, opts);
-		},
-		
-		handle_document_drop: handleDrop,
-		handle_input_change: handleChange
+	const findFileByPath = async (path, currentNode = rootNode, opts = { recursePackages: true }) => {
+	    const parts = path.split('/').filter(Boolean); // Split and clean up the path
+	    let node = currentNode;
+	
+	    for (let i = 0; i < parts.length - 1; i++) {
+	        const dirName = parts[i];
+	        const dir = node.directories.find(d => d.name === dirName);
+	
+	        if (!dir) {
+	            const file = node.files.find(f => f.name === dirName);
+	
+	            // If it's a package file, process it if the option is enabled
+	            if (file && opts.recursePackages && await PackageUtils.isPackage(file)) {
+	                const entries = await PackageUtils.processPackageFile(file);
+	                const packageNode = {
+	                    name: file.name,
+	                    directories: entries.filter(e => !e.isFile),
+	                    files: entries.filter(e => e.isFile),
+	                };
+	
+	                // Recursively call findFileByPath for the rest of the path
+	                return findFileByPath(parts.slice(i + 1).join('/'), packageNode, opts);
+	            }
+	
+	            return null; // Path not found
+	        }
+	
+	        node = dir;
+	    }
+	
+	    // Look for the file in the last part of the path
+	    const fileName = parts[parts.length - 1];
+	    const fileNode = node.files.find(f => f.name === fileName);
+	    return fileNode || null; // Return the file node or null if not found
 	};
+
+    const handleFileDrop = async (event) => {
+        event.preventDefault();
+        const promises = Array.from(event.dataTransfer.items)
+            .map(item => item.webkitGetAsEntry())
+            .filter(Boolean)
+            .map(entry => traverseEntry(entry, rootNode));
+        return await Promise.all(promises);
+    };
+
+    const handleInputChange = async (event) => {
+        const files = event.target.files;
+        const promises = Array.from(files).map(file => traverseFile(file, rootNode));
+        return await Promise.all(promises);
+    };
+
+	const traverseEntry = async (entry, directoryNode) => {
+	    if (entry.isFile) {
+	        const file = await getFileFromEntry(entry);
+	        const fileNode = TreeUtils.addFileToNode(directoryNode, file);
+	        return fileNode; // Return the file node for the caller
+	    } 
+	    
+        const dirNode = TreeUtils.createNode(entry.name);
+        directoryNode.directories.push(dirNode);
+        const reader = entry.createReader();
+        const entries = await readAllEntries(reader);
+        await Promise.all(entries.map(e => traverseEntry(e, dirNode)));
+        return dirNode; // Return the directory node for the caller
+	};
+
+	const traverseFile = async (file, directoryNode) => {
+	    const path = file.webkitRelativePath || file.name;
+	    const parts = path.split('/');
+	    let currentDir = directoryNode;
+	
+	    parts.slice(0, -1).forEach(part => {
+	        let dir = currentDir.directories.find(d => d.name === part);
+	        if (!dir) {
+	            dir = TreeUtils.createNode(part);
+	            currentDir.directories.push(dir);
+	        }
+	        currentDir = dir;
+	    });
+	
+	    const fileNode = TreeUtils.addFileToNode(currentDir, file);
+	    return fileNode; // Return the final file node
+	};
+
+    const getFileFromEntry = (entry) =>
+        new Promise((resolve, reject) => entry.file(resolve, reject));
+
+    const readAllEntries = (reader) =>
+        new Promise((resolve, reject) => {
+            const entries = [];
+            const readBatch = () => {
+                reader.readEntries(batch => {
+                    if (batch.length) {
+                        entries.push(...batch);
+                        readBatch();
+                    } else {
+                        resolve(entries);
+                    }
+                }, reject);
+            };
+            readBatch();
+        });
+
+	const listFiles = async function(path, opts = { recursive: false, recursePackages: false }) {
+	    const dirNode = TreeUtils.findNodeByPath(path, rootNode);
+	
+	    if (!dirNode) {
+	        // If no directory is found, check for a package (e.g., ZIP file)
+	        const packageNode = await findFileByPath(path);
+	        if (!packageNode || !(await PackageUtils.isPackage(packageNode))) {
+	            return { error: "Path not found" };
+	        }
+	
+	        // Process the package and return its contents
+	        const entries = await PackageUtils.processPackageFile(packageNode);
+	        return entries.map(entry => ({
+	            name: entry.name, path,
+	            type: entry.isPackage ? "Package" : entry.isFile ? "File" : "Folder",
+	            size: entry.size || 0, 
+	            uri: `${path}/${entry.name}`,
+	            contentType: entry.contentType || FileUtils.getFileContentType(entry.name)
+	        }));
+	    }
+	
+	    // Helper function to flatten directories and packages
+	    const flattenDirectoryRecursively = async (node, currentPath) => {
+	        let result = [];
+	
+	        // Process directories
+	        for (const dir of node.directories) {
+	            const dirPath = `${currentPath}/${dir.name}`;
+	            result.push({
+	                uri: dirPath,
+	                name: dir.name,
+	                path: currentPath,
+	                type: "Folder"
+	            });
+	
+	            // Recursively process the contents of the directory
+	            const subdirResult = await flattenDirectoryRecursively(dir, dirPath);
+	            result = result.concat(subdirResult);
+	        }
+	
+	        // Process files and check for packages
+	        for (const file of node.files) {
+	            const filePath = `${currentPath}/${file.name}`;
+	
+	            if (opts.recursePackages && await PackageUtils.isPackage(file)) {
+	                // Treat package as a folder and list its contents
+	                const packageEntries = await PackageUtils.processPackageFile(file);
+	                for (const entry of packageEntries) {
+	                    const packagePath = `${filePath}/${entry.name}`;
+	                    result.push({
+	                        uri: packagePath,
+	                        name: entry.name,
+	                        path: filePath,
+	                        type: entry.isPackage ? "Package" : entry.isFile ? "File" : "Folder",
+	                        size: entry.size || 0,
+	                        contentType: entry.contentType || FileUtils.getFileContentType(entry.name)
+	                    });
+	
+	                    // Recurse for nested entries if recursive option is enabled
+	                    if (opts.recursive && entry.isDirectory) {
+	                        const packageSubdirResult = await flattenDirectoryRecursively(entry, packagePath);
+	                        result = result.concat(packageSubdirResult);
+	                    }
+	                }
+	            } else {
+	                // Regular file processing
+	                result.push({
+	                    uri: filePath,
+	                    name: file.name,
+	                    path: currentPath,
+	                    type: file.isPackage ? "Package" : "File",
+	                    size: file.size,
+	                    contentType: file.type || FileUtils.getFileContentType(file.name)
+	                });
+	            }
+	        }
+	
+	        return result;
+	    };
+	
+	    // If recursive option is enabled, recursively list the directory structure
+	    if (opts.recursive) {
+	        return flattenDirectoryRecursively(dirNode, path);
+	    }
+	
+	    // Otherwise, return one level of directories and files
+	    const items = [
+	        ...dirNode.directories.map(dir => ({
+	            uri: `${path}/${dir.name}`,
+	            name: dir.name,
+	            path: path,
+	            type: "Folder"
+	        })),
+	        ...dirNode.files.map(file => ({
+	            uri: `${path}/${file.name}`,
+	            name: file.name,
+	            path: path,
+	            type: file.isPackage ? "Package" : "File",
+	            size: file.size,
+	            contentType: file.type || FileUtils.getFileContentType(file.name)
+	        }))
+	    ];
+	
+	    return items;
+	};
+
+    const getFileContent = async (fileNode, opts) => {
+        if (fileNode.isPackage) {
+            const entries = await PackageUtils.processPackageFile(fileNode);
+            return entries;
+        }
+        const content = await fileNode.getContent();
+        return opts?.arrayBuffer ? content : new TextDecoder().decode(content);
+    };
+
+	const get = async (uri, opts = {}) => {
+	    const parts = uri.split('/');
+	    const name = parts.pop();
+	    const path = parts.join('/');
+	    let dirNode = TreeUtils.findNodeByPath(path, rootNode);
+	
+	    if (!dirNode) {
+	        // If the directory is not found, search for a package (e.g., ZIP file)
+	        const packageNode = await findFileByPath(path, rootNode);
+	        if (!packageNode || !(await PackageUtils.isPackage(packageNode))) {
+	            return { error: "Directory or package not found" };
+	        }
+	
+	        try {
+	            // Process the package (ZIP) to find the matching entry (fileNode)
+	            const entries = await PackageUtils.processPackageFile(packageNode);
+	            const entry = entries.find(e => e.name === name);
+	
+	            if (!entry) {
+	                return { error: "File not found inside the package" };
+	            }
+	
+	            // Handle nested packages or files within the ZIP
+	            if (entry.isPackage) {
+	                return await get(`${path}/${entry.name}`, opts);
+	            }
+	
+	            // Return the file's content or arrayBuffer
+	            const content = await entry.getContent();
+	            return opts.arrayBuffer ? content : {
+	                      text: new TextDecoder().decode(content),
+	                      uri: `${path}/${entry.name}`,
+	                      name: entry.name,
+	                      path,
+	                      size: entry.size || content.length,
+	                      contentType: entry.contentType || FileUtils.getFileContentType(entry.name),
+	                  };
+	        } catch (error) {
+	            return { error: `Error processing package: ${error.message}` };
+	        }
+	    }
+	
+	    // Find the fileNode in the directory
+	    const fileNode = dirNode.files.find(f => f.name === name);
+	
+	    if (!fileNode) {
+	        return { error: "File not found" };
+	    }
+	
+	    // Return the file's content or arrayBuffer
+	    const content = await getFileContent(fileNode, opts);
+	
+	    return opts.arrayBuffer ? content : {
+              text: content,
+              uri: `${path}/${name}`,
+              name,
+              path,
+              size: fileNode.size || content.length,
+              contentType: fileNode.type || FileUtils.getFileContentType(fileNode.name),
+          };
+	};
+    // const get = async (uri, opts = {}) => {
+    //     const parts = uri.split('/');
+    //     const name = parts.pop();
+    //     const path = parts.join('/');
+    //     const dirNode = TreeUtils.findNodeByPath(path, rootNode);
+
+    //     if (!dirNode) return { error: "Directory not found" };
+    //     const fileNode = dirNode.files.find(f => f.name === name);
+
+    //     if (!fileNode) return { error: "File not found" };
+        
+    //     const text = await getFileContent(fileNode, opts);
+        
+    //     return {
+    //         link: false, uri: `${path}/${name}`,
+    //         name: name, path: path, text: text, 
+    //         size: fileNode.size || fileNode.fileSize || (text ? text.length : 0),
+    //         contentType: fileNode.type || FileUtils.getFileContentType(fileNode.name)
+    //     };
+    // };
+
+    const index = (uris) => {
+        // This assumes `uris` contains a list of files to index
+        uris.forEach(uri => {
+            const parts = uri.split('/');
+            let currentDir = rootNode;
+            parts.slice(0, -1).forEach(part => {
+                let dir = currentDir.directories.find(d => d.name === part);
+                if (!dir) {
+                    dir = TreeUtils.createNode(part);
+                    currentDir.directories.push(dir);
+                }
+                currentDir = dir;
+            });
+            currentDir.files.push(TreeUtils.createNode(parts.at(-1), true));
+        });
+        return {
+            status: "Files indexed successfully",
+            files: uris
+        };
+    };
+	
+    // Return object matching the original structure
+    return {
+
+        root: rootNode,
+        list: listFiles, 
+        
+        get, index,
+
+        handle_document_drop: handleFileDrop,
+        handle_input_change: handleInputChange,
+    };
 });

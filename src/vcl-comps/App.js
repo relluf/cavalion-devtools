@@ -55,6 +55,9 @@ var Blocks = require("blocks/Blocks");
 			var resource = comp.vars(["resource"]);
 			if(resource) {
 				var ws = comp.up("devtools/Workspace<>");
+				if(ws === null) {
+					return js.sf("devtools/Workspace<?> %s %s", comp.getUri(), resource.uri);
+				}
 				return js.sf("%s %s %s", ws.getUri(), comp.getUri(), resource.uri);
 			}
 		}

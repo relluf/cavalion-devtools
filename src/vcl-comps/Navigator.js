@@ -81,7 +81,7 @@ function onNodesNeeded(parent) {
                 node.setVar("resource", item);
                 
                 node.setChecked(true);
-            	node.setExpandable(item.expandable || item.type.indexOf("Folder") !== -1);
+            	node.setExpandable(item.expandable || item.type !== "File");
                 // node.setExpandable(item.type === "Folder");//true);
                 node.setParent(parent);
                 return (uriNodes[uri[1]] = node);
@@ -137,8 +137,7 @@ function onNodesNeeded(parent) {
             if (control) {
                 node.setVar("control", control);
             }
-            node.setExpandable(item.expandable || item.type.indexOf("Folder") !== -1);
-            // node.setExpandable(item.type.indexOf("Folder") !== -1);
+            node.setExpandable(item.expandable || item.type !== "File");
             node.setParent(parent);
         });
     	parent.endLoading();
