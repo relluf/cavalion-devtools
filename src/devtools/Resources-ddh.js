@@ -277,12 +277,12 @@ PackageHandlerRegistry.registerHandler('gz', async (file) => {
                     }
 
                     // If no handler exists, return the raw decompressed content
-                    return {
+                    return [{
                         name: decompressedFileName,
                         size: decompressed.length,
                         content: new TextDecoder().decode(decompressed),
                         type: FileUtils.getFileContentType(decompressedFileName),
-                    };
+                    }];
                 })
                 .then(resolve)
                 .catch(reject);
