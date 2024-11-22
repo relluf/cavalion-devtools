@@ -1,6 +1,31 @@
+const PackageHandlerRegistry = {
+    handlers: {},
+
+    registerHandler: (extension, handler) => {
+        PackageHandlerRegistry.handlers[extension] = handler;
+    },
+
+    getHandler: (extension) => {
+        return PackageHandlerRegistry.handlers[extension];
+    },
+
+    canHandle: (extension) => {
+        return !!PackageHandlerRegistry.getHandler(extension);
+    },
+
+    processFile: async (file) => {
+        const extension = FileUtils.getFileExtension(file.name);
+        const handler = PackageHandlerRegistry.getHandler(extension);
+        if (handler) {
+            return handler(file);
+        }
+        throw new Error(`No handler registered for extension: ${extension}`);
+    },
+};
+
 const FileUtils = {
-    getFileExtension: (fileName) => fileName.split('.').pop().toLowerCase() || "",
-    
+    getFileExtension: (fileName) => ("" + fileName).split('.').pop().toLowerCase() || "",
+
 	getFileContentType: (fileName) => {
 	    const mimeTypes = {
 	        // Text formats
@@ -27,14 +52,17 @@ const FileUtils = {
 	        'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
 	
 	        // Geographic and CAD formats
-	        'shp': 'application/x-shapefile',
+		    'shp': 'application/x-shapefile',
+		    'shx': 'application/x-shapefile',
+		    'dbf': 'application/x-dbf',
+		    'prj': 'application/x-prj',
 	        'dwg': 'application/acad',
 	        'dxf': 'application/dxf',
 	        'gds': 'application/x-gds',
 	        'gef': 'application/x-gef',
 	        'svg': 'image/svg+xml',
 	        'stg': 'application/vnd.sla',
-	
+        
 	        // Web development formats
 	        'html': 'text/html',
 	        'htm': 'text/html',
@@ -77,7 +105,6 @@ const FileUtils = {
 	        'vcf': 'text/x-vcard',
 	        'md': 'text/markdown',
 	    };
-	
 	    return mimeTypes[FileUtils.getFileExtension(fileName)] || 'application/octet-stream';
 	},
 
@@ -95,7 +122,7 @@ const FileUtils = {
         return zipSignature.every((byte, i) => buffer[i] === byte);
     },
 };
-const PackageUtils = {
+const PackageUtils_ = {
     knownExtensions: ['gz', 'kmz', 'ti', 'tar', 'tar.gz', 'zip'],
 
     isPackage: async (file) => {
@@ -105,18 +132,6 @@ const PackageUtils = {
         return FileUtils.isZipFileBySignature(file);
     },
 
-    // processZipFile: async (file) => req(["jszip"], (JSZip) => {
-    // 	return FileUtils.readAsArrayBuffer(file)
-    // 		.then(buffer => new JSZip().loadAsync(buffer))
-    // 		.then(zip => Object.entries(zip.files).map(([name, zipEntry]) => ({
-	   //         name,
-	   //         isFile: !zipEntry.dir,
-	   //         isPackage: PackageUtils.knownExtensions.includes(FileUtils.getFileExtension(name)),
-	   //         size: zipEntry._data.uncompressedSize,
-	   //         getContent: () => zipEntry.async('arraybuffer'),
-	   //     })));
-    // },
-	
 	processZipFile: (file) => {
 	    return new Promise((resolve, reject) => {
 	        require(["jszip"], (JSZip) => {
@@ -142,6 +157,22 @@ const PackageUtils = {
             return PackageUtils.processZipFile(file);
         }
         throw new Error("Unsupported package type");
+    },
+};
+const PackageUtils = {
+    knownExtensions: ['zip', 'tar', 'gz', 'kmz', '7z', 'rar', 'iso', 'shp', 'gz'], // Add more extensions here if needed
+
+    isPackage: async (file) => {
+        const extension = FileUtils.getFileExtension(file.name);
+        return PackageUtils.knownExtensions.includes(extension) || PackageHandlerRegistry.canHandle(extension);
+    },
+
+    processPackageFile: async (file) => {
+        const extension = FileUtils.getFileExtension(file.name);
+        if (PackageHandlerRegistry.canHandle(extension)) {
+            return PackageHandlerRegistry.processFile(file);
+        }
+        throw new Error(`Unsupported package type: ${extension}`);
     },
 };
 const TreeUtils = {
@@ -171,6 +202,93 @@ const TreeUtils = {
         }, rootNode);
     },
 };
+
+// Default Handlers
+PackageHandlerRegistry.registerHandler('zip', async (file) => {
+    return new Promise((resolve, reject) => {
+        require(['jszip'], (JSZip) => {
+            file.getContent()
+                .then(buffer => new JSZip().loadAsync(buffer))
+                .then(zip => {
+                    const entries = Object.entries(zip.files).map(([name, zipEntry]) => ({
+                        name,
+                        isFile: !zipEntry.dir,
+                        size: zipEntry._data.uncompressedSize,
+                        getContent: () => zipEntry.async('arraybuffer'),
+                        isPackage: PackageUtils.knownExtensions.includes(FileUtils.getFileExtension(name)),
+                    }));
+                    resolve(entries.filter(e => !e.name.startsWith("__MACOSX/")));
+                })
+                .catch(reject);
+        }, reject);
+    });
+});
+PackageHandlerRegistry.registerHandler('shp', async (file) => {
+    return new Promise((resolve, reject) => {
+        require(['shapefile'], (shapefile) => {
+            file.getContent()
+                .then(buffer => shapefile.open(new Uint8Array(buffer)))
+                .then(source => {
+                    const features = [];
+                    const readNextFeature = () => {
+                        return source.read().then(result => {
+                            if (!result.done) {
+                                features.push(result.value);
+                                return readNextFeature();
+                            }
+                            return features;
+                        });
+                    };
+
+                    return readNextFeature().then(() => {
+                        resolve([{
+	                		uri: file.name + "/features.json",
+	                		// text: text,
+	                		// size: text.length,
+	                		name: "features.json",
+	                		type: "File",
+	                		contentType: "application/json",
+	                		getContent: () => (new TextEncoder()).encode(JSON.stringify(features))
+	                	}]);
+                    });
+                })
+                .catch(reject);
+        }, reject);
+    });
+});
+PackageHandlerRegistry.registerHandler('gz', async (file) => {
+    return new Promise((resolve, reject) => {
+        require(['pako'], (pako) => {
+            file.getContent()
+                .then(buffer => {
+                    const decompressed = pako.inflate(new Uint8Array(buffer));
+                    const decompressedFileName = file.name.replace(/\.gz$/, '');
+                    const extension = FileUtils.getFileExtension(decompressedFileName);
+
+                    // Create a virtual file object for the decompressed content
+                    const decompressedFile = {
+                        name: decompressedFileName,
+                        getContent: () => Promise.resolve(decompressed),
+                    };
+
+                    // Check if a handler exists for the decompressed file type
+                    if (PackageHandlerRegistry.canHandle(extension)) {
+                        return PackageHandlerRegistry.processFile(decompressedFile);
+                    }
+
+                    // If no handler exists, return the raw decompressed content
+                    return {
+                        name: decompressedFileName,
+                        size: decompressed.length,
+                        content: new TextDecoder().decode(decompressed),
+                        type: FileUtils.getFileContentType(decompressedFileName),
+                    };
+                })
+                .then(resolve)
+                .catch(reject);
+        }, reject);
+    });
+});
 
 // API definition
 define(function(require) {
@@ -279,98 +397,33 @@ define(function(require) {
             readBatch();
         });
 
-	const listFiles = async function(path, opts = { recursive: false, recursePackages: false }) {
+	const listFiles = async (path, opts = { recursive: false, recursePackages: false }) => {
 	    const dirNode = TreeUtils.findNodeByPath(path, rootNode);
 	
 	    if (!dirNode) {
-	        // If no directory is found, check for a package (e.g., ZIP file)
 	        const packageNode = await findFileByPath(path);
 	        if (!packageNode || !(await PackageUtils.isPackage(packageNode))) {
 	            return { error: "Path not found" };
 	        }
 	
-	        // Process the package and return its contents
 	        const entries = await PackageUtils.processPackageFile(packageNode);
 	        return entries.map(entry => ({
-	            name: entry.name, path,
-	            type: entry.isPackage ? "Package" : entry.isFile ? "File" : "Folder",
-	            size: entry.size || 0, 
 	            uri: `${path}/${entry.name}`,
-	            contentType: entry.contentType || FileUtils.getFileContentType(entry.name)
+	            name: entry.name,
+	            path,
+	            type: entry.type ? entry.type : entry.isPackage ? "Package" : entry.isFile ? "File" : "Folder",
+	            size: entry.size || 0,
+	            contentType: entry.contentType || FileUtils.getFileContentType(entry.name),
 	        }));
 	    }
 	
-	    // Helper function to flatten directories and packages
-	    const flattenDirectoryRecursively = async (node, currentPath) => {
-	        let result = [];
-	
-	        // Process directories
-	        for (const dir of node.directories) {
-	            const dirPath = `${currentPath}/${dir.name}`;
-	            result.push({
-	                uri: dirPath,
-	                name: dir.name,
-	                path: currentPath,
-	                type: "Folder"
-	            });
-	
-	            // Recursively process the contents of the directory
-	            const subdirResult = await flattenDirectoryRecursively(dir, dirPath);
-	            result = result.concat(subdirResult);
-	        }
-	
-	        // Process files and check for packages
-	        for (const file of node.files) {
-	            const filePath = `${currentPath}/${file.name}`;
-	
-	            if (opts.recursePackages && await PackageUtils.isPackage(file)) {
-	                // Treat package as a folder and list its contents
-	                const packageEntries = await PackageUtils.processPackageFile(file);
-	                for (const entry of packageEntries) {
-	                    const packagePath = `${filePath}/${entry.name}`;
-	                    result.push({
-	                        uri: packagePath,
-	                        name: entry.name,
-	                        path: filePath,
-	                        type: entry.isPackage ? "Package" : entry.isFile ? "File" : "Folder",
-	                        size: entry.size || 0,
-	                        contentType: entry.contentType || FileUtils.getFileContentType(entry.name)
-	                    });
-	
-	                    // Recurse for nested entries if recursive option is enabled
-	                    if (opts.recursive && entry.isDirectory) {
-	                        const packageSubdirResult = await flattenDirectoryRecursively(entry, packagePath);
-	                        result = result.concat(packageSubdirResult);
-	                    }
-	                }
-	            } else {
-	                // Regular file processing
-	                result.push({
-	                    uri: filePath,
-	                    name: file.name,
-	                    path: currentPath,
-	                    type: file.isPackage ? "Package" : "File",
-	                    size: file.size,
-	                    contentType: file.type || FileUtils.getFileContentType(file.name)
-	                });
-	            }
-	        }
-	
-	        return result;
-	    };
-	
-	    // If recursive option is enabled, recursively list the directory structure
-	    if (opts.recursive) {
-	        return flattenDirectoryRecursively(dirNode, path);
-	    }
-	
-	    // Otherwise, return one level of directories and files
+	    // Normal directory processing
 	    const items = [
 	        ...dirNode.directories.map(dir => ({
 	            uri: `${path}/${dir.name}`,
 	            name: dir.name,
 	            path: path,
-	            type: "Folder"
+	            type: "Folder",
 	        })),
 	        ...dirNode.files.map(file => ({
 	            uri: `${path}/${file.name}`,
@@ -378,11 +431,13 @@ define(function(require) {
 	            path: path,
 	            type: file.isPackage ? "Package" : "File",
 	            size: file.size,
-	            contentType: file.type || FileUtils.getFileContentType(file.name)
-	        }))
+	            contentType: file.type || FileUtils.getFileContentType(file.name),
+	        })),
 	    ];
 	
-	    return items;
+	    return opts.recursive
+	        ? flattenDirectoryRecursively(dirNode, path)
+	        : items;
 	};
 
     const getFileContent = async (fileNode, opts) => {
