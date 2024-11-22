@@ -122,50 +122,25 @@ const FileUtils = {
         return zipSignature.every((byte, i) => buffer[i] === byte);
     },
 };
-const PackageUtils_ = {
-    knownExtensions: ['gz', 'kmz', 'ti', 'tar', 'tar.gz', 'zip'],
-
-    isPackage: async (file) => {
-        if (PackageUtils.knownExtensions.includes(FileUtils.getFileExtension(file.name))) {
-            return true;
-        }
-        return FileUtils.isZipFileBySignature(file);
-    },
-
-	processZipFile: (file) => {
-	    return new Promise((resolve, reject) => {
-	        require(["jszip"], (JSZip) => {
-	            file.getContent()
-	            	.then(buffer => new JSZip().loadAsync(buffer))
-	                .then(zip => {
-	                    const entries = Object.entries(zip.files).map(([name, zipEntry]) => ({
-	                        name,
-	                        isFile: !zipEntry.dir,
-	                        isPackage: PackageUtils.knownExtensions.includes(FileUtils.getFileExtension(name)),
-	                        size: zipEntry._data.uncompressedSize,
-	                        getContent: () => zipEntry.async('arraybuffer'),
-	                    }));
-	                    resolve(entries);
-	                })
-	                .catch(reject);
-	        }, reject);
-	    });
-	},
-
-    processPackageFile: async (file) => {
-        if (await PackageUtils.isPackage(file)) {
-            return PackageUtils.processZipFile(file);
-        }
-        throw new Error("Unsupported package type");
-    },
-};
 const PackageUtils = {
     knownExtensions: ['zip', 'tar', 'gz', 'kmz', '7z', 'rar', 'iso', 'shp', 'gz'], // Add more extensions here if needed
 
-    isPackage: async (file) => {
-        const extension = FileUtils.getFileExtension(file.name);
-        return PackageUtils.knownExtensions.includes(extension) || PackageHandlerRegistry.canHandle(extension);
-    },
+	isPackage: (file) => {
+	    const extension = FileUtils.getFileExtension(file.name);
+	    if (PackageUtils.knownExtensions.includes(extension)) {
+	        return true;
+	    }
+	    
+	    // Fallback to handler-specific checks
+	    if (PackageHandlerRegistry.canHandle(extension)) {
+	        // const handler = PackageHandlerRegistry.getHandler(extension);
+	        // if (handler.isPackage) {
+	        //     return await handler.isPackage(file); // Assume handler supports async checks
+	        // }
+	        return true;
+	    }
+	    return false;
+	},
 
     processPackageFile: async (file) => {
         const extension = FileUtils.getFileExtension(file.name);
@@ -289,6 +264,24 @@ PackageHandlerRegistry.registerHandler('gz', async (file) => {
         }, reject);
     });
 });
+PackageHandlerRegistry.registerHandler('qgz', async (file) => {
+    const zipHandler = PackageHandlerRegistry.getHandler('zip');
+    if (!zipHandler) {
+        throw new Error("ZIP handler is not registered.");
+    }
+
+    // Delegate processing to the ZIP handler
+    const zipResult = await zipHandler(file);
+
+    // Optionally, locate and emphasize the .qgs file
+    const projectFile = zipResult.find(entry => entry.name.endsWith('.qgs'));
+
+    return zipResult || [{
+        projectFileName: projectFile?.name || null,
+        projectContent: projectFile ? await projectFile.getContent() : null,
+        resources: zipResult, // All extracted files
+    }];
+});
 
 // API definition
 define(function(require) {
@@ -306,7 +299,7 @@ define(function(require) {
 	            const file = node.files.find(f => f.name === dirName);
 	
 	            // If it's a package file, process it if the option is enabled
-	            if (file && opts.recursePackages && await PackageUtils.isPackage(file)) {
+	            if (file && opts.recursePackages && PackageUtils.isPackage(file)) {
 	                const entries = await PackageUtils.processPackageFile(file);
 	                const packageNode = {
 	                    name: file.name,
@@ -402,7 +395,7 @@ define(function(require) {
 	
 	    if (!dirNode) {
 	        const packageNode = await findFileByPath(path);
-	        if (!packageNode || !(await PackageUtils.isPackage(packageNode))) {
+	        if (!packageNode || !(PackageUtils.isPackage(packageNode))) {
 	            return { error: "Path not found" };
 	        }
 	
@@ -411,7 +404,7 @@ define(function(require) {
 	            uri: `${path}/${entry.name}`,
 	            name: entry.name,
 	            path,
-	            type: entry.type ? entry.type : entry.isPackage ? "Package" : entry.isFile ? "File" : "Folder",
+	            type: PackageUtils.isPackage(entry) ? "Package" : "File",
 	            size: entry.size || 0,
 	            contentType: entry.contentType || FileUtils.getFileContentType(entry.name),
 	        }));
@@ -429,7 +422,7 @@ define(function(require) {
 	            uri: `${path}/${file.name}`,
 	            name: file.name,
 	            path: path,
-	            type: file.isPackage ? "Package" : "File",
+	            type: PackageUtils.isPackage(file) ? "Package" : "File",
 	            size: file.size,
 	            contentType: file.type || FileUtils.getFileContentType(file.name),
 	        })),
@@ -458,7 +451,7 @@ define(function(require) {
 	    if (!dirNode) {
 	        // If the directory is not found, search for a package (e.g., ZIP file)
 	        const packageNode = await findFileByPath(path, rootNode);
-	        if (!packageNode || !(await PackageUtils.isPackage(packageNode))) {
+	        if (!packageNode || !(PackageUtils.isPackage(packageNode))) {
 	            return { error: "Directory or package not found" };
 	        }
 	
