@@ -172,33 +172,52 @@ define(function(require) {
 
     const rootNode = TreeUtils.createNode("root");
 
-    const readAllEntries = (reader) => new Promise((resolve, reject) => {
-            const entries = [];
-            const readBatch = () => {
-                reader.readEntries(batch => {
-                    if (batch.length) {
-                        entries.push(...batch);
-                        readBatch();
-                    } else {
-                        resolve(entries);
-                    }
-                }, reject);
-            };
-            readBatch();
-        });
+	const readAllEntries = (reader) => {
+	    const entries = [];
+	    return new Promise((resolve, reject) => {
+	        const readBatch = () => {
+	            reader.readEntries(
+	                (batch) => {
+	                    if (batch.length) {
+	                        entries.push(...batch);
+	                        readBatch();
+	                    } else {
+	                        resolve(entries);
+	                    }
+	                },
+	                (err) => {
+	                    console.warn("Failed to read directory entries", err);
+	                    reject(err);
+	                }
+	            );
+	        };
+	        readBatch();
+	    });
+	};
 	const traverseEntry = async (entry, directoryNode) => {
 	    if (entry.isFile) {
 	        const file = await getFileFromEntry(entry);
-	        const fileNode = TreeUtils.addFileToNode(directoryNode, file);
-	        return fileNode; // Return the file node for the caller
-	    } 
-	    
-        const dirNode = TreeUtils.createNode(entry.name);
-        directoryNode.directories.push(dirNode);
-        const reader = entry.createReader();
-        const entries = await readAllEntries(reader);
-        await Promise.all(entries.map(e => traverseEntry(e, dirNode)));
-        return dirNode; // Return the directory node for the caller
+	        return TreeUtils.addFileToNode(directoryNode, file);
+	    }
+	
+	    const dirNode = TreeUtils.createNode(entry.name);
+	    directoryNode.directories.push(dirNode);
+	
+	    try {
+	        const reader = entry.createReader();
+	        const entries = await readAllEntries(reader);
+	
+	        // Process entries in batches
+	        const batchSize = 50; // Adjust batch size for performance
+	        for (let i = 0; i < entries.length; i += batchSize) {
+	            const batch = entries.slice(i, i + batchSize);
+	            await Promise.allSettled(batch.map((e) => traverseEntry(e, dirNode)));
+	        }
+	    } catch (err) {
+	        console.warn(`Failed to traverse directory: ${entry.name}`, err);
+	    }
+	
+	    return dirNode;
 	};
 	const traverseFile = async (file, directoryNode) => {
 	    const path = file.webkitRelativePath || file.name;
