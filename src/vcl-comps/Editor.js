@@ -25,6 +25,8 @@ var ExtensionToMode = {
         "wsdl": "xml",
         "xsd": "xml",
         "ti": "xml",
+        "qgs": "xml",
+        "qmd": "xml",
         "xml": "xml",
         "kml": "xml",
         "xsl": "xml",

@@ -282,6 +282,66 @@ PackageHandlerRegistry.registerHandler('qgz', async (file) => {
         resources: zipResult, // All extracted files
     }];
 });
+PackageHandlerRegistry.registerHandler('sqlite', async (file) => {
+
+	// Helper: Convert SQLite data to TSV
+	function dataToTSV(data) {
+	    const headers = data.columns.join('\t');
+	    const rows = data.values.map(row => row.join('\t')).join('\n');
+	    return `${headers}\n${rows}`;
+	}
+
+
+    return new Promise((resolve, reject) => {
+		require(["sqlite"], initSqlJs => {
+			initSqlJs({
+				// Required to load the wasm binary asynchronously. Of course, you can host it wherever you want
+				// You can omit locateFile completely when running in node
+				locateFile: file => `https://sql.js.org/dist/${file}`
+			}).then(SQL => file.getContent().then(content => {
+			    const db = new SQL.Database(new Uint8Array(content));
+			
+			    const tables = db.exec("SELECT name FROM sqlite_master WHERE type='table';")[0].values.flat();
+			    const views = [];//db.exec("SELECT name FROM sqlite_master WHERE type='view';")[0]?.values.flat();
+			
+			    const entries = [];
+			
+			    // Add tables as folders
+			    for (const table of tables) {
+			        const schema = db.exec(`PRAGMA table_info(${table});`);
+			        const data = db.exec(`SELECT * FROM ${table};`);
+			
+			        entries.push({
+			            name: `${table}/data.tsv`,
+			            isFile: true,
+			            size: JSON.stringify(data).length,
+			            getContent: () => Promise.resolve(new TextEncoder().encode(dataToTSV(data)))
+			        });
+			
+			        entries.push({
+			            name: `${table}/schema.json`,
+			            isFile: true,
+			            size: JSON.stringify(schema).length,
+			            getContent: () => Promise.resolve(new TextEncoder().encode(JSON.stringify(schema))),
+			        });
+			    }
+			
+			    // Add views as files
+			    for (const view of views) {
+			        const viewData = db.exec(`SELECT * FROM ${view};`);
+			        entries.push({
+			            name: `${view}.tsv`,
+			            isFile: true,
+			            size: JSON.stringify(viewData).length,
+			            getContent: () => Promise.resolve(new TextEncoder().encode(dataToTSV(viewData))),
+			        });
+			    }
+			
+			    resolve(entries);
+		    }));
+		});
+	});
+});
 
 // API definition
 define(function(require) {
