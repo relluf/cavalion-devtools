@@ -172,6 +172,14 @@ define(function(require) {
 
     const rootNode = TreeUtils.createNode("root");
 
+	const mapEntries = (entries, baseUri) => entries.map(([name, entry]) => ({
+	        name,
+	        isFile: !entry.dir,
+	        size: entry._data ? entry._data.uncompressedSize : 0,
+	        getContent: () => entry.async ? entry.async('arraybuffer') : Promise.resolve(entry.content),
+	        uri: `${baseUri}/${name}`,
+	        isPackage: PackageUtils.knownExtensions.includes(FileUtils.getFileExtension(name)),
+	    }));
 	const readAllEntries = (reader) => {
 	    const entries = [];
 	    return new Promise((resolve, reject) => {
@@ -449,14 +457,8 @@ console.log("!!! could not determine uri"); debugger;
 	            file.getContent()
 	                .then(buffer => new JSZip().loadAsync(buffer))
 	                .then(zip => {
-	                    const entries = Object.entries(zip.files).map(([name, zipEntry]) => ({
-	                        name,
-	                        isFile: !zipEntry.dir,
-	                        size: zipEntry._data.uncompressedSize,
-	                        getContent: () => zipEntry.async('arraybuffer'),
-	                        isPackage: PackageUtils.knownExtensions.includes(FileUtils.getFileExtension(name)),
-	                    }));
-	                    resolve(entries.filter(e => !e.name.startsWith("__MACOSX/")));
+	                    const entries = Object.entries(zip.files);
+	                    resolve(mapEntries(entries, uri).filter(e => !e.name.startsWith("__MACOSX/")));
 	                })
 	                .catch(reject);
 	        }, reject);
@@ -511,25 +513,23 @@ console.log("!!! could not determine uri"); debugger;
 	                .then(buffer => {
 	                    const decompressed = pako.inflate(new Uint8Array(buffer));
 	                    const decompressedFileName = file.name.replace(/\.gz$/, '');
-	                    const extension = FileUtils.getFileExtension(decompressedFileName);
-	
-	                    // Create a virtual file object for the decompressed content
-	                    const decompressedFile = {
+	                    const virtualFile = {
 	                        name: decompressedFileName,
+	                        content: decompressed,
 	                        getContent: () => Promise.resolve(decompressed),
 	                    };
+	                    const extension = FileUtils.getFileExtension(decompressedFileName);
 	
-	                    // Check if a handler exists for the decompressed file type
 	                    if (PackageHandlerRegistry.canHandle(extension)) {
-	                        return PackageHandlerRegistry.processFile(decompressedFile, uri);
+	                        return PackageHandlerRegistry.processFile(virtualFile, uri);
 	                    }
 	
-	                    // If no handler exists, return the raw decompressed content
 	                    return [{
 	                        name: decompressedFileName,
 	                        size: decompressed.length,
-	                        content: new TextDecoder().decode(decompressed),
+	                        uri: `${uri}/${decompressedFileName}`,
 	                        type: FileUtils.getFileContentType(decompressedFileName),
+	                        getContent: () => Promise.resolve(decompressed),
 	                    }];
 	                })
 	                .then(resolve)
