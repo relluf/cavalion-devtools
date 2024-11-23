@@ -244,7 +244,7 @@ define(function(require) {
 	    const fileNode = TreeUtils.addFileToNode(currentDir, file);
 	    return fileNode; // Return the final file node
 	};
-	const findFileByPath = async (path, currentNode = rootNode, opts = { recursePackages: true }) => {
+	const findPackageByPath = async (path, currentNode = rootNode, opts = { recursePackages: true }) => {
 	    const parts = path.split('/').filter(Boolean); // Split and clean up the path
 	    let node = currentNode;
 	
@@ -264,11 +264,13 @@ define(function(require) {
 	                    files: entries.filter(e => e.isFile),
 	                };
 	
-	                // Recursively call findFileByPath for the rest of the path
-	                return findFileByPath(parts.slice(i + 1).join('/'), packageNode, opts);
+	                // Recursively call findPackageByPath for the rest of the path
+	                return findPackageByPath(parts.slice(i + 1).join('/'), packageNode, opts);
 	            }
+	            
+	            const exists = node.files.find(f => f.name === path) || node.directories.find(d => d.name.replace(/\/$/, "") === path);
 	
-	            return null; // Path not found
+	            return exists ? currentNode : null;
 	        }
 	
 	        node = dir;
@@ -353,7 +355,7 @@ console.log("!!! could not determine uri"); debugger;
 	    const dirNode = TreeUtils.findNodeByPath(path, rootNode);
 	
 	    if (!dirNode) {
-	        const packageNode = await findFileByPath(path);
+	        const packageNode = await findPackageByPath(path);
 	        if (!packageNode) {
 	            return { error: `Path "${path}" not found` };
 	        }
@@ -388,7 +390,7 @@ console.log("!!! could not determine uri"); debugger;
 	
 	    if (!dirNode) {
 	        // If directory is not found, check for a package
-	        const packageNode = await findFileByPath(path);
+	        const packageNode = await findPackageByPath(path);
 	        if (!packageNode) {
 	            return { error: `Path "${path}" not found` };
 	        }
