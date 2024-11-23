@@ -139,7 +139,13 @@ define(function(require) {
 	    processPackageFile: async (file, uri) => {
 	        const extension = FileUtils.getFileExtension(file.name);
 	        if (PackageHandlerRegistry.canHandle(extension)) {
-	            return PackageHandlerRegistry.processFile(file, uri);
+	        	if(file.entries) {
+	        		// already processed 
+	        		// debugger;
+	        		return file.entries;
+	        	}
+	        	
+	            return PackageHandlerRegistry.processFile(file, uri).then(entries => file.entries = entries);
 	        }
 	        throw new Error(`Unsupported package type: ${extension}`);
 	    },
@@ -173,11 +179,11 @@ define(function(require) {
     const rootNode = TreeUtils.createNode("root");
 
 	const mapEntries = (entries, baseUri) => entries.map(([name, entry]) => ({
-	        name,
+	        name: name.replaceAll("/", "_"),
 	        isFile: !entry.dir,
 	        size: entry._data ? entry._data.uncompressedSize : 0,
 	        getContent: () => entry.async ? entry.async('arraybuffer') : Promise.resolve(entry.content),
-	        uri: `${baseUri}/${name}`,
+	        uri: `${baseUri}/${name.replaceAll("/", "_")}`,
 	        isPackage: PackageUtils.knownExtensions.includes(FileUtils.getFileExtension(name)),
 	    }));
 	const readAllEntries = (reader) => {
@@ -258,20 +264,20 @@ define(function(require) {
 	            // If it's a package file, process it if the option is enabled
 	            if (file && opts.recursePackages && PackageUtils.isPackage(file)) {
 	                const entries = await PackageUtils.processPackageFile(file, path);
+
 	                const packageNode = {
 	                    name: file.name,
 	                    directories: entries.filter(e => !e.isFile),
 	                    files: entries.filter(e => e.isFile),
+	                    entries: entries
 	                };
-	
+	                
 	                // Recursively call findPackageByPath for the rest of the path
 	                return findPackageByPath(parts.slice(i + 1).join('/'), packageNode, opts);
 	            }
 	            
-	            const exists = node.files.find(f => f.name === path) || node.directories.find(d => d.name.replace(/\/$/, "") === path);
-	
-	            return exists ? currentNode : null;
-	        }
+	            return null;
+			}
 	
 	        node = dir;
 	    }
@@ -353,11 +359,31 @@ console.log("!!! could not determine uri"); debugger;
 	};
 	const list = async (path, opts = { recursive: false, recursePackages: false }) => {
 	    const dirNode = TreeUtils.findNodeByPath(path, rootNode);
-	
+	    const names = [];
+
 	    if (!dirNode) {
-	        const packageNode = await findPackageByPath(path);
-	        if (!packageNode) {
-	            return { error: `Path "${path}" not found` };
+	        let packageNode = await findPackageByPath(path);
+	        
+	        while (!packageNode && path.length > 0) {
+	        	names.unshift(path.split("/").pop());
+	        	if((path = js.up(path)).length > 0) {
+	        		packageNode = await findPackageByPath(path);
+	        	}
+	        }
+	        	
+	        if(!packageNode) {
+	            return { error: `Path "${path}/${names.join("/")}" not found` };
+	        }
+	        
+	        if(names.length) {
+	        	const name = names.join("/");
+	        	const entry = packageNode.entries.find(e => e.name === name);
+	        	
+	        	if(entry === null) {
+	        		return { error: `Path ${path}/${names.join("/")} not found` };
+	        	}
+	        	
+	        	packageNode = entry;
 	        }
 	
 	        // Delegate package-specific logic to listPackageContents
@@ -384,14 +410,19 @@ console.log("!!! could not determine uri"); debugger;
 	};
 	const get = async (uri, opts = {}) => {
 	    const parts = uri.split('/');
-	    const name = parts.pop();
+	    let name = parts.pop();
 	    const path = parts.join('/');
 	    const dirNode = TreeUtils.findNodeByPath(path, rootNode);
 	
 	    if (!dirNode) {
 	        // If directory is not found, check for a package
-	        const packageNode = await findPackageByPath(path);
-	        if (!packageNode) {
+	        let packageNode = await findPackageByPath(path);
+	        while (!packageNode && path.length) {
+	        	name = [parts.pop(), name].join("/");
+	        	packageNode = await findPackageByPath(parts.join('/'));
+	        }
+	        	
+	        if(!packageNode) {
 	            return { error: `Path "${path}" not found` };
 	        }
 	
@@ -451,7 +482,6 @@ console.log("!!! could not determine uri"); debugger;
         return await Promise.all(promises);
     };
 
-
 	// Default Handlers
 	PackageHandlerRegistry.registerHandler('zip', async (file, uri) => {
 	    return new Promise((resolve, reject) => {
@@ -507,7 +537,6 @@ console.log("!!! could not determine uri"); debugger;
 	        }, reject);
 	    });
 	}, { getFile: get });
-
 	PackageHandlerRegistry.registerHandler('gz', async (file, uri) => {
 	    return new Promise((resolve, reject) => {
 	        require(['pako'], (pako) => {
@@ -620,7 +649,6 @@ console.log("!!! could not determine uri"); debugger;
 			});
 		});
 	});
-
 
     // Return object matching the original structure
     return {
