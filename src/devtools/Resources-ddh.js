@@ -294,7 +294,7 @@ define(function(require) {
 	        extensions.map(async (ext) => {
 	            try {
 	                const file = await getFileFn(`${baseUri}.${ext}`, { arrayBuffer: true });
-	                if (file) relatedFiles[ext] = file;
+	                if (file && !file.error) relatedFiles[ext] = file;
 	            } catch (err) {
 	                console.warn(`Related file .${ext} not found for base ${baseUri}`);
 	            }
