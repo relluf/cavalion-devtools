@@ -119,7 +119,7 @@ define(function(require) {
 	    },
 	};
 	const PackageUtils = {
-	    knownExtensions: ['zip', 'tar', 'gz', 'kmz', '7z', 'rar', 'iso', 'shp', 'gz'], // Add more extensions here if needed
+	    knownExtensions: ['zip', 'tar', 'gz', 'kmz', '7z', 'rar', 'iso', 'shp', 'gz', 'qgz', 'db'], // Add more extensions here if needed
 		isPackage: (file) => {
 		    const extension = FileUtils.getFileExtension(file.name);
 		    if (PackageUtils.knownExtensions.includes(extension)) {
@@ -179,11 +179,11 @@ define(function(require) {
     const rootNode = TreeUtils.createNode("root");
 
 	const mapEntries = (entries, baseUri) => entries.map(([name, entry]) => ({
-	        name: name.replaceAll("/", "_"),
+	        name: name.replaceAll("/", "\\"),
 	        isFile: !entry.dir,
 	        size: entry._data ? entry._data.uncompressedSize : 0,
 	        getContent: () => entry.async ? entry.async('arraybuffer') : Promise.resolve(entry.content),
-	        uri: `${baseUri}/${name.replaceAll("/", "_")}`,
+	        uri: `${baseUri}/${name.replaceAll("/", "\\")}`,
 	        isPackage: PackageUtils.knownExtensions.includes(FileUtils.getFileExtension(name)),
 	    }));
 	const readAllEntries = (reader) => {
@@ -360,7 +360,7 @@ console.log("!!! could not determine uri"); debugger;
 	const list = async (path, opts = { recursive: false, recursePackages: false }) => {
 	    const dirNode = TreeUtils.findNodeByPath(path, rootNode);
 	    const names = [];
-
+	    
 	    if (!dirNode) {
 	        let packageNode = await findPackageByPath(path);
 	        
@@ -417,7 +417,7 @@ console.log("!!! could not determine uri"); debugger;
 	    if (!dirNode) {
 	        // If directory is not found, check for a package
 	        let packageNode = await findPackageByPath(path);
-	        while (!packageNode && path.length) {
+	        while (!packageNode && parts.length) {
 	        	name = [parts.pop(), name].join("/");
 	        	packageNode = await findPackageByPath(parts.join('/'));
 	        }
@@ -489,8 +489,8 @@ console.log("!!! could not determine uri"); debugger;
 	            file.getContent()
 	                .then(buffer => new JSZip().loadAsync(buffer))
 	                .then(zip => {
-	                    const entries = Object.entries(zip.files);
-	                    resolve(mapEntries(entries, uri).filter(e => !e.name.startsWith("__MACOSX/")));
+	                    const entries = Object.entries(zip.files).filter(e => !e[0].startsWith("__MACOSX"));
+	                    resolve(mapEntries(entries, uri));
 	                })
 	                .catch(reject);
 	        }, reject);
@@ -573,21 +573,8 @@ console.log("!!! could not determine uri"); debugger;
 	        throw new Error("ZIP handler is required for .qgz files");
 	    }
 	
-	    const zipResult = await zip(file, uri);
-	    const projectFile = zipResult.find(entry => entry.name.endsWith('.qgs'));
-	
-	    return [
-	        ...(projectFile
-	            ? [{
-	                  uri: `${uri}/${projectFile.name}`,
-	                  name: projectFile.name,
-	                  type: 'File',
-	                  contentType: 'application/xml',
-	                  getContent: projectFile.getContent,
-	              }]
-	            : []),
-	        ...zipResult,
-	    ];
+	    return await zip(file, uri);
+
 	}, { zip: PackageHandlerRegistry.getHandler('zip').handler });
 	PackageHandlerRegistry.registerHandler('sqlite', async (file, uri) => {
 	
@@ -649,6 +636,13 @@ console.log("!!! could not determine uri"); debugger;
 			});
 		});
 	});
+	PackageHandlerRegistry.registerHandler('db', async (file, uri, { sqlite }) => {
+		if(!sqlite) {
+	        throw new Error("Sqlite handler is required for .db files");
+		}
+		
+		return await sqlite(file, uri);
+	}, { sqlite: PackageHandlerRegistry.getHandler('sqlite').handler });
 
     // Return object matching the original structure
     return {
