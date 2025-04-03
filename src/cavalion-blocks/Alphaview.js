@@ -59,7 +59,7 @@ var css = {
             if (component === scope.q) {
                 if ([13, 27, 38, 40].indexOf(evt.keyCode) !== -1) {
                     var list = scope.list;
-                    if(evt.keyCode === 13 && list.getSelection().length === 0 && list.getCount()) {
+                    if(evt.keyCode === 13 && evt.metaKey === false && list.getSelection().length === 0 && list.getCount()) {
                         list.setSelection([0]);
                     } else if(evt.keyCode === 27) {
 		                scope.q.setValue("");
@@ -172,9 +172,14 @@ var css = {
 			var root = this._owner;
 			var value = sel[sel.length - 1];
 			var list = root.qs("#list");
+	
+list.setCount(0);		
+list._source.setBusy(true);
 			
 			return Promise.resolve(value).then(value => {
 				this.vars("value", value);
+				
+list._source.setBusy(false);
 				
 				if(value instanceof Array) {
 					list.show();
@@ -308,7 +313,6 @@ var css = {
 	}],
 	
 	["Array", ("array"), { 
-
 		vars: {
 			match(obj, q, context) {
 				const invert = q.charAt(0) === "!";
@@ -373,7 +377,6 @@ var css = {
 				}
 			}
 		},
-
 		onFilterObject(obj, row, context) {
 			var q = this.vars("q"), match = this.vars("match") || this.vars("match_columns");
 			
@@ -385,7 +388,6 @@ var css = {
 			
 			return context.q.some(q => q ? !(match(obj, q, context, row)) : false);
 		},
-		
 		onUpdate() {
 			this.ud("#list-status").render();
 		},
@@ -492,7 +494,7 @@ var css = {
 			}
 		},
 		source: "array", 
-		visible: false, 
+		// visible: false, 
 		onColumnGetValue(column, value, row, source) {
 			if(value instanceof Date) return value;
 			return js.sf("%n", value).substring(0, 1024);
