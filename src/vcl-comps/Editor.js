@@ -114,7 +114,7 @@ var getKey = (tab) => {
 		var ace_mode = require("ace" + "/ext/modelist").getModeForPath(resource.uri);
 // this.print("ace/ext/modelist", req("ace/ext/modelist"))
 // this.print("ace_mode", ace_mode)
-		var ext_mode = ExtensionToMode[type || ext || this.getSpecializer()];
+		var ext_mode = resource.mode || ExtensionToMode[type || ext || this.getSpecializer()];
         var mode = "ace/mode/" + (ext_mode ? ext_mode : ace_mode ? ace_mode.name : (type || ext || this.getSpecializer() || "js"));
         
         // require([mode], 
