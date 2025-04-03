@@ -46,7 +46,7 @@ var Blocks = require("blocks/Blocks");
 	});
 } ());
 
-[["vcl/prototypes/App.v1.console"], { 
+[["App"], { 
 	title: "Code", 
 	icon: "images/favicon.ico", 
 	onGetStorageKey(forKey) {

@@ -239,8 +239,8 @@ function syncAttribute(node, name, should) {
 		hotkey: "MetaCtrl+O|Alt+MetaCtrl+O",
 		on(evt) { 
 			const input = this.vars(["input"]);
-			syncAttribute(input, "multiple", true);
-			syncAttribute(input, "webkitdirectory", evt.altKey === true);
+			syncAttribute(input, "multiple", evt.multipleFiles || true);
+			syncAttribute(input, "webkitdirectory", evt.altKey || evt.allowDirectories);
 			input.click(); 
 		},
 		overrides: {
