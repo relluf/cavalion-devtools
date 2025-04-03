@@ -1,6 +1,9 @@
 "use vcl/ui/Ace, vcl/ui/FormContainer, vcl/ui/Tab, locale";
 
-var Tab = {
+const Control = require("vcl/Control");
+const Ace = require("vcl/ui/Ace");
+
+const Tab = {
 	_content:
 		"<div class='text'></div><span class='hashcode'></span>" +
 		"<i class='menu fa fa-caret-down'></i>" +
@@ -19,9 +22,9 @@ var Tab = {
         
         if(uri.endsWith("/")) {
         	folder = true;
-        	title.pop(); 
+    		title.pop(); 
         }
-    	title = this.vars("resource.title") || title.pop();
+    	title = this.vars("resource.title") || title.pop() || "./";
 
         node.title = uri;
         node.down(".text").textContent = this.vars("modified") ? "* " + title : title;
@@ -35,7 +38,7 @@ var Tab = {
 	hide: (tab) => !tab.hasClass("tabs-hidden") && tab.addClass("tabs-hidden"),
 	isHidden: (tab) => tab.hasClass("tabs-hidden")
 };
-var Utils = {
+const Utils = {
     getState: function(scope) {
         var tabs = scope["editors-tabs"].getControls();
         return {
@@ -269,6 +272,7 @@ const setDocumentTitle = (title) => { try { top.document.title = title; } catch(
             return tab;
         }
     }],
+    
     ["vcl/Action", ("editor-needed"), {
         on(evt) {
             var scope = this.scope(), tab;
@@ -308,14 +312,21 @@ const setDocumentTitle = (title) => { try { top.document.title = title; } catch(
     		    	var uri = (evt.resource.uri || "");
     			    var path = uri ? uri.split("/") : [];
     			    var ext = path[path.length - 1] || "";
-    			    ext = ext.indexOf(".") !== -1 ? ext.split(".").pop() : "";
+
+					if(/^pouchdb\:\/\/[^\/]+\/devtools\//.test(evt.resource.uri)) {
+						evt.resource.mode = ext = "json";
+						
+					} else {
+    			    	ext = ext.indexOf(".") !== -1 ? ext.split(".").pop() : "";
+					}
+
     			    if(evt.resource.type === "Folder") {
     			    	evt.formUri = "devtools/Editor<folder>";
     			    } else if(path.indexOf("vcl-comps") !== -1 && ext === "js") {
                         evt.formUri = "devtools/Editor<vcl>";
     			    } else if(path.indexOf("cavalion-blocks") !== -1 && ext === "js") {
                         evt.formUri = "devtools/Editor<blocks>";
-    			    } else if(path.length > 1 && uri.indexOf("/var/log/") !== -1) {
+    			    } else if(path.length > 1 && uri.indexOf("/var/log/") !== -1 && uri.split("/").pop().indexOf(".") === -1) {
     			    	// TODO #CVLN-20200926-1 find some registration system for these Editor-descendants
     			    	evt.formUri = "devtools/Editor<var/log>";
     			    } else if(uri.indexOf("ElliTrack-") !== -1 && uri.endsWith(".txt")) {
@@ -374,7 +385,7 @@ const setDocumentTitle = (title) => { try { top.document.title = title; } catch(
         }
     }],
     ["vcl/Action", ("editors-next"), {
-    	onExecute: function() {
+    	on() {
 			var tabs = this.up().qsa("#editors-tabs:visible");
 			var focused = this.up().vars("editors-tabs:focused");
 			if(focused && !focused.isFocused()) {
@@ -393,7 +404,7 @@ const setDocumentTitle = (title) => { try { top.document.title = title; } catch(
     	}
     }],
     ["vcl/Action", ("editors-previous"), {
-    	onExecute: function() {
+    	on() {
 			var tabs = this.up().qsa("#editors-tabs:visible");
 			var focused = this.up().vars("editors-tabs:focused");
 			if(focused && !focused.isFocused()) {
@@ -436,7 +447,7 @@ const setDocumentTitle = (title) => { try { top.document.title = title; } catch(
         }
     }],
     ["vcl/Action", ("editor-next"), {
-        onExecute: function() {
+        on() {
         	var ws = this.up();
 			var tabs = ws.vars("editors-tabs:focused") || ws.qs("#editors-tabs");
 
@@ -447,7 +458,7 @@ const setDocumentTitle = (title) => { try { top.document.title = title; } catch(
         }
     }],
     ["vcl/Action", ("editor-previous"), {
-        onExecute: function() {
+        on() {
         	var ws = this.up();
 			var tabs = ws.vars("editors-tabs:focused") || ws.qs("#editors-tabs");
 
@@ -468,12 +479,12 @@ const setDocumentTitle = (title) => { try { top.document.title = title; } catch(
         }
     }],
     ["vcl/Action", ("editor-move-to-front"), {
-    	onExecute: function() {
+    	on() {
     		this._owner.qs("vcl/ui/Tab:selected:childOf(editors-tabs)").setIndex(0);
     	}
     }],
     ["vcl/Action", ("editor-move-left"), {
-    	onExecute: function() {
+    	on() {
     		var tab = this._owner.qs("vcl/ui/Tab:selected:childOf(editors-tabs)");
     		var index = tab.getIndex();
     		if(index > 0) {
@@ -481,8 +492,15 @@ const setDocumentTitle = (title) => { try { top.document.title = title; } catch(
     		}
     	}
     }],
+    ["vcl/Action", ("editor-move-all-left"), {
+    	on() {
+    		var tab = this._owner.qs("vcl/ui/Tab:selected:childOf(editors-tabs)");
+    		var index = tab.getIndex();
+			tab.setIndex(0);
+    	}
+    }],
     ["vcl/Action", ("editor-move-right"), {
-    	onExecute: function() {
+    	on() {
     		var tab = this._owner.qs("vcl/ui/Tab:selected:childOf(editors-tabs)");
     		var index = tab.getIndex();
     		tab.setIndex(index + 1);
@@ -490,8 +508,20 @@ const setDocumentTitle = (title) => { try { top.document.title = title; } catch(
     }],
     ["vcl/Action", ("editor-setfocus"), {
     	on(evt) {
-    		this.print("hiya", evt);
-    		this.nextTick(() => this._owner.qs("vcl/ui/Tab:selected:childOf(editors-tabs) #ace").setFocus());
+    		var focused = Control.findByNode(document.qs(":focus"));
+    		var ace = this._owner.qs("vcl/ui/Tab:selected:childOf(editors-tabs) #ace");
+    		var ws = this.up();
+    		
+    		if(focused === ace) {
+    			focused = ws.vars("focused");
+    		} else {
+    			ws.vars("focused", focused)
+    			focused = ace;
+    		}
+    		
+    		if(focused) {
+    			this.nextTick(() => focused.setFocus());
+    		}
     	}
     }],
     ["vcl/Action", ("editor-focus-in-navigator"), {
@@ -576,7 +606,21 @@ const setDocumentTitle = (title) => { try { top.document.title = title; } catch(
     		}
     	}	
     }],
-    
+    ["vcl/Action", ("editor-open-parent-md"), {
+    	on() {
+			const ed = this.up().qsa("devtools/Editor<>:root:visible").pop();
+ 			const uri = ed.vars(["resource.uri"]);	
+    		const parent = uri.endsWith(".md") ? js.up(js.up(uri)) : js.up(uri);
+    		this.ud("#editor-needed").go(parent + "/.md");
+    	}	
+    }],
+    ["vcl/Action", ("editor-open-parent"), {
+    	on() {
+			const ed = this.up().qsa("devtools/Editor<>:root:visible").pop();
+    		this.ud("#editor-needed").go(js.up(ed.vars(["resource.uri"])) + "/")	;
+    	}	
+    }],
+
     ["vcl/Action", ("update-title"), {
     	on(evt) {
             var title = this.app().getTitle(), uri;

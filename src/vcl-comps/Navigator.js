@@ -1,4 +1,4 @@
-"vcl/ui/Node, vcl/ui/ListHeader, devtools/NavigatorNode, devtools/Resources, js/Method, v7/pdok/viewer-metadata, v7/pdok/themes";
+"vcl/ui/Node, vcl/ui/ListHeader, devtools/NavigatorNode, devtools/Resources, js/Method";
 
 var Method = require("js/Method");
 var Resources = require("devtools/Resources");
@@ -273,21 +273,8 @@ function onNodesNeeded(parent) {
             var ws = this.up("devtools/Workspace<>:root");
             var a = ws.down("#editor-needed");
             list.getSelection(true).forEach(function (resource) {
-            	var metadata = require("v7/pdok/viewer-metadata");
-            	var themes = require("v7/pdok/themes");
-            	
-            	// TODO some sort of registration ROUTING(!!!) needed...
-            	if(resource.uri.startsWith(metadata.uri)) {
-            		ws.qsa("veldapps/OpenLayers<PDOK-v1> #ol-layer-needed")
-            			.execute({layer: resource});
-            	// } else if(resource.uri.startsWith(themes.uri)) {
-            	// 	ws.qsa("veldapps/OpenLayers<>:root #ol-layer-needed")
-            	// 		.execute({layer: resource});
-            	} else if(resource.uri.startsWith(themes.uri)) {
-            		ws.qsa("#ol-layer-needed").execute({layer: resource});
-            	} else {
-	            	a.execute({resource: resource, selected: true});
-            	}
+            	// removed v7/dependencies 2024/12/11
+            	a.execute({resource: resource, selected: true});
             }, this);
         }
     }],

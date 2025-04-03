@@ -22,11 +22,17 @@ var hotkeys = {
 	
 	"Shift+Ctrl+Meta+219": "editor-move-left",
 	"Shift+Ctrl+Meta+221": "editor-move-right",
+	"Shift+Ctrl+Meta+P": "editor-move-all-left",
+	"Shift+Ctrl+Meta+\\": "editor-move-all-right",
 
-	"Ctrl+W": "editor-close",
+	"Shift+Ctrl+P": "editor-open-parent-md",
+	"Shift+Ctrl+O": "editor-open-parent",
+
 	"Shift+Ctrl+S": "editor-switch-favorite",
 	"Ctrl+S": "editor-switch-favorite",
 	"Alt+Shift+Ctrl+S": "editor-switch-favorite",
+
+	"Ctrl+W": "editor-close",
 	"Shift+Ctrl+W": "editors-close-all", //less-one ;-)
 	"Alt+Shift+Ctrl+W": "editors-close-all", //less-one ;-)
 	
@@ -46,6 +52,8 @@ var FormContainer = require("vcl/ui/FormContainer");
 	#workspace-needed
 */
 
+const default_colors = ["rgb(56, 121, 217)", "white"];
+
 // FIXME move to a better place
 function title() {
 	var url = app.vars("url");
@@ -53,8 +61,14 @@ function title() {
 }
 function title_css() {
 	var url = app.vars("url");
-	var colors = url.getParamValue("title-colors");
-	colors = (colors && colors.split("|")) || ["rgb(56, 121, 217)", "white"];
+	var colors = url.getParamValue("colors") || url.getParamValue("title-colors") || url.getParamValue("title");
+
+	if(colors && colors.includes("|")) {
+		colors = (colors && colors.split("|")) || default_colors;
+	} else {
+		colors = default_colors;
+	}
+
 	return { 
 		"": "text-align:center;float:right;min-width:200px;line-height:26px;", 
 		"&:not(.custom-colors)": js.sf("background-color:%s;color:%s;", colors[0], colors[1]),
@@ -69,8 +83,15 @@ function title_css() {
 		"&.eae": "background-color:rgb(14,32,77);color:white;",
 		"&.smdl": "background-color:gold;color:maroon;",
 		"&.gx": "background-color:navy; color:white;",
-		"&.pdc": "background-color:#261f10;color:white;"
+		"&.pdc": "background-color:#261f10;color:white;",
+		"&.ozn": "background-color:red;color:white;"
 	};
+}
+function title_classes() {
+	var url = app.vars("url");
+	var colors = url.getParamValue("colors") || url.getParamValue("title-colors") || url.getParamValue("title") || url.getParamValue("");
+
+	if(colors && !colors.includes("|")) return colors.toLowerCase();
 }
 function replaceChars(uri) {
 	return uri.replace(/\//g, ".");
@@ -337,6 +358,7 @@ this.app().vars("canunload", () => false);
 		
 		// general hotkeys, see def above
 		for(var k in hotkeys) {
+console.log(hotkeys[k])
 			HotkeyManager.register(k, {
 				type: "keydown",
 				callback: create_callback(k, hotkeys[k])
@@ -450,11 +472,12 @@ this.app().vars("canunload", () => false);
 				var uri = editor.vars("resource.uri"); 
 				if(evt.altKey) {
 					app.print(uri, editor);
+					cc(uri);
+				} else {
+					app.toast({classes: "glassy fade", content: uri})
 				}
-				app.toast({classes: "glassy fade", content: uri})
 			}
 		}
-		
 	}],
     [("vcl/Action"), "copy-handler", {
     	hotkey: "Cmd+C",
@@ -485,11 +508,7 @@ this.app().vars("canunload", () => false);
             evt.preventDefault();
         }
     }],
-    [("vcl/Action"), "reload-app", {
-    	hotkey: "Shift+MetaCtrl+R|Cmd+Alt+R",
-    	on() { document.location.reload(); }
-    }],
-
+    
     [("vcl/Action"), "hide-workspace-tabs", {
     	onExecute() { 
     		var twt = this.ud("#toggle-workspace-tabs"); 
@@ -602,7 +621,7 @@ this.app().vars("canunload", () => false);
     }],
     
     [("vcl/Action"), "workspace-issues-new", {
-    	hotkey: "Shift+Ctrl+73", // Shift+Ctrl+I
+    	// hotkey: "Shift+Ctrl+73", // Shift+Ctrl+I
     	onExecute() {
     		// Open a Github "issues/new"-page based upon workspace meta data
     		
@@ -901,9 +920,9 @@ this.app().vars("canunload", () => false);
 			index: 0, 
 			element: "span", 
 			css: title_css(),
+			classes: title_classes(),
 			onRender() {
-				var t = this.vars("title") || title();
-				this.getNode().innerHTML = js.sf("&nbsp; <b>%s<b> <i class='fa fa-caret-down'></i>  &nbsp;", t);
+				this.getNode().innerHTML = js.sf("&nbsp; <b>%s<b> <i class='fa fa-caret-down'></i>  &nbsp;", this.vars("title") || title());
 			}
 		}]
     ]]
