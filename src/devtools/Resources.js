@@ -1,5 +1,6 @@
 define(["devtools/Resources-node", "devtools/Resources-pouchdb", "devtools/Resources-dropbox", "devtools/Resources-gdrive", "devtools/Resources-dropped", "devtools/Resources-ddh"], 
 function(FS, Pouch, Dropbox, GDrive, Dropped, DragDropHandler) {
+
     // Registry for resource providers
     const ResourceRegistry = {
         providers: {},
@@ -111,6 +112,7 @@ function(FS, Pouch, Dropbox, GDrive, Dropped, DragDropHandler) {
         },
 
         ls() { return this.list.apply(this, arguments); },
+
         resolve: resolve
     };
 

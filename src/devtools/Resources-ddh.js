@@ -310,7 +310,7 @@ console.log("!!! could not determine uri"); debugger;
             return entries;
         }
         const content = await fileNode.getContent();
-        return opts?.arrayBuffer ? content : new TextDecoder().decode(content);
+        return (opts && opts.arrayBuffer) ? content : new TextDecoder().decode(content);
     };
 	const getPackageFile = async (packageFile, fileName, baseUri, opts) => {
 	    // Ensure the file is a package

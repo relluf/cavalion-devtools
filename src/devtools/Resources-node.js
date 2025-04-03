@@ -37,9 +37,11 @@ define(function(require) {
 	}
 
 	return {
-		index: function(uris) {
+		index: function(uris, opts) {
 			return (request(adjust("") + "?index&uris=" + window.escape(uris.join(";"))))
 				.then(function(res) {
+					if(opts && opts.raw) return res;
+					
 					/*- TODO Current devtools/Navigator expects weird structure/processing */
 					var dirs = {}, files = {};
 					for(var path in res) {
@@ -67,9 +69,6 @@ define(function(require) {
 					// console.log("files", files);
 					
 					return dirs;
-				})
-				.catch(function(err) {
-					// TODO alert(err.message);
 				});
 		},
 		list: function(uri) {

@@ -44,7 +44,7 @@ define(function(require) {
 					.filter(function(name, index, arr) { return arr.indexOf(name) === index; })
 					.map(name => ({
 						name: name, uri: parent + (name || "/"), 
-						type: all.indexOf(parent + name) !== -1 ? "File" : "Folder",
+						type: all.includes(parent + name) ? all.some(s => s.startsWith(parent + name + "/")) ? "Package" : "File" : "Folder",
 						expandable: all.indexOf(parent + name) === -1,
 						contentType: name.indexOf("<") === -1 && name.indexOf(".") !== -1 ? undefined : "application/json"
 					}));
