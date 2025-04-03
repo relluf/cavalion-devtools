@@ -162,9 +162,22 @@ function common(tab) {
 					selected: evt.selected,
 					owner: owner
 				}, evt));
+				
+				
 				if(evt.resource.type === "Folder") {
 					tab.addClass("bold");
 				}
+				
+				if(evt.resource.type === "Package") {
+					this.execute({ 
+						resource: { 
+							uri: evt.resource.uri + "/", 
+							type: "Folder",
+							title: evt.resource.uri.split("/").pop() + "/"
+						} 
+					});
+				}
+				
 				tab.setCloseable(false);
 				tab.on("dblclick", function() { 
 					if(confirm("Do you want to close this resource?") === true) {

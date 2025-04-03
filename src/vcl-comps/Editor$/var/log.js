@@ -22,6 +22,15 @@ $(["devtools/Editor<csv>"], [
 				}
 				return obj;
 			}));
+			
+			const reflect = scope.alphaview.qs("#reflect");
+			if(reflect) {
+				reflect.execute([arr]);
+			} else {
+				scope.alphaview.once("container-ready", () => scope.alphaview.qs("#reflect").execute([arr]));
+			}
+			
+			this.up("vcl/ui/Tab").emit("resource-rendered", [{sender: this, data: arr}]);
 		}
 	})
 	// $("vcl/ui/Bar", { autoSize: "height", align: "top" }, [

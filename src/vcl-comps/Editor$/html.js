@@ -1,4 +1,4 @@
-// "use pages/Controller, Framework7";
+"use js";
 
 /*- 
 
@@ -138,30 +138,24 @@
     [("vcl/ui/Panel"), "preview", {
         align: "client",
         css: { 
-            "background-color": "#f0f0f0", 
-            "border-left": "1px solid silver",
-            "border-right": "1px solid silver",
-            "&.fw7": {
+            '': "padding: 8px; background-color:white;",
+            '.framework7-root': {
 				"font-family": "-apple-system, SF UI Text, Helvetica Neue, Helvetica, Arial, sans-serif",
             	"background-color": "rgba(224,224,224,0.8)",
-            	"border-radius": "12px"
+            	"border-radius": "12px",
             }
         },
-        visible: true,
-        vars: {
-        	"wrapper-start": "",//"<div><h1>PREVIEW</h1><div>",
-        	"wrapper-end": ""//"</div><h3>FOOTER</h3></div>"
-        },
-        
+
         onLoad() {
         	this.override("setContent", function(value) {
-        		var args = [js.sf("%s%s%s", this.vars("wrapper-start"), value, this.vars("wrapper-end"))];
         		
-        		// this.addClasses(classes);
-        		
-        		args.callee = arguments.callee;
-        		return this.inherited(args);
-        	});
+				const meta = this.vars(["#preview.content"]) || { before: "", after: ""};
+				const args = [[meta.before, value, meta.after].join("")];
+				
+				args.callee = arguments.callee;
+				
+				return this.inherited(args);
+			});
         }
     }]
 ]];

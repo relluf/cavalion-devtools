@@ -1,6 +1,8 @@
-"use on, markdown, blocks/Factory, util/HtmlElement";
+"use on, marked, markdown, blocks/Factory, util/HtmlElement";
 
 /*-
+
+FR: choose rendering-implementation (2025-04-01)
 
 ### 2023/09/16
 
@@ -128,6 +130,7 @@
 
 const resolveUri_blocks = require("blocks/Factory").resolveUri;
 const on = require("on");
+const marked = require("marked").marked;
 const markdown = require("markdown");
 const Component = require("vcl/Component");
 const HE = require("util/HtmlElement");
@@ -148,15 +151,18 @@ function render() {
 		return impl(value, this);
 	}
 	
+	var resource = this.vars(["resource"]);
+
 	var root = markdown.toHTMLTree(value, 
 			this.vars(["markdown.dialect"]), 
 			this.vars(["markdown.options"]));
-
-	var resource = this.vars(["resource"]);
-
+	// var content = markdown.renderJsonML(root);
+	
+	var content = marked(value);
+	
 	this.up().vars("root", root);
     this.up().qsa("#output").forEach(_ => {
-    	_.setContent(markdown.renderJsonML(root));
+    	_.setContent(content);
     	_.update(function() {
     		var node = this.nodeNeeded(), me = this;
     		
@@ -254,7 +260,7 @@ document.addEventListener("click", (evt) => {
 			return;
 		}
 
-		var href = js.get("attributes.href.value", anchor) || "";
+		var href = window.unescape(js.get("attributes.href.value", anchor) || "");
         var blocks, blocks_vars, comps, comps_vars;
         var backticks = false;
         
@@ -427,7 +433,8 @@ document.addEventListener("click", (evt) => {
 					props = props || {};
 					props.vars = js.mi({ 'storage-uri': uri }, props.vars || {});
 					control.print(B.i(["Hover<>:root", uri, props, [["$HOME/" + uri]]], { 
-						owner: control
+						owner: control,
+						vars: blocks_vars
 					}));
 				} else {
 					control.print(B.i(["$HOME/" + uri, props]));
@@ -470,12 +477,13 @@ document.addEventListener("click", (evt) => {
 			
 			if(!swp) {
 				var _ = window.require.s.contexts._;
-		        if(href.startsWith("{") && href.endsWith("}")) {
+		        if(href.startsWith("{") && href.endsWith("}")) { // []({})
 		        	uri = _.nameToUrl(href.substring(1, href.length - 1));
 		        	uri = uri.replace(/^\.\/lib/, "/Library/");
 		        } else {
-					uri = js.normalize(base, href.charAt(0) === "/" ? href.substring(1) : ("./" + href));
+					uri = href;
 		        }
+				uri = js.normalize(base, uri.charAt(0) === "/" ? uri.substring(1) : ("./" + uri));
 			} else {
 				uri = href;
 			}

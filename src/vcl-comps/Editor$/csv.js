@@ -24,59 +24,62 @@ var Parser = require("lib/bower_components/papaparse/papaparse");
 			scope.count?.setContent(scope.array.getSize()); 
 		}));
 		
-		this.readStorage("search-input-value", (value) => {
-			this.down("#search-input").set("value", value);
-		});
+		// this.readStorage("search-input-value", (value) => {
+		// 	this.down("#search-input").set("value", value);
+		// });
 
         return this.inherited(arguments);
     },
-    onDispatchChildEvent: function (component, name, evt, f, args) {
-        if (name.indexOf("key") === 0) {
-            var scope = this.scope();
-            // this.app().qs("vcl/ui/Console#console").print(name, {f: arguments.callee, args: arguments});
-			if (component === scope['search-input']) {
-                if ([13, 27, 38, 40].indexOf(evt.keyCode) !== -1) {
-                    var list = scope.list;
-                    if(evt.keyCode === 13 && list.getSelection().length === 0 && list.getCount()) {
-                        list.print(list.getSelection(true));
-                    } else if(evt.keyCode === 27) {
-		                scope['search-input'].setValue("");
-		                scope['search-input'].fire("onChange", [true]); // FIXME
-                    }
-                    if (list.isVisible()) {
-                        list.dispatch(name, evt);
-                    }
-                    evt.preventDefault();
-                }
-            }
-        }
-        return this.inherited(arguments);
-    },
-    handlers: {
-		"#array onFilterObject": function(obj, q) {
-			if((q = this.vars("q"))) {
-				return !(q.toLowerCase().split(" ").filter(_ => _.length).every(s => {
-					for(var k in obj) {
-						if(("" + obj[k]).toLowerCase().indexOf(s) >= 0) {
-							return true;
-						}
-					}	
-					return false;
-				}));
+    vars: {
+    	/* disabled */
+	    onDispatchChildEvent: function (component, name, evt, f, args) {
+	        if (name.indexOf("key") === 0) {
+	            var scope = this.scope();
+	            // this.app().qs("vcl/ui/Console#console").print(name, {f: arguments.callee, args: arguments});
+				if (component === scope['search-input']) {
+	                if ([13, 27, 38, 40].indexOf(evt.keyCode) !== -1) {
+	                    var list = scope.list;
+	                    if(evt.keyCode === 13 && list.getSelection().length === 0 && list.getCount()) {
+	                        list.print(list.getSelection(true));
+	                    } else if(evt.keyCode === 27) {
+			                scope['search-input'].setValue("");
+			                scope['search-input'].fire("onChange", [true]); // FIXME
+	                    }
+	                    if (list.isVisible()) {
+	                        list.dispatch(name, evt);
+	                    }
+	                    evt.preventDefault();
+	                }
+	            }
+	        }
+	        return this.inherited(arguments);
+	    },
+	    handlers: {
+			"#array onFilterObject": function(obj, q) {
+				if((q = this.vars("q"))) {
+					return !(q.toLowerCase().split(" ").filter(_ => _.length).every(s => {
+						for(var k in obj) {
+							if(("" + obj[k]).toLowerCase().indexOf(s) >= 0) {
+								return true;
+							}
+						}	
+						return false;
+					}));
+				}
+			},
+			"#search-input onKeyDown": function() {
+			},
+			"#search-input onChange": function() {
+				var array = this.scope().array;
+				var input = this.udown("#search-input");
+				
+				this.setTimeout(() => { 
+					array.vars("q", input.getInputValue());
+					array.updateFilter();
+					array.up().writeStorage("search-input-value", input.getInputValue());
+				}, 350);
 			}
-		},
-		"#search-input onKeyDown": function() {
-		},
-		"#search-input onChange": function() {
-			var array = this.scope().array;
-			var input = this.udown("#search-input");
-			
-			this.setTimeout(() => { 
-				array.vars("q", input.getInputValue());
-				array.updateFilter();
-				array.up().writeStorage("search-input-value", input.getInputValue());
-			}, 350);
-		}
+	    }
     }
 }, [
 	["#ace", { align: "left", width: 750 }],
