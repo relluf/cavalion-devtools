@@ -1,3 +1,31 @@
+### `2025/04/02` 1.0.90
+
+* Advancing
+	* 20250403 adds new hotkeys for navigating .md resources updates coloring #title feature removes obsolete code
+	* 20250403 updates and develops Editor<xsd>
+	* 20250403 updates and finetunes devtools/Resources-classes
+	* 20250403 updates and develops Alphaview to show loading state when promise-value is pending
+	* 20250403 cosmetic
+	* 20250403 updates editors xsd, var/log, md, html, csv and folder chsnges Markdown-renderer to marked (npm) adds support for initializing vars of linked components adds support for wrapping previewed html adds support for packages (folder)
+	* 20241124 fixes case .shp files without .dbf
+	* 20241123 replaces / for \ in pathnames, so folders in ZIP are supported, more or less (![20241123-205527-JRpq1i](https://raw.githubusercontent.com/relluf/screenshots/master/uPic/202411/20241123-205527-JRpq1i.png)) simplifies packageHandlers
+	* 20241123 resolves all issues with folders in packages in packages in etc :-)
+	* 20241123 findFileByPath => findPackageByPath
+	* 20241122 extracts common logic for processing package entries into a reusable utility.
+	* 20241122 optimizes directory traversal enhances readAllEntries and traverseEntry to handle large directories and batches, using Promise.allSettled to improve resilience
+	* 20241122 centralizes Related File Handling adds support for Handler Dependency Injection moves handlers definitions down the file
+	* 20241122 stabilizes features, one important feature is still missing and ie. folders in ZIP
+	* 20241121 adds sqlite handler, but lacks modules and libraries still be get it up and running adds qgs and qmd extensions
+	* 20241121 refactors module to be pluggable
+	* 20241121 removes unnecessary code changes isPackage to be no more async (removed async-ness) implements qgz package
+	* 20241121 fixes gz handler
+	* 20241121 adds PackageHandlerRegistry for "customly" handling packages
+	* 20241121 refactors and simplifies code fixes nested ZIP in ZIP fixes PDF nested in ZIP implements dropped://- in Editor<pdf> implements ZIP packages in Workspace navigator
+	* 20241119 betters support for Console-node.key to ListColumn-content
+	* 20241119 shows instantiated component/control when running component (Shift+Cmd+X)
+	* 20241111 adds Alphaview to view tsv/csv data finetunes column headers
+
+
 ### `2024/11/08` 1.0.89
 
 * Service build for cavalion-code
