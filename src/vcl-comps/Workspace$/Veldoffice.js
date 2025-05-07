@@ -1,15 +1,18 @@
-["", { 
+"use veldoffice/VO";
+
+[["devtools/Workspace<VO>"], { 
 	vars: {
 		"#navigator favorites": [
-			"Workspaces/veldapps.com/Veldoffice/Veldoffice-glassfish/veldoffice2-front-end",
-			"Workspaces/veldapps.com/Veldoffice/veldoffice-vcl-comps",
-			"Workspaces/veldapps.com/Veldoffice/veldoffice-gebruik-vcl",
-			"Workspaces/veldapps.com/Veldoffice/veldoffice-geografie-vcl",
-			// "Workspaces/veldapps.com/Veldoffice/veldoffice-lib-vcl-comps",
-			"Workspaces/veldapps.com/Veldoffice/veldoffice-rapportage-vcl",
-			"Workspaces/veldapps.com/Veldoffice/veldoffice-rapportage-scripts",
-			"Workspaces/veldapps.com/Veldoffice/veldoffice-js",
-			"Workspaces/veldapps.com/Veldoffice/.md;;File",
+			"Dropbox-veldapps/Veldoffice/.md",
+			// "Workspaces/veldapps.com/Veldoffice/Veldoffice-glassfish/veldoffice2-front-end",
+			// "Workspaces/veldapps.com/Veldoffice/veldoffice-vcl-comps",
+			// "Workspaces/veldapps.com/Veldoffice/veldoffice-gebruik-vcl",
+			// "Workspaces/veldapps.com/Veldoffice/veldoffice-geografie-vcl",
+			// // "Workspaces/veldapps.com/Veldoffice/veldoffice-lib-vcl-comps",
+			// "Workspaces/veldapps.com/Veldoffice/veldoffice-rapportage-vcl",
+			// "Workspaces/veldapps.com/Veldoffice/veldoffice-rapportage-scripts",
+			// "Workspaces/veldapps.com/Veldoffice/veldoffice-js",
+			// "Workspaces/veldapps.com/Veldoffice/.md;;File",
 			// "Library/cavalion-blocks/veldapps;veldapps-blocks"
 		]
 	},

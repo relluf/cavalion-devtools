@@ -557,6 +557,11 @@ var getKey = (tab) => {
 			        ed.session.on("changeSelection", writeStorage);
 	    		});
     		});
+    	},
+    	overrides: {
+    		shown() {
+    			this.setTimeout("autofocus", () => this.setFocus(), 250);
+    		}
     	}
     }],
     ["vcl/ui/Panel", ("loading"), {

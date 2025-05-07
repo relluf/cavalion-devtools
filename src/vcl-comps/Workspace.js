@@ -620,6 +620,12 @@ const setDocumentTitle = (title) => { try { top.document.title = title; } catch(
     		this.ud("#editor-needed").go(js.up(ed.vars(["resource.uri"])) + "/")	;
     	}	
     }],
+    ["vcl/Action", ("editor-open-index"), {
+    	on() {
+    		const ws = this.up("devtools/Workspace<>:root");
+    		ws.open(js.sf("Index/%s/.md", this.vars(["workspace.name"])))
+    	}
+    }],
 
     ["vcl/Action", ("update-title"), {
     	on(evt) {

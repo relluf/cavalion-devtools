@@ -27,6 +27,7 @@ var hotkeys = {
 
 	"Shift+Ctrl+P": "editor-open-parent-md",
 	"Shift+Ctrl+O": "editor-open-parent",
+	"Ctrl+X": "editor-open-index",
 
 	"Shift+Ctrl+S": "editor-switch-favorite",
 	"Ctrl+S": "editor-switch-favorite",
@@ -358,7 +359,6 @@ this.app().vars("canunload", () => false);
 		
 		// general hotkeys, see def above
 		for(var k in hotkeys) {
-console.log(hotkeys[k])
 			HotkeyManager.register(k, {
 				type: "keydown",
 				callback: create_callback(k, hotkeys[k])
@@ -429,19 +429,19 @@ console.log(hotkeys[k])
 					}
 				}
 			});
-			// HotkeyManager.register({
-			// 	keyCode: 16, type: "keyup",
-			// 	callback: function(evt) {
-			// 		if(evt.code !== "ShiftRight") return;
-			// 		if(focused) {
-			// 			if(ctrlctrl.getVisible()) ctrlctrl.hide(); 
-			// 			else ctrlctrl.show();
-			// 		} else {
-			// 			focused = require("vcl/Control").focused || 1;
-			// 			me.setTimeout("ctrlctrl", () => focused = null, 250);
-			// 		}
-			// 	}
-			// });
+			HotkeyManager.register({
+				keyCode: 16, type: "keyup",
+				callback: function(evt) {
+					if(evt.code !== "ShiftRight") return;
+					if(focused) {
+						if(ctrlctrl.getVisible()) ctrlctrl.hide(); 
+						else ctrlctrl.show();
+					} else {
+						focused = require("vcl/Control").focused || 1;
+						me.setTimeout("ctrlctrl", () => focused = null, 250);
+					}
+				}
+			});
 		}());
     },
     onDeactivate() {
