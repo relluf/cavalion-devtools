@@ -24,8 +24,8 @@ var Parser = require("lib/bower_components/papaparse/papaparse");
 			scope.count?.setContent(scope.array.getSize()); 
 		}));
 		
-		// this.readStorage("search-input-value", (value) => {
-		// 	this.down("#search-input").set("value", value);
+		// this.readStorage("q-value", (value) => {
+		// 	this.down("#q").set("value", value);
 		// });
 
         return this.inherited(arguments);
@@ -36,14 +36,14 @@ var Parser = require("lib/bower_components/papaparse/papaparse");
 	        if (name.indexOf("key") === 0) {
 	            var scope = this.scope();
 	            // this.app().qs("vcl/ui/Console#console").print(name, {f: arguments.callee, args: arguments});
-				if (component === scope['search-input']) {
+				if (component === scope['q']) {
 	                if ([13, 27, 38, 40].indexOf(evt.keyCode) !== -1) {
 	                    var list = scope.list;
 	                    if(evt.keyCode === 13 && list.getSelection().length === 0 && list.getCount()) {
 	                        list.print(list.getSelection(true));
 	                    } else if(evt.keyCode === 27) {
-			                scope['search-input'].setValue("");
-			                scope['search-input'].fire("onChange", [true]); // FIXME
+			                scope['q'].setValue("");
+			                scope['q'].fire("onChange", [true]); // FIXME
 	                    }
 	                    if (list.isVisible()) {
 	                        list.dispatch(name, evt);
@@ -67,16 +67,16 @@ var Parser = require("lib/bower_components/papaparse/papaparse");
 					}));
 				}
 			},
-			"#search-input onKeyDown": function() {
+			"#q onKeyDown": function() {
 			},
-			"#search-input onChange": function() {
+			"#q onChange": function() {
 				var array = this.scope().array;
-				var input = this.udown("#search-input");
+				var input = this.udown("#q");
 				
 				this.setTimeout(() => { 
 					array.vars("q", input.getInputValue());
 					array.updateFilter();
-					array.up().writeStorage("search-input-value", input.getInputValue());
+					array.up().writeStorage("q-value", input.getInputValue());
 				}, 350);
 			}
 	    }
@@ -88,7 +88,7 @@ var Parser = require("lib/bower_components/papaparse/papaparse");
     	onLoad() {
     		this.vars("eval", () => { 
     			var label = [this.vars(["resource.uri"]).split("/").pop()], value;
-    			if((value = this.ud("#search-input").getValue())) {
+    			if((value = this.ud("#q").getValue())) {
     				label.push(value);
     			}
     			this.vars("label", label.join("-"));
@@ -177,7 +177,7 @@ this.print("parsed", parsed);
 		}
 	}],
 	// [("vcl/ui/Bar"), ("menu"), [
-	// 	["vcl/ui/Input", ("search-input"), { placeholder: locale("Search.placeholder") }],
+	// 	["vcl/ui/Input", ("q"), { placeholder: locale("Search.placeholder") }],
 	// 	["vcl/ui/Element", "count", { content: "-" }]
 	// ]],
 	// ["vcl/ui/List", ("list"), { 

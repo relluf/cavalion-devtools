@@ -21,18 +21,19 @@ function allowResource(resource) {
 function sortResource(resource1, resource2) {
 	if(resource1.name === ".md") return -1;
 	if(resource2.name === ".md") return 1;
-	
-	var isnum1 = !isNaN(resource1.name), isnum2 = !isNaN(resource2.name);
-	if(isnum1 && isnum2) {
-		return isnum1 < isnum2 ? 1 : -1;
-	}
-	
+
 	if(resource1.name.startsWith(".") && !resource2.name.startsWith(".")) {
 		return -1;
 	}
 	if(resource2.name.startsWith(".") && !resource1.name.startsWith(".")) {
 		return 1;
 	}
+	
+	var isnum1 = !isNaN(resource1.name), isnum2 = !isNaN(resource2.name);
+	if(isnum1 && isnum2) {
+		return parseFloat(resource1.name) - parseFloat(resource2.name);
+	}
+	
 	if(resource1.type === resource2.type) {
 		return resource1.name < resource2.name ? -1 : 1;
 	}
@@ -163,28 +164,39 @@ function common(tab) {
 					owner: owner
 				}, evt));
 				
-				
-				if(evt.resource.type === "Folder") {
-					tab.addClass("bold");
-				}
-				
-				if(evt.resource.type === "Package") {
-					this.execute({ 
-						resource: { 
-							uri: evt.resource.uri + "/", 
-							type: "Folder",
-							title: evt.resource.uri.split("/").pop() + "/"
-						} 
+				tab._parent.setTimeout("sort", () => {
+					// alert("! about to sort !")
+					tab.clearState("acceptChildNodes", true, true);
+					tab._parent._controls.sort((t1, t2) => {
+						return sortResource(t1.vars(["resource"]), t2.vars(["resource"]));
 					});
-				}
-				
-				tab.setCloseable(false);
-				tab.on("dblclick", function() { 
-					if(confirm("Do you want to close this resource?") === true) {
-						this.getControl().getForm().close();
+					tab.setState("acceptChildNodes", true, true);
+				}, 200);
+
+				// tab.nodeNeeded();
+				// tab.update(() => {
+					if(evt.resource.type === "Folder") {
+						tab.addClass("bold");
 					}
-				});
-				
+					
+					if(evt.resource.type === "Package") {
+						this.execute({ 
+							resource: { 
+								uri: evt.resource.uri + "/", 
+								type: "Folder",
+								title: evt.resource.uri.split("/").pop() + "/"
+							} 
+						});
+					}
+					
+					tab.setCloseable(false);
+					tab.on("dblclick", function() { 
+						if(confirm("Do you want to close this resource?") === true) {
+							this.getControl().getForm().close();
+						}
+					});
+				// });
+
 			} else {
 				if(evt.formUri) {
 					tab._control._formUri = evt.formUri;

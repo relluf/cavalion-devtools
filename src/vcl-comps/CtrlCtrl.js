@@ -58,16 +58,16 @@ var nameOf = (resource) => resource.uri.split("/").pop();
 	},
 	onActivate() {
 		var tabs = this.app().qsa("vcl/ui/Tab")
-			.filter(tab => tab.vars("resource"))
+			.map(t => [t, t._vars?.resource])
+			.filter(t => t[1])
 			.sort((tab1, tab2) => {
+				const r1 = tab1[1];
+				const r2 = tab2[1];
 				
-				var t1 = tab1.vars("resource.type");
-				var t2 = tab2.vars("resource.type");
+				let t1 = r1.type;
+				let t2 = r2.type;
 				
 				if(t1 === t2) {
-					var r1 = tab1.vars("resource");
-					var r2 = tab2.vars("resource");
-
 					t1 = nameOf(r1);
 					t2 = nameOf(r2);
 					
@@ -78,7 +78,9 @@ var nameOf = (resource) => resource.uri.split("/").pop();
 				}
 				
 				return t1 < t2 ? -1 : t1 > t2 ? 1 : 0;
-			});
+			})
+			.map(t => t[0]);
+
 		var hash = tabs.map(tab => tab.hashCode()).join(",");
 
 		this.setVar("focused", require("vcl/Control").focused);
@@ -92,7 +94,7 @@ var nameOf = (resource) => resource.uri.split("/").pop();
 				var name = folder.pop();
 				return {
 					hash: tab._control ? tab._control.hashCode() : "-",
-					workspace: tab.up("devtools/Workspace<>").getSpecializer(),
+					workspace: tab.up("devtools/Workspace<>:root").vars(["workspace.name"]),
 					name: name, folder: folder.join("/"),
 					path: path(tab),
 					// type: resource.type
@@ -135,13 +137,12 @@ var nameOf = (resource) => resource.uri.split("/").pop();
 			var list = this.ud("#list"), selection = list.getSelection(true);
 			if(!selection.length) return;
 			
-			var ace = j$[selection[0].hash];
-			var tabs = [];
-			while((ace = ace.up("vcl/ui/Tab"))) {
-				tabs.push(ace);
+			var tabs = [], tab = j$[selection[0].hash];
+			while((tab = tab.up("vcl/ui/Tab"))) {
+				tabs.push(tab);
 			}
-			while((ace = tabs.pop())) {
-				ace.setSelected(true);
+			while((tab = tabs.pop())) {
+				tab.setSelected(true);
 			}
 			this._owner.hide();
 		}

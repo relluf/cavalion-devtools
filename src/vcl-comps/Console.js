@@ -22,7 +22,8 @@ let cc = function() { // HM-20241010-1-method-auto-require-in-first-call
             var ace = ws && ws.qsa("devtools/Editor<>:root:visible").map(_ => _.down("#ace")).pop();
             
             var pr = this.print.bind(this);
-
+			var $$ = this.vars(["sizer._control"]);
+			
             var ctx = this.vars(["eval-context", 0, this.vars("eval-context", Object.create(null, {
             	root: { 
             		get() {

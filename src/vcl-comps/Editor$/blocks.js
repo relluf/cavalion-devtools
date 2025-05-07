@@ -169,7 +169,7 @@ function print(comp, msg, value) {
         state: true,
         
         onExecute: function() {
-        	this.setState(!this.getState());
+        	this.toggleState();
         }
     }],
     [("vcl/Action"), "toggle-component", {
@@ -181,7 +181,7 @@ function print(comp, msg, value) {
         onExecute: function(evt, value) {
         	this.setState(value = !this.getState());
         	if(value === true) {
-        		ace.set("align", "left");
+        		this.ud("#ace").set("align", "left");
         	}
         	
         	
