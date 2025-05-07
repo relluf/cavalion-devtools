@@ -3,6 +3,10 @@ define(function(require) {
 	    handlers: {},
 	
 	    registerHandler: (extension, handler, dependencies = {}) => {
+	    	if(typeof handler === "string") {
+	    		return (PackageHandlerRegistry.handlers[extension] = PackageHandlerRegistry.handlers[handler]);
+	    	}
+	    	
 	        PackageHandlerRegistry.handlers[extension] = { handler, dependencies };
 	    },
 	    getHandler: (extension) => {
@@ -305,9 +309,11 @@ define(function(require) {
     const getFileFromEntry = (entry) => new Promise((resolve, reject) => entry.file(resolve, reject));
     const getFileContent = async (fileNode, opts) => {
         if (fileNode.isPackage) {
-console.log("!!! could not determine uri"); debugger;
+// console.log("!!! could not determine uri"); debugger;
             const entries = await PackageUtils.processPackageFile(fileNode);
-            return entries;
+            // return entries;
+            // 20250430: returns first entry's content
+            return entries.length === 1 ? getFileContent(entries[0]) : entries;
         }
         const content = await fileNode.getContent();
         return (opts && opts.arrayBuffer) ? content : new TextDecoder().decode(content);
@@ -646,8 +652,10 @@ console.log("!!! could not determine uri"); debugger;
 
     // Return object matching the original structure
     return {
-
         root: rootNode,
+   
+        PackageUtils, 
+        PackageHandlerRegistry,
         
         list, get, index,
 

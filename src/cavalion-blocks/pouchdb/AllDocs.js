@@ -1,6 +1,6 @@
-"use pouchdb, v7/objects, data/Source, veldoffice/Session, veldoffice/EM, stylesheet!home/Projects/V7/src/styles.less, pouchdb";
+"use data/Source, veldoffice/Session, veldoffice/EM, pouch/db";
 
-var PouchDB = require("pouchdb");
+var PouchDB = require("pouch/db");
 var Source = require("data/Source");
 var Component = require("vcl/Component");
 
