@@ -1,14 +1,55 @@
+
+const detectXYKeys = (obj) => {
+	const keys = Object.keys(obj);
+	const lower = keys.map(k => k.toLowerCase());
+
+	const candidates = [];
+	lower.forEach((key, index) => {
+		if (key.includes("x") || key.includes("lon") || key.includes("lng")) {
+			candidates.push({ key: keys[index], type: "x" });
+		}
+		if (key.includes("y") || key.includes("lat")) {
+			candidates.push({ key: keys[index], type: "y" });
+		}
+	});
+
+	for (const x of candidates.filter(c => c.type === "x")) {
+		for (const y of candidates.filter(c => c.type === "y")) {
+			const prefix = commonStart(x.key, y.key);
+			const suffix = commonEnd(x.key, y.key);
+			if (prefix.length > 0 || suffix.length > 0) {
+				return [x.key, y.key];
+			}
+		}
+	}
+
+	return null;
+};
+const commonStart = (a, b) => {
+	let i = 0;
+	while (i < a.length && i < b.length && a[i] === b[i]) i++;
+	return a.slice(0, i);
+};
+const commonEnd = (a, b) => {
+	let i = 0;
+	while (
+		i < a.length &&
+		i < b.length &&
+		a[a.length - 1 - i] === b[b.length - 1 - i]
+	) i++;
+	return a.slice(a.length - i);
+};
+
 ["", {}, [
-	
+
 	["Executable", ("map"), {
-		hotkey: "Alt+MetaCtrl+Enter",
 		on() {
 			var selection = this.ud("#list").getSelection(true);
 			var filtered = this.ud("#q").getValue().length > 0;
 			if(selection.length === 0) {
 				selection = this.ud("#array")[filtered ? '_arr' : '_array'];
 			}
-			
+
 			var key = this.ud("#tabs").getSelectedControl(1).vars("key");
 			var f = Factories[key] || Factories[key.split(":").pop()];
 			this.print("selection", selection.map(
@@ -77,63 +118,59 @@
 				
 			});
 
+			
 			var ws = this.up("devtools/Workspace<>");
 			var tab = ws.down("#editor-needed").execute({
-				resource: { uri: "Resource-" + Date.now() + ".geojson" },
+				resource: { uri: "Features-" + Date.now().toString(32) + ".geojson" },
 				selected: true
 			});
 			
 			tab.once("resource-loaded", function() {
-				tab.down("#ace").setValue(js.b(js.sj(gj)))
+				tab.down("#ace").setValue(js.b(js.sj(gj)));
 			});
 		} 
 	}],
 	["Executable", ("map-xy"), {
-		// vars: {
-		// 	x: ["x", "X"], y: []
-		// },
 		on(evt) {
-			var selection = this.ud("#list").getSelection(true);
-			var filtered = this.ud("#q").getValue().length > 0;
-			if(selection.length === 0) {
-				selection = this.ud("#array")[filtered ? '_arr' : '_array'];
-			}
-			
-			var getFloat = (obj, keys) => {
-				return parseFloat(obj[keys.filter(key => 
-					obj.hasOwnProperty(key)).pop()]);
-			}
+			const ctx = this.vars(["ctx"]);
 
-			var gj = {
-				type: "FeatureCollection", 
-				features: selection.map(_ => {
-					return {
-						type: "Feature",
-						geometry: {
-							type: "Point",
-							coordinates: [
-								getFloat(_, ["x", "X", "xcoord", "rd_x"]), 
-								getFloat(_, ["y", "Y", "ycoord", "rd_y"])
-							]
-						},
-						properties: _
-					};
-				})
+
+			const xy = detectXYKeys(ctx.sel[0]);
+			if (!xy) throw new Error("No XY data found");
+	
+			const [xKey, yKey] = xy;
+	
+			const gj = {
+				type: "FeatureCollection",
+				features: ctx.sel.map(obj => {
+					const x = parseFloat(obj[xKey]);
+					const y = parseFloat(obj[yKey]);
+					if (!isNaN(x) && !isNaN(y)) {
+						return {
+							type: "Feature",
+							geometry: { type: "Point", coordinates: [x, y] },
+							properties: obj
+						};
+					}
+					return null;
+				}).filter(f => f !== null)
 			};
-			
-			if(evt.shiftKey !== true) {
-				var ws = this.up("devtools/Workspace<>:root");
-				var tab = ws.qs("#editor-needed").execute({
-					resource: { uri: "Resource-" + Date.now() + ".geojson" },
+	
+			if (gj.features.length === 0) {
+				throw new Error("No features found");
+			}
+	
+			if (evt.altKey !== true) {
+				const tab = ctx.ws.qs("#editor-needed").execute({
+					resource: { uri: "Map-" + Date.now() + ".geojson" },
 					selected: true
 				});
-
+	
 				tab.once("editor-available", function() {
 					tab.down("#ace").getEditor().setValue(js.b(js.sj(gj)));
-					// TODO set dirty, selectall
 				});
 			} else {
-				this.print("GeoJSON", gj);
+				this.print("geojson", gj);
 			}
 		}
 	}],
