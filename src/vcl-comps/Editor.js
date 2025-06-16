@@ -19,6 +19,7 @@ var ExtensionToMode = {
         "ts": "typescript",
         "md": "markdown",
         "markdown": "markdown",
+        "sh": "sh",
         "java": "java",
         "jsx": "jsx",
         "rdf": "xml",
@@ -115,7 +116,12 @@ var getKey = (tab) => {
 // this.print("ace/ext/modelist", req("ace/ext/modelist"))
 // this.print("ace_mode", ace_mode)
 		var ext_mode = resource.mode || ExtensionToMode[type || ext || this.getSpecializer()];
-        var mode = "ace/mode/" + (ext_mode ? ext_mode : ace_mode ? ace_mode.name : (type || ext || this.getSpecializer() || "js"));
+        var mode = "ace/mode/" + (ext_mode ? ext_mode : ace_mode ? ace_mode.name : (type || ext || this.getSpecializer() || ""));
+        var guessMode = (mode === "" || mode === "ace/mode/text");
+        
+        if(guessMode) {
+        	mode = "js";
+        }
         
         // require([mode], 
         // 	function() { session.setMode(mode); }, 
@@ -128,6 +134,13 @@ var getKey = (tab) => {
 
         session.on("change", function (e) {
             scope.ace.setTimeout("update", function () {
+            	if(guessMode === true) {
+            		guessMode = false;
+            		if(scope.ace.getValue().startsWith("#!/")) {
+            			session.setMode("sh");
+            		}
+            	}
+            	
                 var modified = tab.getVar("modified");
                 if (modified === "resetundo,gototop") {
                     session.getUndoManager().reset();

@@ -123,7 +123,7 @@ define(function(require) {
 	    },
 	};
 	const PackageUtils = {
-	    knownExtensions: ['zip', 'tar', 'gz', 'kmz', '7z', 'rar', 'iso', 'shp', 'gz', 'qgz', 'db'], // Add more extensions here if needed
+	    knownExtensions: ['zip', 'tar', 'gz', 'dbf', 'kmz', '7z', 'rar', 'iso', 'shp', 'gz', 'qgz', 'db'], // Add more extensions here if needed
 		isPackage: (file) => {
 		    const extension = FileUtils.getFileExtension(file.name);
 		    if (PackageUtils.knownExtensions.includes(extension)) {
@@ -649,6 +649,8 @@ define(function(require) {
 		
 		return await sqlite(file, uri);
 	}, { sqlite: PackageHandlerRegistry.getHandler('sqlite').handler });
+	PackageHandlerRegistry.registerHandler('dbf', 'db');
+	PackageHandlerRegistry.registerHandler('kmz', 'zip');
 
     // Return object matching the original structure
     return {

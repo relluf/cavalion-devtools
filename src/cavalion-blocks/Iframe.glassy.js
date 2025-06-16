@@ -24,7 +24,7 @@ function zoomLevel() {
 	return o.apply(this, arguments) / 2;
 }
 
-// Maybe introduce a .zoomy class?
+// Maybe introduce a .zoomy class? => Hover
 
 [("devtools/Iframe"), {
 	autoSize: "both", autoPosition: "all", align: "none",
@@ -34,7 +34,7 @@ function zoomLevel() {
 			// "pointer-events": "none",
 			"flex-shrink": "0",
 			"box-shadow": "0 0 20px 10px rgba(0,0,0,.2)",
-			"width": "90%",//WIDTH + "px",
+			"width": "389px", //"90%",//WIDTH + "px",
 			"height": HEIGHT + "px",
 			"top": "5%", 
 			"border-radius": "25px",
