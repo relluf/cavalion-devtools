@@ -12,8 +12,9 @@
 /*- ### 2020-10-02 Console hook - SIKB12 inspired */
 
 var ListColumn = require("vcl/ui/ListColumn");
-var Event = require("util/Event");
+// var Event = require("util/Event");
 var Console = require("vcl/ui/Console");
+var Control = require("vcl/Control");
 
 function match(obj, q) {
 	q = q.toLowerCase();	
@@ -173,9 +174,9 @@ var css = {
 				} , 500);
 
 				sel = [
-					Promise.all(cons.sel.map(o => Promise.resolve(o)))
+					Promise.allSettled(cons.sel.map(o => Promise.resolve(o)))
 						.then(values => values.reduce((t, o, i) => { 
-							t[keys[i]] = o instanceof Array ? o : [o]; return t; }, {}))
+							t[keys[i]] = o.value instanceof Array ? o.value : [o.value]; return t; }, {}))
 						.then(_ => {
 							this.setTimeout("waiting", () => {}, 0);
 							this.ud("#q").set("placeholder", "");
@@ -380,8 +381,10 @@ var css = {
 			const ws = (!evt.shiftKey && this.up("devtools/Workspace<>:root:selected")) || this.app();
 			const q = this.ud("#q"), list = this.ud("#list");
 			const sel = list.getSelection(true);
-
-			ws.print(q.getValue() || q.getPlaceholder(), sel.length ? sel : list.getSource().getArray());
+			const tabs = this.ud("#tabs");
+			const tab = tabs.getSelectedControl(1);
+			
+			ws.print(q.getValue() || (tab && tab.vars("key")) || q.getPlaceholder(), sel.length ? sel : list.getSource().getArray());
 		}
 	}],
 	
@@ -559,10 +562,6 @@ var css = {
 		autoColumns: true,
 		classes: "max-width-320",
 		css: { 
-			"&.max-width-320": {
-				".autowidth": "max-width: 320px;", 
-				".ListCell": "max-width: 332px;"
-			},
 			"&.max-width-500": {
 				".autowidth": "max-width: 500px;", 
 				".ListCell": "max-width: 512px;"
@@ -571,6 +570,11 @@ var css = {
 				".autowidth": "max-width: 500px;", 
 				".ListCell": "max-width: 512px;"
 			},
+			"&.max-width-320": {
+				".autowidth": "max-width: 320px;", 
+				".ListCell": "max-width: 332px;"
+			},
+			// '.ListCell:hover': "cursor: pointer; text-decoration: underline;",
 			'.{ListColumn}': { ':active': "font-weight:bold;" },
 			'.{ListHeader}': { 
 				'': "background-color:transparent;transition:background-color 0.5s ease 0s;", 
@@ -592,7 +596,6 @@ var css = {
 			if(name === "dblclick" && component instanceof ListColumn) {
 				this.setTimeout("clicked", () => {
 					var arr = this._source._arr.map(_ => js.mixIn({'_' : _}, _ && _[component._attribute]));
-					var old = this._source._arr;
 					var history = this.vars(["history"]);
 					history.push(this._source._array);
 					this.ud("#array").setArray(null);
@@ -601,8 +604,7 @@ var css = {
 					
 					this.ud("#list").destroyColumns();
 					this.ud("#list").updateColumns();
-					
-				})
+				});
 			} else if(name === "click") {
 				this.setTimeout("clicked", () => {
 					if(this._columns && this._columns.includes(component)) {
@@ -612,16 +614,32 @@ var css = {
 						} else {
 							dir = this.vars("sorted-by-dir", this.vars("sorted-by-dir") === "asc" ? "desc" : "asc");
 						}
-						// Promise.resolve(this.ud("#query_load_all").execute())
-							// .then(res => 
-								this.sortBy(component, dir)
-								// )
-								;
+						this.sortBy(component, dir);
 					}
 				}, 300);
 			}
 		},
-		onDblClick() { 
+		onDblClick(evt) { 
+			this.clearTimeout("click");
+
+			const cell = evt.target.soup(".ListCell");
+			if(evt.target.matches(".ListCell")) {
+				const row = Control.findByNode(cell.parentNode);
+				const index = Array.from(cell.parentNode.childNodes).indexOf(cell);
+				const column = this._header.getControls()[index];
+				const value = this._source.getAttributeValue(evt.altKey ? column._attribute : ".", row._rowIndex, true);
+				
+				var history = this.vars(["history"]);
+				history.push(this._source._array);
+				
+				this.ud("#array").setArray(null);
+				this.ud("#array").setArray(value instanceof Array ? value : Object.entries(value));
+				this.ud("#back").setEnabled(true); this.ud("#bar").show();
+				
+				this.ud("#list").destroyColumns();
+				this.ud("#list").updateColumns();
+			}
+			
 			window.getSelection().removeAllRanges();
 		},
 		onScroll() {
