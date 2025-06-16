@@ -19,23 +19,26 @@ function allowResource(resource) {
 		&& ["prj", "sbn", "dbf", "sbx", "shp", "shx"].includes(resource.uri.split(".").pop()) === false;
 }
 function sortResource(resource1, resource2) {
-	if(resource1.name === ".md") return -1;
-	if(resource2.name === ".md") return 1;
+	var name1 = resource1.name || resource1.uri.split("/").pop();
+	var name2 = resource2.name || resource2.uri.split("/").pop();
 
-	if(resource1.name.startsWith(".") && !resource2.name.startsWith(".")) {
+	if(name1 === ".md") return -1;
+	if(name2 === ".md") return 1;
+
+	if(name1.startsWith(".") && !name2.startsWith(".")) {
 		return -1;
 	}
-	if(resource2.name.startsWith(".") && !resource1.name.startsWith(".")) {
+	if(name2.startsWith(".") && !name1.startsWith(".")) {
 		return 1;
 	}
 	
-	var isnum1 = !isNaN(resource1.name), isnum2 = !isNaN(resource2.name);
+	var isnum1 = !isNaN(name1), isnum2 = !isNaN(name2);
 	if(isnum1 && isnum2) {
-		return parseFloat(resource1.name) - parseFloat(resource2.name);
+		return parseFloat(name1) - parseFloat(name2);
 	}
 	
 	if(resource1.type === resource2.type) {
-		return resource1.name < resource2.name ? -1 : 1;
+		return name1 < name2 ? -1 : 1;
 	}
 	if(resource1.type === "Folder") return -1;
 	return 1;
@@ -164,14 +167,15 @@ function common(tab) {
 					owner: owner
 				}, evt));
 				
-				tab._parent.setTimeout("sort", () => {
+				var parent = tab._parent;
+				parent.setTimeout("sort", () => {
 					// alert("! about to sort !")
-					tab.clearState("acceptChildNodes", true, true);
-					tab._parent._controls.sort((t1, t2) => {
+					parent.clearState("acceptChildNodes", true, true);
+					parent._controls.sort((t1, t2) => {
 						return sortResource(t1.vars(["resource"]), t2.vars(["resource"]));
 					});
-					tab.setState("acceptChildNodes", true, true);
-				}, 200);
+					parent.setState("acceptChildNodes", true, true);
+				}, 1000);
 
 				// tab.nodeNeeded();
 				// tab.update(() => {
