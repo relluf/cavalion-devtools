@@ -47,12 +47,13 @@ function escapeCSVValue(value) {
 		}
 	}],
 
-	[("#bar"), [
-		[("#right"), [
-			[("#export"), [
-				[("Button"), "button-csv",{ action: "csv" }]
-			]]	
-		]]
-	]]
+	[("#export"), [
+		[("Button"), "button-csv",{ action: "csv" }]
+	]]	
+
+	// [("#bar"), [
+	// 	[("#right"), [
+	// 	]]
+	// ]]
 	
 ]];

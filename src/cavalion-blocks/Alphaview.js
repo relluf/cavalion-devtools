@@ -57,6 +57,15 @@ var css = {
 	activeControl: "q", css: css, 
     onDispatchChildEvent: function (component, name, evt, f, args) {
         if (name.startsWith("key")) {
+        	
+			if(evt.code === "BracketLeft" && evt.altKey === true) {
+            	this.qs("#back").go();
+            	evt.preventDefault();
+            } else if(evt.code === "BracketRight" && evt.altKey === true) {
+            	this.qs("#forward").go();
+            	evt.preventDefault();
+            }
+            
             var scope = this.scope();
             if (component === scope.q) {
                 if ([13, 27, 38, 40].indexOf(evt.keyCode) !== -1) {
@@ -84,10 +93,10 @@ var css = {
 		this.vars("history", []);
 		this.vars("ctx", Object.create(null, {
 			selection: { get: () => {
-				var selection = this.ud("#list").getSelection(true);
-				var filtered = this.ud("#q").getValue().length > 0;
+				var selection = this.qs("#list").getSelection(true);
+				var filtered = this.qs("#q").getValue().length > 0;
 				if(selection.length === 0) {
-					selection = this.ud("#array")[filtered ? '_arr' : '_array'];
+					selection = this.qs("#array")[filtered ? '_arr' : '_array'];
 				}
 				
 				if (!selection || selection.length === 0) {
@@ -193,7 +202,7 @@ var css = {
 				this.ud("#tabs").destroyControls();
 			}
 			this.ud("#tabs").set("visible", true);//sel.length > 1);
-			this.ud("#q").setPlaceholder(keys.length === 1 ? keys.join(", ") : "");
+			this.ud("#q").setPlaceholder(keys.length === 1 ? keys.join(", ") : this.vars(["placeholder"]) || "");
 			this.ud("#reflect").execute(sel);
 		}
 	}],
@@ -301,6 +310,8 @@ var css = {
 		on() {
 			var history = this.vars(["history"]);
 			var value = history.pop();
+			this.ud("#q").setValue(value.pop());
+			value = value.pop();
 			if(value) {
 				this.ud("#array").setArray([]);
 				this.nextTick(() => this.ud("#array").setArray(value));
@@ -312,10 +323,13 @@ var css = {
 	}],
 	["Executable", ("do-forward"), {
 		on(evt) {
-			// if(evt.metactrlKey !== true) {
-			// } else {
 			const list = this.ud("#list");
 			const sel = list.getSelection(true);
+
+			if(evt.ctrlKey === true) {
+				return this.ud("#open").execute(evt);
+			}
+
 			if(sel.length) {
 				let nsel;
 				if(Object.keys(sel[0]).length === 2 && sel[0].hasOwnProperty("key") && sel[0].hasOwnProperty("value")) {
@@ -325,9 +339,16 @@ var css = {
 				}
 				
 				if(nsel !== undefined) {
-					const history = list.vars(["history"]);
-					history.push(list._source._array);
+					const history = list.vars(["history"]), q = this.ud("#q"), array = this.ud("#array");
+					history.push([list._source._array, q.getValue()]);
 					
+					// q.setValue("");
+					q.getNode().value = "";
+					q._value = "";
+					array.vars("q", "");
+					array.updateFilter();
+					this.ud("#status").render();
+
 					this.ud("#back").setEnabled(true); 
 					this.ud("#bar").show();
 					
@@ -371,7 +392,7 @@ var css = {
 			}
 		}
 	}],
-	["Executable", ("open"), {
+	["Executable", ("print"), {
 		parent: "forward",
 		visible: "parent",
 		enabled: "parent",
@@ -384,7 +405,10 @@ var css = {
 			const tabs = this.ud("#tabs");
 			const tab = tabs.getSelectedControl(1);
 			
-			ws.print(q.getValue() || (tab && tab.vars("key")) || q.getPlaceholder(), sel.length ? sel : list.getSource().getArray());
+			const label = q.getValue() || (tab && tab.vars("key")) || q.getPlaceholder();
+			const value = sel.length === 1 ? sel[0] : list.getSource().getArray();
+			
+			ws.print(label, value);
 		}
 	}],
 	
@@ -503,7 +527,7 @@ var css = {
 				content: "<i class='fa fa-refresh'></i>"
 			}],
 			["Button", ("button-forward"), { action: "forward" }],
-			["Button", ("button-open"), { action: "open" }]
+			["Button", ("button-open"), { action: "print" }]
 		]],
 		["Input", ("q"), { 
 			placeholder: "Filter (⌘/)", 
@@ -519,6 +543,7 @@ var css = {
 		["Group", ("right"), [
 			// ["Button", { action: "view-source" }],
 			["Group", ("export"), [
+				
 			]],
 			["Element", ("status"), { 
 				content: "-",
@@ -597,9 +622,19 @@ var css = {
 				this.setTimeout("clicked", () => {
 					var arr = this._source._arr.map(_ => js.mixIn({'_' : _}, _ && _[component._attribute]));
 					var history = this.vars(["history"]);
-					history.push(this._source._array);
-					this.ud("#array").setArray(null);
-					this.ud("#array").setArray(arr.filter(_ => _ !== undefined));
+					history.push([this._source._array, this.ud("#q").getValue()]);
+					
+					// clearQ(this);
+					const q = this.ud("#q"), array = this.ud("#array");
+					q.getNode().value = "";
+					q._value = "";
+					array.vars("q", "");
+					array.updateFilter();
+					this.ud("#status").render();
+					
+					array.setArray(null);
+					array.setArray(arr.filter(_ => _ !== undefined));
+
 					this.ud("#back").setEnabled(true); this.ud("#bar").show();
 					
 					this.ud("#list").destroyColumns();
@@ -618,6 +653,7 @@ var css = {
 					}
 				}, 300);
 			}
+			
 		},
 		onDblClick(evt) { 
 			this.clearTimeout("click");
@@ -627,13 +663,26 @@ var css = {
 				const row = Control.findByNode(cell.parentNode);
 				const index = Array.from(cell.parentNode.childNodes).indexOf(cell);
 				const column = this._header.getControls()[index];
-				const value = this._source.getAttributeValue(evt.altKey ? column._attribute : ".", row._rowIndex, true);
+				let value;
+				
+				// if(evt.altKey === true) {
+					value = this._source.getAttributeValue(evt.altKey ? column._attribute : ".", row._rowIndex, true);
+					if(value.value && value.key && Object.values(value).length === 2) {
+						value = value.value;
+					}
+				// } else {
+					// value = this._source.getObject(row);					
+				// }
+				
+				if(value instanceof Array && value.length === 1) {
+					value = value[0];
+				}
 				
 				var history = this.vars(["history"]);
-				history.push(this._source._array);
+				history.push([this._source._array, this.ud("#q").getValue()]);
 				
 				this.ud("#array").setArray(null);
-				this.ud("#array").setArray(value instanceof Array ? value : Object.entries(value));
+				this.ud("#array").setArray(value instanceof Array ? value : Object.keys(value).map(k => ({ key: k, value: value[k] })));
 				this.ud("#back").setEnabled(true); this.ud("#bar").show();
 				
 				this.ud("#list").destroyColumns();
