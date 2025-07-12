@@ -123,7 +123,28 @@ define(function(require) {
 	    },
 	};
 	const PackageUtils = {
-	    knownExtensions: ['zip', 'tar', 'gz', 'dbf', 'kmz', '7z', 'rar', 'iso', 'shp', 'gz', 'qgz', 'db'], // Add more extensions here if needed
+	    knownExtensions: ['zip', 'tar', 'gz', 'dbf', 'kmz', '7z', 'rar', 'iso', 'shp', 'qgz', 'db', 'gpkg', 'ti', 'xlsm'], // Add more extensions here if needed
+		isPackageFile: async (file) => {
+		    const ext = FileUtils.getFileExtension(file.name);
+		
+		    if (ext === 'ti') {
+		        if (!(file instanceof Blob)) {
+		            // Virtueel bestand, geen fysieke inspectie mogelijk
+		            return false;
+		        }
+		        return await FileUtils.isZipFileBySignature(file);
+		    }
+		
+		    if (PackageUtils.knownExtensions.includes(ext)) {
+		        return true;
+		    }
+		
+		    if (PackageHandlerRegistry.canHandle(ext)) {
+		        return true;
+		    }
+		
+		    return false;
+		},
 		isPackage: (file) => {
 		    const extension = FileUtils.getFileExtension(file.name);
 		    if (PackageUtils.knownExtensions.includes(extension)) {
@@ -161,16 +182,17 @@ define(function(require) {
 	        files: [],
 	        directories: [],
 	    }),
-	    addFileToNode: (node, file, r) => {
-	        node.files.push(r = {
-	            name: file.name,
-	            size: file.size,
-	            contentType: FileUtils.getFileContentType(file.name),
-	            isPackage: PackageUtils.knownExtensions.includes(FileUtils.getFileExtension(file.name)),
-	            getContent: () => FileUtils.readAsArrayBuffer(file),
-	        });
-	        return r;
-	    },
+		addFileToNode: async (node, file, r) => {
+		    const isPackage = await PackageUtils.isPackageFile(file);
+		    node.files.push(r = {
+		        name: file.name,
+		        size: file.size,
+		        contentType: FileUtils.getFileContentType(file.name),
+		        isPackage,
+		        getContent: () => FileUtils.readAsArrayBuffer(file),
+		    });
+		    return r;
+		},
 	    findNodeByPath: (path, rootNode) => {
 	        const parts = path.split('/').filter(Boolean);
 	        return parts.reduce((currentNode, part) => {
@@ -215,7 +237,7 @@ define(function(require) {
 	const traverseEntry = async (entry, directoryNode) => {
 	    if (entry.isFile) {
 	        const file = await getFileFromEntry(entry);
-	        return TreeUtils.addFileToNode(directoryNode, file);
+	        return await TreeUtils.addFileToNode(directoryNode, file);
 	    }
 	
 	    const dirNode = TreeUtils.createNode(entry.name);
@@ -225,8 +247,7 @@ define(function(require) {
 	        const reader = entry.createReader();
 	        const entries = await readAllEntries(reader);
 	
-	        // Process entries in batches
-	        const batchSize = 50; // Adjust batch size for performance
+	        const batchSize = 50;
 	        for (let i = 0; i < entries.length; i += batchSize) {
 	            const batch = entries.slice(i, i + batchSize);
 	            await Promise.allSettled(batch.map((e) => traverseEntry(e, dirNode)));
@@ -251,8 +272,8 @@ define(function(require) {
 	        currentDir = dir;
 	    });
 	
-	    const fileNode = TreeUtils.addFileToNode(currentDir, file);
-	    return fileNode; // Return the final file node
+	    const fileNode = await TreeUtils.addFileToNode(currentDir, file);
+	    return fileNode;
 	};
 	const findPackageByPath = async (path, currentNode = rootNode, opts = { recursePackages: true }) => {
 	    const parts = path.split('/').filter(Boolean); // Split and clean up the path
@@ -366,53 +387,51 @@ define(function(require) {
 	const list = async (path, opts = { recursive: false, recursePackages: false }) => {
 	    const dirNode = TreeUtils.findNodeByPath(path, rootNode);
 	    const names = [];
-	    
+	
 	    if (!dirNode) {
 	        let packageNode = await findPackageByPath(path);
-	        
+	
 	        while (!packageNode && path.length > 0) {
-	        	names.unshift(path.split("/").pop());
-	        	if((path = js.up(path)).length > 0) {
-	        		packageNode = await findPackageByPath(path);
-	        	}
-	        }
-	        	
-	        if(!packageNode) {
-	            return { error: `Path "${path}/${names.join("/")}" not found` };
-	        }
-	        
-	        if(names.length) {
-	        	const name = names.join("/");
-	        	const entry = packageNode.entries.find(e => e.name === name);
-	        	
-	        	if(entry === null) {
-	        		return { error: `Path ${path}/${names.join("/")} not found` };
-	        	}
-	        	
-	        	packageNode = entry;
+	            names.unshift(path.split("/").pop());
+	            if ((path = js.up(path)).length > 0) {
+	                packageNode = await findPackageByPath(path);
+	            }
 	        }
 	
-	        // Delegate package-specific logic to listPackageContents
+	        if (!packageNode) {
+	            return { error: `Path "${path}/${names.join("/")}" not found` };
+	        }
+	
+	        if (names.length) {
+	            const name = names.join("/");
+	            const entry = packageNode.entries.find(e => e.name === name);
+	            if (entry === null) {
+	                return { error: `Path ${path}/${names.join("/")} not found` };
+	            }
+	            packageNode = entry;
+	        }
+	
 	        return listPackageContents(packageNode, path, opts);
 	    }
 	
-	    // Handle standard directory listing
-	    const items = [
-	        ...dirNode.directories.map(dir => ({
-	            uri: `${path}/${dir.name}`,
-	            name: dir.name,
-	            type: "Folder",
-	        })),
-	        ...dirNode.files.map(file => ({
+	    const fileItems = await Promise.all(dirNode.files.map(async file => {
+	        const isPackage = await PackageUtils.isPackageFile(file);
+	        return {
 	            uri: `${path}/${file.name}`,
 	            name: file.name,
-	            type: PackageUtils.isPackage(file) ? "Package" : "File",
+	            type: isPackage ? "Package" : "File",
 	            size: file.size,
 	            contentType: FileUtils.getFileContentType(file.name),
-	        })),
-	    ];
+	        };
+	    }));
 	
-	    return opts.recursive ? flattenDirectoryRecursively(dirNode, path) : items;
+	    const dirItems = dirNode.directories.map(dir => ({
+	        uri: `${path}/${dir.name}`,
+	        name: dir.name,
+	        type: "Folder",
+	    }));
+	
+	    return opts.recursive ? flattenDirectoryRecursively(dirNode, path) : [...dirItems, ...fileItems];
 	};
 	const get = async (uri, opts = {}) => {
 	    const parts = uri.split('/');
@@ -649,8 +668,10 @@ define(function(require) {
 		
 		return await sqlite(file, uri);
 	}, { sqlite: PackageHandlerRegistry.getHandler('sqlite').handler });
+	PackageHandlerRegistry.registerHandler('gpkg', 'sqlite');
 	PackageHandlerRegistry.registerHandler('dbf', 'db');
 	PackageHandlerRegistry.registerHandler('kmz', 'zip');
+	PackageHandlerRegistry.registerHandler('xlsm', 'zip');
 
     // Return object matching the original structure
     return {
