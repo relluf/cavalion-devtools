@@ -156,9 +156,9 @@ function render() {
 	var root = markdown.toHTMLTree(value, 
 			this.vars(["markdown.dialect"]), 
 			this.vars(["markdown.options"]));
-	// var content = markdown.renderJsonML(root);
-	
-	var content = marked(value);
+	var content = markdown.renderJsonML(root);
+
+	// var content = marked(value);
 	
 	this.up().vars("root", root);
     this.up().qsa("#output").forEach(_ => {
@@ -381,13 +381,18 @@ document.addEventListener("click", (evt) => {
 			}
 			return; // bail-out (#CVLN-20210102-2)
 		}
-
+		
 		// so the rules apply these anchors as well
 		if(href.startsWith("https://") || 
 			href.startsWith("http://") || 
 			href.startsWith("file://") ||
-			href.startsWith("ftp://")
+			href.startsWith("ftp://") ||
+			href.startsWith("///")
 		) {
+			if(href.startsWith("///")) {
+				href = href.substring(3);
+			}
+	
 			return window.open(href, "_blank");
 		}
 		
@@ -659,7 +664,7 @@ const Css = {
 		    padding: "10px 50px",
 		    "a": "text-decoration:underline;color:blue;",
 		    // "img:hover": "width:100%;max-width:600px;",
-		    "code": "border-radius:3px;font-size: 10pt;background-color:white;padding:2px;line-height:12pt;",
+		    "code": "border-radius:7px;font-size: 7.5pt;background-color:white;padding:4px;",
 	    },
 	    classes: "shrink",
 	    
