@@ -12,7 +12,7 @@
 /*- ### 2020-10-02 Console hook - SIKB12 inspired */
 
 var ListColumn = require("vcl/ui/ListColumn");
-// var Event = require("util/Event");
+var Event = require("util/Event");
 var Console = require("vcl/ui/Console");
 var Control = require("vcl/Control");
 
@@ -72,7 +72,14 @@ var css = {
                     var list = scope.list;
                     if(evt.keyCode === 13 && evt.metaKey === false && list.getSelection().length === 0 && list.getCount()) {
                         list.setSelection([0]);
-                    } else if(evt.keyCode === 27) {
+                    } else if(evt.keyCode === 27 && Event.eventModifiersMatch(evt, [])) {
+                    	if(scope.q.getValue() === "") {
+							const now = Date.now(), last = this.vars("last_27");
+							if(last && now - last < 200) {
+								this.setTimeout("destroy", () => this.destroy(), 64);
+							}
+							this.vars("last_27", now);
+                    	}
 		                scope.q.setValue("");
 		                scope.q.fire("onChange", [true]); // FIXME
                     }
@@ -587,17 +594,17 @@ var css = {
 		autoColumns: true,
 		classes: "max-width-320",
 		css: { 
-			"&.max-width-500": {
-				".autowidth": "max-width: 500px;", 
-				".ListCell": "max-width: 512px;"
+			"&.max-width-500 :not(.details)": {
+				"&.autowidth": "max-width: 500px;", 
+				"&.ListCell": "max-width: 512px;"
 			},
-			"&.max-width-750": {
-				".autowidth": "max-width: 500px;", 
-				".ListCell": "max-width: 512px;"
+			"&.max-width-750 :not(.details)": {
+				"&.autowidth": "max-width: 500px;", 
+				"&.ListCell": "max-width: 512px;"
 			},
-			"&.max-width-320": {
-				".autowidth": "max-width: 320px;", 
-				".ListCell": "max-width: 332px;"
+			"&.max-width-320 :not(.details)": {
+				"&.autowidth": "max-width: 320px;", 
+				"&.ListCell": "max-width: 332px;"
 			},
 			// '.ListCell:hover': "cursor: pointer; text-decoration: underline;",
 			'.{ListColumn}': { ':active': "font-weight:bold;" },
