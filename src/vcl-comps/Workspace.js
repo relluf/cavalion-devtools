@@ -423,7 +423,7 @@ const setDocumentTitle = (title) => { try { top.document.title = title; } catch(
     }],
     ["vcl/Action", ("editors-close-all"), {
     	on(evt) {
-			var tabs = this.vars(["editors-tabs:focused"]) || this.udown("#editors-tabs");
+			var tabs = this.vars(["editors-tabs:focused"]) || this.ud("#editors-tabs");
             var selected = tabs.getSelectedControl(1);
 
     		tabs._controls.filter(_ => _ !== selected)

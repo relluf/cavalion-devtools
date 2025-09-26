@@ -465,9 +465,7 @@ var getKey = (tab) => {
             	(function(require) {
             		// (this.vars("eval") || window.eval).apply(this, [text]);
             		var eval_ = this.vars("eval"), value;
-            		if(Event_.modifiersMatch(evt, ["metactrl", "shift"])) {
-            			value = "'Meta+Shift+Pressed'";
-            		} else if(Event_.modifiersMatch(evt, ["metactrl", "alt"])) {
+            		if(Event_.modifiersMatch(evt, ["metactrl", "alt"])) {
             			var hash = req("util/Hash").md5(scope.ace.getValue())
             			value = {
             				me: this,
@@ -500,6 +498,11 @@ var getKey = (tab) => {
 	                	value = eval_ ? eval_(text, this) : this.vars(["root"]) || eval(text);
             		}
             		if(value !== undefined) printer.print(name, value);
+            		
+            		if(Event_.modifiersMatch(evt, ["metactrl", "shift"])) {
+            			H("devtools/Alphaview<csv>", { sel: [value] });
+            		}
+            		
             	}.apply(this, [thisRequire]));
             } catch(e) {
             	printer.print(name, e);

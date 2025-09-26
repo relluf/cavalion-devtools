@@ -139,6 +139,13 @@ const resolveUri_comps = require("vcl/Factory").resolveUri;
 // CVLN-20221106-1, CVLN-20220418-1
 js.dt = (a) => a === undefined ? new Date() : new Date(a);
 
+function encodeMdLinks(md) {
+	return md
+		// inline links: [text](target)
+		.replace(/\]\(([^)\n]+)\)/g, (m, url) => `](${encodeURI(url)})`)
+		// reference-style: [id]: target
+		.replace(/^\[([^\]]+)\]:\s*(.+)$/gm, (m, id, url) => `[${id}]: ${encodeURI(url)}`);
+}
 function render() {
 	var value = this.getValue();
 	
@@ -153,9 +160,10 @@ function render() {
 	
 	var resource = this.vars(["resource"]);
 
-	var root = markdown.toHTMLTree(value, 
+	var root = markdown.toHTMLTree(encodeMdLinks(value), 
 			this.vars(["markdown.dialect"]), 
 			this.vars(["markdown.options"]));
+			
 	var content = markdown.renderJsonML(root);
 
 	// var content = marked(value);
@@ -274,6 +282,8 @@ document.addEventListener("click", (evt) => {
 	        // #VA-20221029-1
 	        if(href === "!") {
 	        	href = "${p(:)}";
+	        } else if(href.charAt(0) === "!") {
+	        	// href = "${p(:)}";
 	        }
         }
 
