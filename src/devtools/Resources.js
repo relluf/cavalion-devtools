@@ -1,5 +1,5 @@
 define(["devtools/Resources-node", "devtools/Resources-pouchdb", "devtools/Resources-dropbox", "devtools/Resources-gdrive", "devtools/Resources-dropped", "devtools/Resources-ddh"], 
-function(FS, Pouch, Dropbox, GDrive, Dropped, DragDropHandler) {
+function(FS, Pouch, Dropbox, GDrive, Dropped, Ddh) {
 
     // Registry for resource providers
     const ResourceRegistry = {
@@ -120,7 +120,7 @@ function(FS, Pouch, Dropbox, GDrive, Dropped, DragDropHandler) {
     ResourceRegistry.register("pouchdb", Pouch);
     ResourceRegistry.register("dropbox", Dropbox);
     ResourceRegistry.register("gdrive", GDrive);
-    ResourceRegistry.register("dropped", DragDropHandler);
+    ResourceRegistry.register("dropped", Ddh);
 
     return Resources;
 });

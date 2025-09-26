@@ -233,7 +233,7 @@ function syncAttribute(node, name, should) {
 	align: "client", 
 	enabled: true,
 	visible: false,
-	// content: locale("DragDropHandler.dropHereMessage") + " [" + Date.now() + "]",
+	content: locale("DragDropHandler.dropHereMessage") + " [" + Date.now() + "]",
 }, [
 	["vcl/Action", ("drop-opened-files"), {
 		hotkey: "MetaCtrl+O|Alt+MetaCtrl+O",

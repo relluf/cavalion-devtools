@@ -312,6 +312,39 @@ define(function(require) {
 	    const fileNode = node.files.find(f => f.name === fileName);
 	    return fileNode || null; // Return the file node or null if not found
 	};
+	const flattenDirectoryRecursively = async (dirNode, path) => {
+		const results = [];
+	
+		// current directory: files
+		const fileItems = await Promise.all(dirNode.files.map(async file => {
+			const isPackage = await PackageUtils.isPackageFile(file);
+			return {
+				uri: `${path}/${file.name}`,
+				name: file.name,
+				type: isPackage ? "Package" : "File",
+				size: file.size,
+				contentType: FileUtils.getFileContentType(file.name),
+			};
+		}));
+	
+		// current directory: folders
+		const dirItems = dirNode.directories.map(dir => ({
+			uri: `${path}/${dir.name}`,
+			name: dir.name,
+			type: "Folder",
+		}));
+	
+		results.push(...dirItems, ...fileItems);
+	
+		// descend into subfolders
+		const nested = await Promise.all(
+			dirNode.directories.map(dir => flattenDirectoryRecursively(dir, `${path}/${dir.name}`))
+		);
+	
+		for (const arr of nested) results.push(...arr);
+	
+		return results;
+	};
 
 	const getRelatedFiles = async (baseUri, extensions, getFileFn) => {
 	    const relatedFiles = {};
@@ -495,6 +528,7 @@ define(function(require) {
 
     const handle_document_drop = async (event) => {
         event.preventDefault();
+        
         const promises = Array.from(event.dataTransfer.items)
             .map(item => item.webkitGetAsEntry())
             .filter(Boolean)
@@ -672,6 +706,9 @@ define(function(require) {
 	PackageHandlerRegistry.registerHandler('dbf', 'db');
 	PackageHandlerRegistry.registerHandler('kmz', 'zip');
 	PackageHandlerRegistry.registerHandler('xlsm', 'zip');
+	PackageHandlerRegistry.registerHandler('xlsx', 'zip');
+	PackageHandlerRegistry.registerHandler('pptx', 'zip');
+	PackageHandlerRegistry.registerHandler('epub', 'zip');
 
     // Return object matching the original structure
     return {
