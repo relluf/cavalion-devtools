@@ -1,4 +1,4 @@
-"lib/bower_components/papaparse/papaparse";
+"lib/bower_components/papaparse/papaparse, bxv/Parser, bxv/formats/csv";
 
 /*
 	- 2022/01/19: \t not auto-deteced as delimiter
@@ -6,9 +6,10 @@
 	- resource-loaded => scope.render.execute
 */
 
-var Parser = require("lib/bower_components/papaparse/papaparse");
+// var Parser = require("lib/bower_components/papaparse/papaparse");
+const Parser = require("bxv/Parser");
 
-["", {
+[(""), {
     onDestroy: function() {
 		this.scope().array.un(this.removeVar("listeners"));
     },
@@ -120,14 +121,35 @@ var Parser = require("lib/bower_components/papaparse/papaparse");
 		}
 	}],
 	[("vcl/Action"), ("render"), {
-		onExecute: function() {
+		on() {
+			const resource = js.mi(this.vars(["resource"]));
+			const scope = this.scope();
+			
+			resource.text = scope.ace.getValue();
+			
+			Parser.run({resource}).then(res => {
+				const arr = js.get("root.rows", res) || res.arr || res;
+
+				scope.array.setArray(arr);
+				
+				const reflect = scope.alphaview.qs("#reflect");
+				if(reflect) {
+					reflect.execute([arr]);
+				} else {
+					scope.alphaview.once("container-ready", () => scope.alphaview.qs("#reflect").execute([arr]));
+				}
+				
+				this.up("vcl/ui/Tab").emit("resource-rendered", [{sender: this, data: arr}]);
+			});
+		},
+		onExecute_: function() {
 			// see https://www.papaparse.com/docs#config
 			var options = this.vars(["options"]) || {
 				// delimiter: ",",	// auto-detect
 				// newline: "",	// auto-detect
-				quoteChar: '"',
+				// quoteChar: '"',
 				// escapeChar: '"',
-				header: true,
+				// header: true,
 				// dynamicTyping: false,
 				// preview: 0,
 				// encoding: "",
@@ -137,11 +159,18 @@ var Parser = require("lib/bower_components/papaparse/papaparse");
 				// complete: undefined,
 				// error: undefined,
 				// download: false,
-				skipEmptyLines: true,
+				// skipEmptyLines: true,
 				// chunk: undefined,
 				// fastMode: undefined,
 				// beforeFirstChunk: undefined,
 				// withCredentials: undefined
+	
+				quoteChar: '"',
+				header: true,
+				dynamicTyping: true,
+				skipEmptyLines: true,
+				encoding: "UTF-8",
+				transformHeader: (h) => h.trim().replace(/^"|"$/g, "")
 			};
 			
 			var scope = this.scope();

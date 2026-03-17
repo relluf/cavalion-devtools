@@ -23,7 +23,7 @@ var hotkeys = {
 	"Shift+Ctrl+Meta+219": "editor-move-left",
 	"Shift+Ctrl+Meta+221": "editor-move-right",
 	"Shift+Ctrl+Meta+P": "editor-move-all-left",
-	"Shift+Ctrl+Meta+\\": "editor-move-all-right",
+	"Shift+Ctrl+Meta+Backslash": "editor-move-all-right",
 
 	"Shift+Ctrl+P": "editor-open-parent-md",
 	"Shift+Ctrl+O": "editor-open-parent",
@@ -583,6 +583,14 @@ this.app().vars("canunload", () => false);
     		var tabs = this.app().down("devtools/Main<> #workspaces-tabs");
     		//tabs.setVisible(!tabs.getVisible());
     		tabs.toggleClass("hidden");
+    	}	
+    }],
+    
+    [("vcl/Action"), "hovers-toggle-visible", {
+    	state: true,
+    	hotkey: "Cmd+F7",
+    	on() {
+    		this.app().qsa("Hover<>:root").set("visible", this.toggleState());
     	}	
     }],
 

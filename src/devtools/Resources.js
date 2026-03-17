@@ -1,5 +1,5 @@
-define(["devtools/Resources-node", "devtools/Resources-pouchdb", "devtools/Resources-dropbox", "devtools/Resources-gdrive", "devtools/Resources-dropped", "devtools/Resources-ddh"], 
-function(FS, Pouch, Dropbox, GDrive, Dropped, Ddh) {
+define(["devtools/Resources-node", "devtools/Resources-pouchdb", "devtools/Resources-dropbox", "devtools/Resources-gdrive", "devtools/Resources-dropped", "devtools/Resources-ddh", "vcl/Component", "js/nameOf"], 
+function(FS, Pouch, Dropbox, GDrive, Dropped, Ddh, Component, nameOf) {
 
     // Registry for resource providers
     const ResourceRegistry = {
@@ -16,11 +16,23 @@ function(FS, Pouch, Dropbox, GDrive, Dropped, Ddh) {
     };
 
     // Default URI resolver
-    const resolve = (uri) => {
-        if (uri.startsWith("://")) {
-            uri = Resources.getDefaultURIBase(uri) + uri.substring("://".length);
+    const resolve = (relativeTo, path) => {
+		if(path !== undefined) {
+    		if(relativeTo instanceof Component) {
+    			relativeTo = js.up(relativeTo.vars(["resource.uri"])) || "";
+    		} else if(relativeTo.id && relativeTo.uri) {
+    			relativeTo = js.up(relativeTo.id);
+    		}
+    		path = [relativeTo.replace(/^\$HOME\//, "").replace(/^home\//, ""), path].join("/");
+		} else {
+			path = relativeTo;
+		}
+		
+        if (path.startsWith("://")) {
+            path = Resources.getDefaultURIBase(path) + path.substring("://".length);
         }
-        return uri;
+
+        return path;
     };
 
     // Pluggable Resources system
@@ -40,7 +52,7 @@ function(FS, Pouch, Dropbox, GDrive, Dropped, Ddh) {
                 const scheme = uri.split("://")[0];
                 return provider.list(uri.substring(`${scheme}://`.length), opts)
                     .then(resources => resources.map(resource => {
-                        resource.uri = `${scheme}://${resource.uri}`;
+                        resource.uri = `${scheme}://${resource.uri.replace(/^\//, "")}`;
                         return resource;
                     }));
             }
@@ -121,6 +133,9 @@ function(FS, Pouch, Dropbox, GDrive, Dropped, Ddh) {
     ResourceRegistry.register("dropbox", Dropbox);
     ResourceRegistry.register("gdrive", GDrive);
     ResourceRegistry.register("dropped", Ddh);
-
+    
+    //
+    nameOf.methods.after.push(obj => (typeof obj === "object" && typeof obj.uri === "string") ? obj.uri.split("/").pop() : undefined);
+    
     return Resources;
 });

@@ -456,6 +456,8 @@ var getKey = (tab) => {
             var scope = this.scope();
             var text = scope.ace.getEditor().getSession().getValue();
             var printer = ws || this;
+            
+            name += ("-" + this.hashCode());
 
             if(text.charAt(0) === "{") {
                 text = "(" + text + ")";

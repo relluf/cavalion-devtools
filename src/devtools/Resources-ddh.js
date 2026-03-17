@@ -123,7 +123,7 @@ define(function(require) {
 	    },
 	};
 	const PackageUtils = {
-	    knownExtensions: ['zip', 'tar', 'gz', 'dbf', 'kmz', '7z', 'rar', 'iso', 'shp', 'qgz', 'db', 'gpkg', 'ti', 'xlsm'], // Add more extensions here if needed
+	    knownExtensions: ['zip', 'tar', 'gz', 'dbf', 'kmz', '7z', 'rar', 'iso', 'shp', 'qgz', 'db', 'gpkg', 'ti', 'xlsm', 'xlsx', 'pptx', 'epub'], // Add more extensions here if needed
 		isPackageFile: async (file) => {
 		    const ext = FileUtils.getFileExtension(file.name);
 		
@@ -383,7 +383,7 @@ define(function(require) {
 	    const entry = entries.find(e => e.name === fileName);
 	
 	    if (!entry) {
-	        return { error: `File "${fileName}" not found in package at "${baseUri}".` };
+	        throw new Error(`File "${fileName}" not found in package at "${baseUri}".`);
 	    }
 	
 	    // Return content or metadata
@@ -432,14 +432,14 @@ define(function(require) {
 	        }
 	
 	        if (!packageNode) {
-	            return { error: `Path "${path}/${names.join("/")}" not found` };
+	            throw new Error(`Path "${path}/${names.join("/")}" not found`);
 	        }
 	
 	        if (names.length) {
 	            const name = names.join("/");
 	            const entry = packageNode.entries.find(e => e.name === name);
 	            if (entry === null) {
-	                return { error: `Path ${path}/${names.join("/")} not found` };
+	                throw new Error(`Path ${path}/${names.join("/")} not found`);
 	            }
 	            packageNode = entry;
 	        }
@@ -481,7 +481,7 @@ define(function(require) {
 	        }
 	        	
 	        if(!packageNode) {
-	            return { error: `Path "${path}" not found` };
+	            throw new Error(`Path "${path}" not found`);
 	        }
 	
 	        // Delegate package-specific logic to getPackageFile
@@ -491,7 +491,7 @@ define(function(require) {
 	    // Handle standard file retrieval
 	    const fileNode = dirNode.files.find(f => f.name === name);
 	    if (!fileNode) {
-	        return { error: `File "${name}" not found at "${path}".` };
+	        throw new Error(`File "${name}" not found at "${path}".`);
 	    }
 	
 	    const content = await getFileContent(fileNode, opts);
@@ -714,6 +714,7 @@ define(function(require) {
     return {
         root: rootNode,
    
+		FileUtils,
         PackageUtils, 
         PackageHandlerRegistry,
         

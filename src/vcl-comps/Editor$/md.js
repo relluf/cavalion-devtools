@@ -141,11 +141,24 @@ js.dt = (a) => a === undefined ? new Date() : new Date(a);
 
 function encodeMdLinks(md) {
 	return md
-		// inline links: [text](target)
-		.replace(/\]\(([^)\n]+)\)/g, (m, url) => `](${encodeURI(url)})`)
-		// reference-style: [id]: target
-		.replace(/^\[([^\]]+)\]:\s*(.+)$/gm, (m, id, url) => `[${id}]: ${encodeURI(url)}`);
+		// inline links/images: ...](url "title")
+		.replace(/\]\(([^)\s]+)(\s+"[^"]*")?\)/g, (m, url, title = "") => {
+			return `](${encodeURI(url)}${title})`;
+		})
+		// reference-style: [id]: url "title"
+		.replace(/^\[([^\]]+)\]:\s*([^\s]+)(\s+"[^"]*")?\s*$/gm, (m, id, url, title = "") => {
+			return `[${id}]: ${encodeURI(url)}${title}`;
+		});
 }
+// function encodeMdLinks(md) {
+// 	return md
+// 		.replace(/\]\((\S+)(\s+"[^"]*")?\)/g, (m, url, title = "") => {
+// 			return `](${encodeURI(url)}${title})`;
+// 		})
+// 		.replace(/^\[([^\]]+)\]:\s*(\S+)(\s+"[^"]*")?$/gm, (m, id, url, title = "") => {
+// 			return `[${id}]: ${encodeURI(url)}${title}`;
+// 		});
+// }
 function render() {
 	var value = this.getValue();
 	
@@ -453,6 +466,10 @@ document.addEventListener("click", (evt) => {
 					// }));
 					// control.print(B.i(["Hover<>", { owner: control, vars: js.mi({ uri: uri }, block_vars)}]));
 					if(blocks_vars) {
+						if(typeof blocks_vars === "string") {
+							blocks_vars = js.str2obj(blocks_vars);			
+						}
+						
 						control.print(H("$HOME/" + uri, { owner: control, vars: blocks_vars }));
 					} else {
 						control.print(H("$HOME/" + uri, { owner: control }));

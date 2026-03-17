@@ -11,6 +11,7 @@
 		
 		return this.inherited(arguments);
 	}
+	
 }, [
 	
 	["vcl/Action", ("editors-visible"), {
@@ -27,6 +28,7 @@
 	}],
 
 	["#editors", { action: "editors-visible", executesAction: false }],
+
 	["#left-sidebar", { action: "editors-visible", executesAction: false }],
 	
 	[["cavalion-blocks"], ("host"), {

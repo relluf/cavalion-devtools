@@ -1,4 +1,4 @@
-"use js";
+"use js, bxv/formats/tsv";
 
 [["devtools/Editor<csv>"], [
 

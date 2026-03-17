@@ -142,9 +142,10 @@ const setDocumentTitle = (title) => { try { top.document.title = title; } catch(
     onLoad: function() {
         var scope = this.scope();
         var workspace = this.vars(["workspace"]) || {};
-        this.readStorage("state", function(value) {
+        this.readStorage("state", (value) => {
         	value = value || {workspace:0};
             Utils.setState(js.mixIn(workspace.state||{}, value), scope);
+            this.emit("state-read", value);
         });
         
         if(workspace.vars) {
@@ -153,6 +154,27 @@ const setDocumentTitle = (title) => { try { top.document.title = title; } catch(
         
         expandColonInNavigatorFavorites(this);
 
+		this.nav = this.navigate = (resource) => {
+			const fs = this.qs("#fs");
+			const node = (new (fs.constructor)(fs._owner));
+			
+			if(typeof resource === "string") {
+				resource = {
+					uri: resource + "/",
+					name: resource.split("/").pop(),
+					type: "Folder"
+				};
+			}
+			
+			node.set({ 
+				expandable: true,
+				text: resource.name, 
+				parent: fs._parent, 
+				onNodesNeeded: fs._onChildNodesNeeded, 
+				vars: { resource } 
+			});
+		};
+		
         this.open = function(evt, opts) {
         	if(typeof evt === "string") {
         		evt = { 
@@ -506,6 +528,16 @@ const setDocumentTitle = (title) => { try { top.document.title = title; } catch(
     		tab.setIndex(index + 1);
     	}
     }],
+    ["vcl/Action", ("editor-move-all-right"), {
+    	on() {
+    		var byGroupIndex = c => c._groupIndex === tab._groupIndex;
+    		var selector = "vcl/ui/Tab:selected:childOf(editors-tabs)";
+			var tab = this.getOwner().qs(selector);
+			var tabs = tab.getParent().getControls().filter(byGroupIndex);
+
+			tab.setIndex(tabs.length - 1);
+    	}
+    }],
     ["vcl/Action", ("editor-setfocus"), {
     	on(evt) {
     		var focused = Control.findByNode(document.qs(":focus"));
@@ -623,7 +655,9 @@ const setDocumentTitle = (title) => { try { top.document.title = title; } catch(
     ["vcl/Action", ("editor-open-index"), {
     	on() {
     		const ws = this.up("devtools/Workspace<>:root");
-    		ws.open(js.sf("Index/%s/.md", this.vars(["workspace.name"])))
+    		const name = this.vars(["workspace.name"]);
+    		
+    		ws.open(js.sf("Index/%s/.md", name === "✪" ? "_star_" : name));
     	}
     }],
 

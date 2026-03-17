@@ -44,7 +44,7 @@ function nameOf(ft) {
 }
 
 var css = {
-	"#bar": "text-align: center;",
+	"#bar": "text-align: center; backdrop-filter: blur(3px); background-color: rgba(255,255,255,0.5);",
 	"#bar > *": "margin-right:5px;",
 	"#bar input": "font-size:12pt;width:50%; border-radius: 5px; border-width: 1px; padding: 2px 4px; border-color: #f0f0f0;",
 	"#bar #left": "float:left;", 
@@ -53,16 +53,207 @@ var css = {
 	// "#bar #right > .{Button}": "float:right;"
 };
 
+const captureNavigationState = function(root) {
+	var list = root.ud("#list");
+	var body = list.getNodes().body;
+
+	return {
+		topRow: list.getTopRow(),
+		selection: list.getSelection(),
+		scroll: { left: body.scrollLeft, top: body.scrollTop },
+		visibleColumns: getVisibleColumnAttributes(list)
+	};
+};
+const restoreNavigationState = function(root, state) {
+	var list = root.ud("#list");
+	var count, selection;
+
+	if(!state) return;
+
+	if(state.visibleColumns) {
+		applyVisibleColumns(list, state.visibleColumns);
+	}
+
+	if(state.topRow !== undefined) {
+		list.setTopRow(state.topRow);
+	}
+
+	if(state.selection) {
+		count = list.getCount();
+		selection = state.selection.filter(function(index) {
+			return index >= 0 && index < count;
+		});
+		list.setSelection(selection);
+		list.storeScroll();
+		list._scrollLeft = js.get("scroll.left", state) || 0;
+		list.restoreScroll();
+
+		// if(list._nodes && list._nodes.body && state.scroll) {
+		// 	list._nodes.body.scrollTop = state.scroll.top || 0;
+		// }
+	}
+};
+const captureHistoryEntry = function(root) {
+	var list = root.ud("#list");
+	var q = root.ud("#q");
+	var value = list._source._array;
+
+
+	var entry = {
+		value: value,
+		state: {
+			q: q ? q.getValue() : undefined,
+			list: list ? captureNavigationState(root, {
+				getKey: function(obj) {
+					return obj && (obj.id !== undefined ? obj.id :
+						(obj._id !== undefined ? obj._id : js.nameOf(obj)));
+				}
+			}) : null
+		}
+	};
+	// root.print("captureHE", entry);
+	return entry;
+};
+const restoreHistoryEntry = function(root, entry) {
+	var list = root.ud("#list"), array = root.ud("#array");
+	var q = root.ud("#q");
+	var state = entry && entry.state;
+
+	// root.print("restoreHE", entry);
+
+	if(!entry) return;
+
+	if(q && state && state.q !== undefined) {
+		q.setValue(state.q);
+	}
+	
+	const restore = () => {
+		if(list && state && state.list) {
+			restoreNavigationState(root, state.list, {
+				getKey: function(obj) {
+					return obj && (obj.id !== undefined ? obj.id :
+						(obj._id !== undefined ? obj._id : js.nameOf(obj)));
+				}
+			});
+		}
+	};
+	
+	const updateFilter = array.updateFilter;
+
+	// root.setValue(entry.value);
+	array.setArray([]);
+	array.updateFilter = function() {
+		this.updateFilter = updateFilter;
+		this.updateFilter.apply(this, arguments);
+		
+		this.setTimeout(() => { restore(); list = null; }, 650);
+	};
+	array.nextTick(() => array.setArray(entry.value));
+
+	root.setTimeout("restore-history-state", () => list && array.updateFilter(), 1000);
+};
+
+const parseFilterAndAttributes = function(input) {
+	var parts, attrs, q;
+
+	input = input || "";
+
+	// default: no valid column spec present
+	var result = {
+		raw: input,
+		q: input,
+		hasAttrsSpec: false,
+		allColumns: false,
+		attrs: undefined
+	};
+
+	if(input.charAt(0) !== "|") {
+		return result;
+	}
+
+	parts = input.split(/(?<!\\)\|/);
+
+	// Need at least: "", <one-or-more attr tokens>, <q>
+	// Example valid:
+	//   |*|
+	//   |name|value|abc
+	// Invalid / incomplete:
+	//   |
+	//   ||
+	//   |name
+	if(parts.length < 3) {
+		result.q = "";
+		return result;
+	}
+
+	q = parts.pop();
+	attrs = parts.slice(1); // skip leading empty token from initial "|"
+
+	// Empty attr list => invalid/empty spec, recover gracefully
+	// "||" => attrs = [""]
+	if(attrs.length === 0 || attrs.every(function(s) { return s === ""; })) {
+		result.q = q;
+		return result;
+	}
+
+	attrs = attrs.filter(function(s) { return s !== ""; });
+
+	// Explicit all-columns mode
+	if(attrs.length === 1 && attrs[0] === "*") {
+		result.q = q;
+		result.hasAttrsSpec = true;
+		result.allColumns = true;
+		result.attrs = null;
+		return result;
+	}
+
+	result.q = q;
+	result.hasAttrsSpec = true;
+	result.attrs = attrs;
+	return result;
+};
+const getVisibleColumnAttributes = function(list) {
+	return list._columns
+		.filter(function(column) { return column.isVisible(); })
+		.map(function(column) { return column._attribute; });
+};
+const applyVisibleColumns = function(list, attrs) {
+	if(!list || !list._columns) return;
+
+	list._controls.forEach(function(r) {
+		r.setState("classesInvalidated", true);
+	});
+
+	list._columns.forEach(function(column) {
+		column.setVisible(
+			!attrs || attrs.some(function(a) {
+				if(!a) return false;
+				return a.startsWith(" ") ? column._attribute.includes(a) :
+					a.endsWith(" ") ? column._attribute === a.trim() :
+					column._attribute.startsWith(a);
+			})
+		);
+	});
+};
+const updateList = (list) => {
+	list.destroyColumns();
+	list.updateColumns();
+	const attrs = list.vars("autoColumns.attributes");
+	if(attrs) {
+		applyVisibleColumns(list, attrs);
+	}
+};
+
 ["Container", (""), { 
 	activeControl: "q", css: css, 
     onDispatchChildEvent: function (component, name, evt, f, args) {
         if (name.startsWith("key")) {
-        	
+
 			if(evt.code === "BracketLeft" && evt.altKey === true) {
-            	this.qs("#back").go();
+            	this.qs("#back").go(evt);
             	evt.preventDefault();
             } else if(evt.code === "BracketRight" && evt.altKey === true) {
-            	this.qs("#forward").go();
+            	this.qs("#forward").go(evt);
             	evt.preventDefault();
             }
             
@@ -316,16 +507,17 @@ var css = {
 		enabled: false,
 		on() {
 			var history = this.vars(["history"]);
-			var value = history.pop();
-			this.ud("#q").setValue(value.pop());
-			value = value.pop();
-			if(value) {
-				this.ud("#array").setArray([]);
-				this.nextTick(() => this.ud("#array").setArray(value));
+			// var value = history.pop();
+			// this.ud("#q").setValue(value.pop());
+			// value = value.pop();
+			var entry = history.pop();
+			if(entry) {
+				// this.ud("#array").setArray([]);
+				// this.nextTick(() => this.ud("#array").setArray(value));
+				restoreHistoryEntry(this._owner, entry);
 			}
 			this.setEnabled(history.length > 0);
-			this.ud("#list").destroyColumns();
-			this.ud("#list").updateColumns();
+			updateList(this.ud("#list"));
 		}
 	}],
 	["Executable", ("do-forward"), {
@@ -347,7 +539,8 @@ var css = {
 				
 				if(nsel !== undefined) {
 					const history = list.vars(["history"]), q = this.ud("#q"), array = this.ud("#array");
-					history.push([list._source._array, q.getValue()]);
+					// history.push([list._source._array, q.getValue()]);
+					history.push(captureHistoryEntry(this._owner));
 					
 					// q.setValue("");
 					q.getNode().value = "";
@@ -403,6 +596,7 @@ var css = {
 		parent: "forward",
 		visible: "parent",
 		enabled: "parent",
+		hotkey: "MetaCtrl+Enter|Shift+MetaCtrl+Enter",
 		on(evt) {
 			const ctx = this.vars(["ctx"]);
 
@@ -413,7 +607,7 @@ var css = {
 			const tab = tabs.getSelectedControl(1);
 			
 			const label = q.getValue() || (tab && tab.vars("key")) || q.getPlaceholder();
-			const value = sel.length === 1 ? sel[0] : list.getSource().getArray();
+			const value = sel.length === 1 ? sel[0] : list.getSource().getArray().slice(0)
 			
 			ws.print(label, value);
 		}
@@ -484,7 +678,7 @@ var css = {
 				}
 			}
 		},
-		onFilterObject(obj, row, context) {
+		onFilterObject_1st(obj, row, context) {
 			var q = this.vars("q"), match = this.vars("match") || this.vars("match_columns");
 		
 			if(!context.list) {
@@ -516,6 +710,55 @@ var css = {
 			
 			return true;//!parts.length ? false : !match(obj, parts[0]);
 		},
+		onFilterObject(obj, row, context) {
+			var q = this.vars("q");
+			var match = this.vars("match") || this.vars("match_columns");
+		
+			if(!context.list) {
+				context.list = this.ud("#list");
+				context.columns = {};
+			}
+		
+			// No query => keep everything (i.e. do NOT filter out)
+			if(!q) return false;
+		
+			var parts = q.split(/(?<!\\)\s/).map(
+				s => s.split(/(?<!\\)\=/).map(s => String.unescape(s))
+			);
+		
+			for(var i = 0; i < parts.length; ++i) {
+				var part = parts[i];
+		
+				// key=value (optionally value prefixed with !)
+				if(part.length === 2) {
+					var k = getMatchingKey(part[0], obj);
+					var v = (part[1] || "").trim().toLowerCase();
+		
+					var inverse = v.charAt(0) === "!";
+					if(inverse) v = v.substring(1);
+		
+					var hay = obj.hasOwnProperty(k) ? js.sf("%s", obj[k]).toLowerCase() : "";
+					var contains = v ? (hay.indexOf(v) !== -1) : true;
+		
+					// AND semantics with inverted return:
+					// - normal: must contain; if not => filter out (true)
+					// - inverse: must NOT contain; if it does => filter out (true)
+					if(!inverse) {
+						if(!contains) return true;
+					} else {
+						if(contains) return true;
+					}
+		
+				// plain term: must match somewhere; if not => filter out (true)
+				} else {
+					var term = (part[0] || "");
+					if(term && !match(obj, term, context, row)) return true;
+				}
+			}
+		
+			// All clauses passed => keep (do NOT filter out)
+			return false;
+		},
 		onUpdate() {
 			this.ud("#status").render();
 		},
@@ -538,14 +781,45 @@ var css = {
 		]],
 		["Input", ("q"), { 
 			placeholder: "Filter (⌘/)", 
-			onChange() { 
+			onChange() {
 				var array = this.ud("#array");
+				var list = this.ud("#list");
+			
 				this.setTimeout("updateFilter", () => {
-					array.vars("q", this.getValue());
+					var parsed = parseFilterAndAttributes(this.getValue());
+					var q = parsed.q;
+					var attrs;
+			
+					var previous = this.vars("previous");
+					var signature = js.sj({
+						q: q,
+						hasAttrsSpec: parsed.hasAttrsSpec,
+						allColumns: parsed.allColumns,
+						attrs: parsed.attrs
+					});
+			
+					if(previous === signature && q !== "") {
+						return;
+					}
+					this.vars("previous", signature);
+			
+					if(parsed.hasAttrsSpec) {
+						// Explicit column instruction from the input
+						attrs = parsed.allColumns ? null : parsed.attrs;
+			
+					} else {
+						// No valid column instruction in the input:
+						// fall back to remembered/default visible columns
+						attrs = list.vars("autoColumns.attributes");
+					}
+			
+					applyVisibleColumns(list, attrs);
+			
+					array.vars("q", q);
 					array.updateFilter();
 					this.ud("#status").render();
-				}, 250); 
-			} 
+				}, 250);
+			}
 		}],
 		["Group", ("right"), [
 			// ["Button", { action: "view-source" }],
@@ -590,7 +864,6 @@ var css = {
 
 	]],
 	["List", ("list"), { 
-		action: "do-forward",
 		autoColumns: true,
 		classes: "max-width-320",
 		css: { 
@@ -616,6 +889,13 @@ var css = {
 		},
 		source: "array", 
 		// visible: false, 
+
+		// _vars: {
+		// 	_lastMouseDownTime: 0,
+		// 	_clickStreak: 0,
+		// 	_noSelectArmed: false
+		// },
+
 		onColumnGetValue(column, value, row, source) {
 			if(value instanceof Date) return value;
 			return js.sf("%n", value).substring(0, 1024);
@@ -629,7 +909,8 @@ var css = {
 				this.setTimeout("clicked", () => {
 					var arr = this._source._arr.map(_ => js.mixIn({'_' : _}, _ && _[component._attribute]));
 					var history = this.vars(["history"]);
-					history.push([this._source._array, this.ud("#q").getValue()]);
+					// history.push([this._source._array, this.ud("#q").getValue()]);
+					history.push(captureHistoryEntry(this._owner));
 					
 					// clearQ(this);
 					const q = this.ud("#q"), array = this.ud("#array");
@@ -644,8 +925,9 @@ var css = {
 
 					this.ud("#back").setEnabled(true); this.ud("#bar").show();
 					
-					this.ud("#list").destroyColumns();
-					this.ud("#list").updateColumns();
+					// this.ud("#list").destroyColumns();
+					// this.ud("#list").updateColumns();
+					updateList(this.ud("#list"));
 				});
 			} else if(name === "click") {
 				this.setTimeout("clicked", () => {
@@ -672,28 +954,35 @@ var css = {
 				const column = this._header.getControls()[index];
 				let value;
 				
-				// if(evt.altKey === true) {
-					value = this._source.getAttributeValue(evt.altKey ? column._attribute : ".", row._rowIndex, true);
-					if(value.value && value.key && Object.values(value).length === 2) {
-						value = value.value;
-					}
-				// } else {
-					// value = this._source.getObject(row);					
-				// }
-				
-				if(value instanceof Array && value.length === 1) {
-					value = value[0];
+				value = this._source.getAttributeValue(evt.altKey ? column._attribute : ".", row._rowIndex, true);
+				if(value.value && value.key && Object.values(value).length === 2) {
+					value = value.value;
 				}
 				
-				var history = this.vars(["history"]);
-				history.push([this._source._array, this.ud("#q").getValue()]);
+				const type = typeof value;
+				const isobj = type === "object";
+				const isarr = value instanceof Array;
+				const isdate = value instanceof Date;
+
+				if(isobj && !isdate) {
+					if(isarr && value.length === 1) {
+						value = value[0];
+					}
 				
-				this.ud("#array").setArray(null);
-				this.ud("#array").setArray(value instanceof Array ? value : Object.keys(value).map(k => ({ key: k, value: value[k] })));
-				this.ud("#back").setEnabled(true); this.ud("#bar").show();
-				
-				this.ud("#list").destroyColumns();
-				this.ud("#list").updateColumns();
+					var history = this.vars(["history"]);
+					// history.push([this._source._array, this.ud("#q").getValue()]);
+					history.push(captureHistoryEntry(this._owner));
+					
+					this.ud("#array").setArray(null);
+					this.ud("#array").setArray(value instanceof Array ? value : Object.keys(value).map(k => ({ key: k, value: value[k] })));
+					this.ud("#back").setEnabled(true); this.ud("#bar").show();
+					
+					// this.ud("#list").destroyColumns();
+					// this.ud("#list").updateColumns();
+					updateList(this.ud("#list"));
+				} else {
+					prompt("", js.n(value));
+				}
 			}
 			
 			window.getSelection().removeAllRanges();
@@ -735,8 +1024,9 @@ var css = {
 
 					opts = opts || {};
 					if(cur_length === 1 || arr.length === 1 || opts.updateList !== false) {
-						list.destroyColumns();
-						list.updateColumns();
+						// list.destroyColumns();
+						// list.updateColumns();
+						updateList(list);
 
 						this.setTimeout("change", () => {
 							var si = newTab.vars("scrollInfo");

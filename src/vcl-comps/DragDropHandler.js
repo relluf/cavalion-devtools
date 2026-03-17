@@ -137,7 +137,7 @@ function syncAttribute(node, name, should) {
 	        if (evt.target.files.length > 0) {
 	    		Resources_ddh.handle_input_change(evt).then(resources => {
 					evt.resources = resources;
-	    			this.emit("dropped", [evt.dataTransfer, dropped, evt]);
+	    			this.emit("dropped", [evt, dropped, evt.dataTransfer || evt.resources]);
 					Object.values(this.vars("targets") || {}).forEach(target => target.dropped(evt));	    			
 	    		});
             	evt.target.value = ""; // TODO HOWTO  control this "auto-clear"-feature
@@ -184,7 +184,7 @@ function syncAttribute(node, name, should) {
 			drop: (evt) => {
 				const vars_pn = this.vars("parentNode");
 				if(vars_pn === undefined || vars_pn === evt.target || HE.hasParent(evt.target, vars_pn)) {
-					dropped.push(evt.dataTransfer);
+					dropped.push(evt.dataTransfer || evt.resources);
 					
 					Resources_ddh.handle_document_drop(evt).then(resources => {
 						evt.resources = resources;
