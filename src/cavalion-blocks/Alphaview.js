@@ -228,9 +228,9 @@ const applyVisibleColumns = function(list, attrs) {
 		column.setVisible(
 			!attrs || attrs.some(function(a) {
 				if(!a) return false;
-				return a.startsWith(" ") ? column._attribute.includes(a) :
-					a.endsWith(" ") ? column._attribute === a.trim() :
-					column._attribute.startsWith(a);
+				return a.endsWith(" ") ? column._attribute.startsWith(a.trim()) :
+					a.startsWith("=") ? column._attribute === a.substring(1) :
+					column._attribute.includes(a.trim());
 			})
 		);
 	});

@@ -1,3 +1,38 @@
+### `2026/03/21` Column filter matching and Markdown editor registration
+
+Refines `Alphaview` column visibility matching so attribute selectors are more explicit and flexible, and extends the Markdown editor’s embedded block handling to parse inline brace-style `vars` definitions. It also registers an `openapi` editor entry.
+
+* Improves `applyVisibleColumns()` in `cavalion-blocks/Alphaview.js`.
+* Changes trailing-space selectors to prefix matching via `startsWith(a.trim())`.
+* Adds exact-match column selectors with `=attr`.
+* Changes default column selector behavior to substring matching via `includes(a.trim())`.
+* Breaking: column visibility filter semantics change for non-`=` patterns; existing saved selectors may match different columns.
+* Extends `Editor$/md.js` block link handling for string `blocks_vars`.
+* Adds brace-style inline vars parsing for strings like `{a=b;c=d}`.
+* Keeps fallback parsing through `js.str2obj(...)` for non-brace string formats.
+* Preserves Markdown hover/block rendering through `H("$HOME/" + uri, ...)`.
+* Adds `openapi` to `src/vcl-comps/Editor$/.md`.
+
+### `2026/03/16` Alphaview stateful navigation and parser integration
+
+Makes `Alphaview` navigation more stateful and predictable, adds column-scoped filtering and richer query matching, and improves drill-down/back behavior by restoring list position, selection, and visible columns. It also switches CSV rendering to `bxv/Parser`, enables TSV format loading, tightens Markdown link encoding, hardens resource/package access by throwing errors for missing paths, and adds several workspace and hotkey UX improvements.
+
+* Adds history state capture/restore in `cavalion-blocks/Alphaview.js`, preserving query, selection, scroll, top row, and visible columns when navigating back.
+* Adds column-scoped filter syntax in `#q`: `|*|query` for all columns and `|attr|...|query` for explicit column subsets.
+* Improves `onFilterObject()` semantics to support `key=value`, inverted `key=!value`, and AND-combined plain terms.
+* Refactors list refresh into `updateList()` so column rebuilds consistently reapply `autoColumns.attributes`.
+* Fixes drill-down/back flows to snapshot full history entries instead of only `[array, q]`.
+* Changes list cell click behavior: scalar values now open via `prompt(...)`; only objects/arrays trigger nested navigation.
+* Adds `MetaCtrl+Enter|Shift+MetaCtrl+Enter` hotkey on `#print`; prints cloned arrays via `getArray().slice(0)`.
+* Removes implicit `action: "do-forward"` from `#list`; forward navigation is now handled explicitly by click paths.
+* Switches `Editor$/csv.js` from `papaparse` to `bxv/Parser`, with rendered data taken from `root.rows` / `arr`.
+* Enables TSV format module loading in `Editor$/tsv.js` via `bxv/formats/tsv`.
+* Improves Markdown link encoding in `Editor$/md.js` to preserve optional link titles in inline and reference-style links.
+* Extends `devtools/Resources-ddh.js` package detection to `xlsx`, `pptx`, and `epub`, and now throws `Error` instead of returning `{ error }` on missing package paths/files.
+* Adds `FileUtils` export and updates `devtools/Resources.js` `resolve(relativeTo, path)` plus URI normalization for listed resources.
+* Adds workspace/navigation UX updates: `Cmd+F7` toggles `Hover<>`, `editor-move-all-right` is wired, `Workspace.navigate()` is introduced, and `editor-open-index` maps workspace `✪` to `_star_`.
+* Chore/Docs: updates `src/devtools/.md`, adds a `BBW` workspace preset, tweaks `Alphaview` bar styling, and appends a unique hash to printed editor names in `Editor.js`.
+
 ### `2025/04/02` 1.0.90
 
 * Advancing
@@ -25,7 +60,6 @@
 	* 20241119 shows instantiated component/control when running component (Shift+Cmd+X)
 	* 20241111 adds Alphaview to view tsv/csv data finetunes column headers
 
-
 ### `2024/11/08` 1.0.89
 
 * Service build for cavalion-code
@@ -34,7 +68,6 @@
 	* 20241026 adds/starts support for Markdown-dialects
 	* 20241026 updates the docs
 	* 20241026 adds Res(ources).resolve makes all leaner and meaner removes jquery dependencies refactors js.override and js.inherited
-
 
 ### `2024/10/24` 1.0.88
 
@@ -64,7 +97,6 @@
 * 20240904 introduces hotkey for aligning #ace client
 * 20240904 fixes reading nil-reference
 * 20240904 adds support for folders and packages (ZIP-files)
-
 
 ### `2024/07/07` 1.0.87 July Release
 

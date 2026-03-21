@@ -460,16 +460,19 @@ document.addEventListener("click", (evt) => {
 				if(!run) {
 					props = props || {};
 					props.vars = js.mi({ 'storage-uri': uri }, props.vars || {});
-					// control.print(B.i(["Hover<>:root", uri, props, [["$HOME/" + uri]]], { 
-					// 	owner: control,
-					// 	vars: blocks_vars
-					// }));
-					// control.print(B.i(["Hover<>", { owner: control, vars: js.mi({ uri: uri }, block_vars)}]));
 					if(blocks_vars) {
 						if(typeof blocks_vars === "string") {
-							blocks_vars = js.str2obj(blocks_vars);			
+		            		if(blocks_vars.startsWith("{") && blocks_vars.endsWith("}")) {
+		            			var vars = {};
+		            			blocks_vars.substring(1, blocks_vars.length - 1).split(";").forEach(kvp => {
+		            				kvp = kvp.split("=");
+		            				js.set(kvp.shift(), kvp.join("="), vars);
+		            			});
+		            			blocks_vars = vars;
+		            		} else {
+		            			blocks_vars = js.str2obj(blocks_vars);
+		            		}							
 						}
-						
 						control.print(H("$HOME/" + uri, { owner: control, vars: blocks_vars }));
 					} else {
 						control.print(H("$HOME/" + uri, { owner: control }));
