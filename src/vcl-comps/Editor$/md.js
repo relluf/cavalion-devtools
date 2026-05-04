@@ -135,6 +135,7 @@ const markdown = require("markdown");
 const Component = require("vcl/Component");
 const HE = require("util/HtmlElement");
 const resolveUri_comps = require("vcl/Factory").resolveUri;
+const CONSOLE_ALLOW_ALT_META_CLICK_VAR = "console/allow-alt-meta-click";
 
 // CVLN-20221106-1, CVLN-20220418-1
 js.dt = (a) => a === undefined ? new Date() : new Date(a);
@@ -159,6 +160,109 @@ function encodeMdLinks(md) {
 // 			return `[${id}]: ${encodeURI(url)}${title}`;
 // 		});
 // }
+const SECTION_STATE_STORAGE_KEY = "md-section-state";
+const getEditorRoot = (control) => control && typeof control.up === "function" ? control.up() : null;
+const getSectionState = (control) => {
+	const root = getEditorRoot(control);
+	let state = root && root.vars(["md-section-state"]);
+	if(!state) {
+		state = {};
+		root && root.vars("md-section-state", state);
+	}
+	return state;
+};
+const persistSectionState = (control) => {
+	const root = getEditorRoot(control);
+	const state = getSectionState(control);
+	if(root) {
+		root.writeStorage(SECTION_STATE_STORAGE_KEY, state);
+	}
+};
+const normalizeText = (text) => (text || "").replace(/\s+/g, " ").trim();
+const headingLevel = (node) => node && node.nodeType === 1 && /^H[1-6]$/.test(node.tagName) ? parseInt(node.tagName.substring(1), 10) : 0;
+const slugifyHeading = (text) => normalizeText(text)
+	.toLowerCase()
+	.replace(/[^\w\s-]/g, "")
+	.replace(/\s+/g, "-") || "section";
+const setSectionCollapsed = (control, section, collapsed, persist = true) => {
+	if(!section) return;
+
+	section.classList[collapsed ? "add" : "remove"]("collapsed");
+
+	var heading = section.firstElementChild;
+	if(heading) {
+		heading.setAttribute("aria-expanded", collapsed ? "false" : "true");
+	}
+
+	var key = section.getAttribute("data-section-key");
+	if(key) {
+		getSectionState(control)[key] = collapsed;
+		if(persist) {
+			persistSectionState(control);
+		}
+	}
+};
+const setSectionsCollapsed = (control, sections, collapsed) => {
+	sections.forEach(section => setSectionCollapsed(control, section, collapsed, false));
+	persistSectionState(control);
+};
+const decorateLinks = (node) => {
+	node.qsa("a").forEach(a => {
+		var href = window.unescape(js.get("attributes.href.value", a) || "");
+		if(a.classList.contains("md-heading-anchor") || href === "") {
+			a.removeAttribute("data-href-hint");
+		} else {
+			a.setAttribute("data-href-hint", href);
+		}
+	});
+};
+const decorateSections = (node, control) => {
+	var children = Array.from(node.childNodes);
+	if(children.some(child => headingLevel(child) > 0) === false) {
+		return;
+	}
+
+	var state = getSectionState(control);
+	var counts = Object.create(null);
+
+	while(node.firstChild) {
+		node.removeChild(node.firstChild);
+	}
+
+	var stack = [{ level: 0, body: node, key: "" }];
+	children.forEach(child => {
+		var level = headingLevel(child);
+		if(level === 0) {
+			stack[stack.length - 1].body.appendChild(child);
+			return;
+		}
+
+		while(stack.length > 1 && stack[stack.length - 1].level >= level) {
+			stack.pop();
+		}
+
+		var parent = stack[stack.length - 1];
+		var text = normalizeText(child.textContent);
+		var count_key = js.sf("%s|%d|%s", parent.key, level, text);
+		var count = counts[count_key] = (counts[count_key] || 0) + 1;
+		var key = js.sf("%s/%d:%s#%d", parent.key, level, text, count);
+		var section = document.createElement("DIV");
+		var body = document.createElement("DIV");
+
+		section.className = "md-section";
+		section.setAttribute("data-section-key", key);
+		section.setAttribute("data-section-level", level);
+		body.className = "md-section-body";
+		child.classList.add("md-section-heading");
+
+		section.appendChild(child);
+		section.appendChild(body);
+		parent.body.appendChild(section);
+		stack.push({ level: level, body: body, key: key });
+
+		setSectionCollapsed(control, section, state[key] === true, false);
+	});
+};
 function render() {
 	var value = this.getValue();
 	
@@ -171,15 +275,26 @@ function render() {
 		return impl(value, this);
 	}
 	
+	var dialect = this.vars(["dialect"]);
 	var resource = this.vars(["resource"]);
+	var content;
+	var root_control = this.up();
 
-	var root = markdown.toHTMLTree(encodeMdLinks(value), 
-			this.vars(["markdown.dialect"]), 
-			this.vars(["markdown.options"]));
-			
-	var content = markdown.renderJsonML(root);
+	if(root_control && dialect !== undefined && root_control.vars("dialect-persisted") !== dialect) {
+		root_control.vars("dialect-persisted", dialect);
+		root_control.writeStorage("dialect", dialect);
+	}
 
-	// var content = marked(value);
+	if(!dialect || dialect === "markdown") {
+		var root = markdown.toHTMLTree(encodeMdLinks(value), 
+				this.vars(["markdown.dialect"]), 
+				this.vars(["markdown.options"]));
+				
+		content = markdown.renderJsonML(root);
+	} else if(dialect === "marked") {
+
+		content = marked(value);
+	}
 	
 	this.up().vars("root", root);
     this.up().qsa("#output").forEach(_ => {
@@ -260,13 +375,16 @@ function render() {
 		    
 			var insertA = (H) => {
 				var a = document.createElement("A");
-				a.id = H.textContent.toLowerCase().split(" ").join("-");
-				a.href = "#" + H.textContent.toLowerCase().split(" ").join("-");
+				a.className = "md-heading-anchor";
+				a.id = slugifyHeading(H.textContent);
+				a.href = "#" + a.id;
 				H.appendChild(a);
 				return a.href;
 			};
 			
 			"h1,h2,h3,h4,h5".split(",").forEach(H => node.qsa(H).map(insertA));
+			decorateLinks(node);
+			decorateSections(node, this);
 		    
     	}.bind(_));
     });
@@ -410,6 +528,7 @@ document.addEventListener("click", (evt) => {
 			href.startsWith("http://") || 
 			href.startsWith("file://") ||
 			href.startsWith("ftp://") ||
+			href.startsWith("codex://") ||
 			href.startsWith("///")
 		) {
 			if(href.startsWith("///")) {
@@ -627,6 +746,24 @@ const Css = {
     [("#ace"), { 
     	align: "left", width: 600, action: "toggle-source",
     	executesAction: "none",
+	    onLoad() {
+    		var root = this.up();
+    		if(root) {
+    			root.readStorage("dialect", (dialect) => {
+    				if(dialect !== undefined && root.vars(["dialect"]) === undefined) {
+    					root.vars("dialect", dialect);
+    					root.vars("dialect-persisted", dialect);
+    					this.setTimeout("render", render.bind(this), 0);
+    				}
+    			});
+    			root.readStorage(SECTION_STATE_STORAGE_KEY, (state) => {
+    				if(state && typeof state === "object") {
+    					root.vars("md-section-state", state);
+    					this.setTimeout("render", render.bind(this), 0);
+    				}
+    			});
+    		}
+    	},
         onChange() { 
         	if(!this._vars) {
         		render.apply(this, []);
@@ -677,6 +814,9 @@ const Css = {
     }],
     ["vcl/ui/Panel", ("output"), { 
     	align: "client", 
+    	vars: {
+    		[CONSOLE_ALLOW_ALT_META_CLICK_VAR]: true
+    	},
     	css: {
 /*- TODO should be centralized */
 			"": "margin-left:auto;margin-right:auto;",
@@ -693,6 +833,16 @@ const Css = {
 		    },
 		    padding: "10px 50px",
 		    "a": "text-decoration:underline;color:blue;",
+		    "a[data-href-hint]": "position:relative;",
+		    "a[data-href-hint]:hover::after": "content:attr(data-href-hint);position:absolute;left:0;bottom:calc(100% + 6px);z-index:20;display:block;max-width:36em;padding:4px 7px;border-radius:4px;background:rgba(32,32,32,.92);color:white;font-size:9pt;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.2);",
+		    ".md-heading-anchor": "display:none;",
+		    ".md-section > .md-section-heading": "position:relative;cursor:pointer;padding-left:18px;margin-left:-18px;",
+		    ".md-section > .md-section-heading::before": "content:'';position:absolute;left:2px;top:50%;width:7px;height:7px;border-right:2px solid rgba(60,60,60,.75);border-bottom:2px solid rgba(60,60,60,.75);transform:translateY(-65%) rotate(-45deg);opacity:0;transition:opacity 120ms ease, transform 120ms ease;",
+		    ".md-section > .md-section-heading:hover::before": "opacity:.85;",
+		    ".md-section:not(.collapsed) > .md-section-heading::before": "transform:translateY(-70%) rotate(45deg);",
+		    ".md-section.collapsed > .md-section-heading::before": "opacity:.4;",
+		    ".md-section.collapsed > .md-section-heading": "color:rgba(20,20,20,.78);",
+		    ".md-section.collapsed > .md-section-body": "display:none;",
 		    // "img:hover": "width:100%;max-width:600px;",
 		    "code": "border-radius:7px;font-size: 7.5pt;background-color:white;padding:4px;",
 	    },
@@ -725,6 +875,35 @@ const Css = {
 			if(last) {
 				last.style.width = "";
 			}
+	    },
+	    onClick(evt) {
+	    	var anchor = evt.target.up("A", true);
+	    	if(anchor) return;
+
+	    	var heading = evt.target.up("H1,H2,H3,H4,H5,H6", true);
+	    	if(!heading || heading.classList.contains("md-section-heading") === false) {
+	    		return;
+	    	}
+
+	    	var section = heading.parentNode;
+	    	if(!section || section.classList.contains("md-section") === false) {
+	    		return;
+	    	}
+
+	    	evt.preventDefault();
+	    	evt.stopPropagation();
+
+	    	var collapsed = section.classList.contains("collapsed");
+	    	if(evt.altKey === true && evt.metaKey === true) {
+	    		var level = section.getAttribute("data-section-level");
+	    		setSectionsCollapsed(this,
+	    			this._node.qsa(js.sf('.md-section[data-section-level="%s"]', level)),
+	    			true);
+	    	} else if(evt.altKey === true) {
+	    		setSectionsCollapsed(this, this._node.qsa(".md-section"), !collapsed);
+	    	} else {
+	    		setSectionCollapsed(this, section, !collapsed);
+	    	}
 	    }
     }]
 ]];
