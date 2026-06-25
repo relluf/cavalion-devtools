@@ -150,6 +150,138 @@ const fixThemeColor = () => setTimeout(() => {
 	
 	console.log("fixedThemeColor and such");
 }, 0);
+const getHistoryHostWindow = () => {
+	try {
+		return window.top && window.top.location && window.top.location.origin === window.location.origin ?
+			window.top :
+			window;
+	} catch(e) {
+		return window;
+	}
+};
+const browserStateKey = (entry) =>
+	entry ? js.sf("%s::%s", entry.workspace, entry.uri) : "";
+const buildBrowserState = (entry) => ({
+	devtoolsWorkspaceHistory: true,
+	id: entry.id,
+	workspace: entry.workspace,
+	uri: entry.uri,
+	type: entry.type
+});
+const buildBrowserUrl = (entry) => {
+	const host = getHistoryHostWindow();
+	const url = new URL(host.location.href);
+	const hash = new URLSearchParams(url.hash.replace(/^#/, ""));
+
+	hash.set("workspace", entry.workspace);
+	hash.set("uri", entry.uri);
+
+	url.hash = hash.toString();
+
+	return url.toString();
+};
+const getBrowserNavigation = (main) =>
+	main.vars("browser-navigation", false, () => ({
+		applying: false,
+		currentKey: null,
+		lastId: null
+	}));
+const readBrowserNavigationEntry = () => {
+	const host = getHistoryHostWindow();
+	const state = host.history.state;
+	if(state && state.devtoolsWorkspaceHistory) {
+		return {
+			id: state.id,
+			workspace: state.workspace,
+			uri: state.uri,
+			type: state.type
+		};
+	}
+
+	const hash = new URLSearchParams(host.location.hash.replace(/^#/, ""));
+	const workspace = hash.get("workspace");
+	const uri = hash.get("uri");
+
+	return workspace && uri ? { workspace, uri } : null;
+};
+const withWorkspaceForm = (tab, callback) => {
+	const container = tab && tab._control;
+	const form = container && (container._form || container.getForm && container.getForm());
+
+	if(form) {
+		callback(form);
+		return;
+	}
+
+	if(container) {
+		container.once("formload", function() {
+			callback(this._form || this.getForm && this.getForm());
+		});
+	}
+};
+const syncBrowserHistory = (main, payload) => {
+	if(!(payload && payload.entry && payload.entry.workspace && payload.entry.uri)) {
+		return;
+	}
+
+	const navigation = getBrowserNavigation(main);
+	if(navigation.applying) {
+		return;
+	}
+
+	const host = getHistoryHostWindow();
+	const entry = payload.entry;
+	const key = browserStateKey(entry);
+	const state = buildBrowserState(entry);
+	const url = buildBrowserUrl(entry);
+	const currentState = host.history.state;
+	const hasCurrentState = currentState && currentState.devtoolsWorkspaceHistory;
+
+	if(payload.replace === true) {
+		host.history.replaceState(state, "", url);
+	} else if(!hasCurrentState || navigation.currentKey !== key || navigation.lastId !== entry.id) {
+		host.history.pushState(state, "", url);
+	}
+
+	navigation.currentKey = key;
+	navigation.lastId = entry.id;
+};
+const emitSelectedWorkspaceHistory = (main, options) => {
+	const workspace = main.down("devtools/Workspace<>:root:selected");
+	if(workspace && workspace.emitDocumentHistory) {
+		workspace.emitDocumentHistory(options);
+	}
+};
+const applyBrowserNavigationEntry = (main, entry) => {
+	if(!(entry && entry.workspace && entry.uri)) return;
+
+	const navigation = getBrowserNavigation(main);
+	navigation.applying = true;
+	navigation.currentKey = browserStateKey(entry);
+	navigation.lastId = entry.id || null;
+
+	const tab = main.down("#workspace-needed").execute({
+		workspace: {
+			name: entry.workspace,
+			specializer: entry.workspace
+		}
+	});
+
+	withWorkspaceForm(tab, (workspace) => {
+		if(workspace && workspace.applyDocumentHistoryEntry) {
+			workspace.applyDocumentHistoryEntry(entry, {
+				kind: "browser",
+				browser: true
+			});
+		} else if(workspace) {
+			workspace.open(entry.uri);
+		}
+
+		main.setTimeout("browser-navigation-finished", () => {
+			navigation.applying = false;
+		}, 250);
+	});
+};
 
 var tabs_hidden = "height:0;padding:0;border:0;opacity:0;";
 var nameOf = (c) => c._name ? js.sf("#%d [%s]", c.hashCode(), c._name) : "#" + c.hashCode();
@@ -282,6 +414,31 @@ this.app().vars("canunload", () => false);
                         getIndex()});
             }, 200);
         });
+
+		if(this.up("devtools/Main<>") === null) {
+			const historyHost = getHistoryHostWindow();
+
+			this.app().on("devtools-workspace-history", function(payload) {
+				syncBrowserHistory(me, payload);
+			});
+
+			historyHost.addEventListener("popstate", function(evt) {
+				var entry = evt.state && evt.state.devtoolsWorkspaceHistory ?
+					evt.state :
+					readBrowserNavigationEntry();
+
+				entry && applyBrowserNavigationEntry(me, entry);
+			});
+
+			this.setTimeout("browser-navigation-init", function() {
+				var entry = readBrowserNavigationEntry();
+				if(entry) {
+					applyBrowserNavigationEntry(me, entry);
+				} else {
+					emitSelectedWorkspaceHistory(me, { kind: "activate", replace: true });
+				}
+			}, 500);
+		}
 
 		if(app.getUri().startsWith("App<code.")) {
 	        var console_scope = this.app().scope().console.scope();
@@ -588,7 +745,7 @@ this.app().vars("canunload", () => false);
     
     [("vcl/Action"), "hovers-toggle-visible", {
     	state: true,
-    	hotkey: "Cmd+F7",
+    	hotkey: "Cmd+F7|Alt+Cmd+F2",
     	on() {
     		this.app().qsa("Hover<>:root").set("visible", this.toggleState());
     	}	
@@ -922,6 +1079,10 @@ this.app().vars("canunload", () => false);
         },
         onChange: function() {
     		this._owner.emit("state-dirty");
+			this._owner.setTimeout("sync-selected-workspace-history", () =>
+				emitSelectedWorkspaceHistory(this._owner, {
+					kind: "activate"
+				}), 0);
         }
     }, [
 		[("vcl/ui/Element"), "title", { 

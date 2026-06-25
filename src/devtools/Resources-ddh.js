@@ -184,13 +184,19 @@ define(function(require) {
 	    }),
 		addFileToNode: async (node, file, r) => {
 		    const isPackage = await PackageUtils.isPackageFile(file);
-		    node.files.push(r = {
+		    const index = node.files.findIndex(f => f.name === file.name);
+		    r = {
 		        name: file.name,
 		        size: file.size,
 		        contentType: FileUtils.getFileContentType(file.name),
 		        isPackage,
 		        getContent: () => FileUtils.readAsArrayBuffer(file),
-		    });
+		    };
+		    if(index === -1) {
+		        node.files.push(r);
+		    } else {
+		        node.files.splice(index, 1, r);
+		    }
 		    return r;
 		},
 	    findNodeByPath: (path, rootNode) => {

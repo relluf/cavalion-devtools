@@ -1,3 +1,82 @@
+* [diffs]()
+
+Generate a git commit message, first line lowercased like: "(categorized): summary" , followed by bulleted phrases, starting with verbs like "Adds/Changes/Removes/Introduces/Refactors/Enhances/..."
+
+Generate a RELEASENOTES entry for players of the game
+
+---
+
+### `2026/06/24` — Editor, Navigation and Viewer UX Improvements 
+
+#### Markdown editor & preview
+
+* Adds Markdown outline generation with a dedicated outline action and navigation proxy.
+* Synchronizes editor cursor, selection and fold state with the rendered preview.
+* Persists preview scroll position, follow-mode, collapsed sections and interactive checkbox state.
+* Improves section handling with nested outline metadata and richer collapse/expand controls.
+* Escapes Markdown link descriptions more safely to avoid unintended formatting.
+* Enhances link tooltips by resolving internal block/component/resource targets.
+* Refactors preview styling into reusable `Css_content` definitions.
+
+#### Alphaview
+
+* Adds automatic hiding of empty columns with configurable row threshold.
+* Allows toggling between hidden-empty and full column visibility.
+* Preserves explicit column selections while applying smarter defaults.
+* Introduces reusable filter clearing for drill-down navigation.
+* Improves duplicate selection naming via unique selection keys.
+* Expands status reporting with hidden-column counts.
+* Adds extensive optional diagnostic logging throughout loading, filtering, reflection and navigation flows.
+
+#### Workspace & browser navigation
+
+* Introduces workspace document history tracking.
+* Synchronizes selected documents with browser history (`pushState` / `popstate`).
+* Supports restoring workspace/document state from browser navigation.
+* Adds APIs for emitting, applying and navigating document history.
+
+#### Resource & file management
+
+* Prevents duplicate file entries by replacing existing files with the same name.
+* Filters additional unsupported resources (including `.smdl`) from folder views.
+
+#### Workspace configuration & UI
+
+* Refactors BXV workspace defaults into reusable configuration constants.
+* Renames the BXV workspace entry `"BBW"` to `"BW"`.
+* Adds an alternate shortcut for hover visibility (`Alt+Cmd+F2`).
+* Fixes `Outline` component directive and CSS selector syntax.
+* Includes minor cleanup and refactoring without changing external APIs.
+
+### `2026/05/04` Markdown editor: collapsible sections, link hints, dialect persistence
+
+* Adds collapsible **section model** for rendered Markdown based on heading hierarchy (`H1–H6`).
+* Wraps content into `.md-section` / `.md-section-body` containers with `data-section-key` and level metadata.
+* Implements per-section collapse state via `setSectionCollapsed()` and `setSectionsCollapsed()`.
+* Persists section state in storage under `md-section-state`; restores on load.
+* Generates stable section keys using normalized heading text + hierarchy counters.
+* Adds click handling on headings to toggle collapse/expand.
+* Supports modifiers:
+  * `Alt+Click`: toggle all sections.
+  * `Alt+Meta+Click`: collapse all sections at same level.
+* Adds `aria-expanded` updates for accessibility on headings.
+* Introduces `slugifyHeading()` for anchor IDs; replaces naive lowercase/space logic.
+* Adds `.md-heading-anchor` class and hides anchors via CSS.
+* Enhances links with `data-href-hint` tooltip (shows decoded `href` on hover).
+* Skips hinting for empty links and heading anchors.
+* Adds support for `codex://` protocol in link click handler.
+* Introduces `CONSOLE_ALLOW_ALT_META_CLICK_VAR` and enables it on `output` panel.
+* Adds optional Markdown dialect switching (`markdown` vs `marked`).
+* Persists selected dialect in storage (`dialect`) and restores on load.
+* Refactors render flow to conditionally use `markdown` or `marked`.
+* Stores parser root in `root_control.vars("root")` (unchanged behavior preserved).
+* Adds `decorateSections()` and `decorateLinks()` post-processing steps.
+* Adds CSS for section UI: collapse indicators, hover affordances, hidden bodies.
+* Adds CSS tooltip styling for `a[data-href-hint]`.
+* Ensures section/dialect state triggers re-render after storage restore.
+* Minor utility additions: `normalizeText()`, `headingLevel()`.
+* No explicit breaking API changes detected; DOM structure of rendered output changes (may affect custom CSS/scripts).
+
 ### `2026/03/21` Column filter matching and Markdown editor registration
 
 Refines `Alphaview` column visibility matching so attribute selectors are more explicit and flexible, and extends the Markdown editor’s embedded block handling to parse inline brace-style `vars` definitions. It also registers an `openapi` editor entry.

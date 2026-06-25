@@ -137,6 +137,171 @@ const expandColonInNavigatorFavorites = (ws) => {
 	);
 };
 const setDocumentTitle = (title) => { try { top.document.title = title; } catch(e) { } };
+const getHistoryHostWindow = () => {
+	try {
+		return window.top && window.top.location && window.top.location.origin === window.location.origin ?
+			window.top :
+			window;
+	} catch(e) {
+		return window;
+	}
+};
+const asResource = (uri) => ({
+	uri: uri,
+	type: (uri.startsWith("folder:") || uri.endsWith("/")) ? "Folder" : "File"
+});
+const getSelectedEditorTab = (workspace) =>
+	workspace.qs("vcl/ui/Tab:selected:childOf(editors-tabs)");
+const getWorkspaceNavigation = (workspace) =>
+	workspace.vars("workspace-navigation", false, () => ({
+		entries: [],
+		index: -1,
+		seq: 0,
+		pending: null
+	}));
+const createNavigationEntry = (workspace, tab, seed) => {
+	if(seed && seed.uri) {
+		return js.mixIn({
+			workspace: workspace.getSpecializer(),
+			type: asResource(seed.uri).type
+		}, seed);
+	}
+
+	tab = tab || getSelectedEditorTab(workspace);
+	if(!tab) return null;
+
+	const resource = tab.vars("resource");
+	if(!(resource && resource.uri)) return null;
+
+	return {
+		id: seed && seed.id,
+		workspace: workspace.getSpecializer(),
+		uri: resource.uri,
+		type: resource.type || asResource(resource.uri).type
+	};
+};
+const isSameNavigationEntry = (a, b) =>
+	!!(a && b && a.workspace === b.workspace && a.uri === b.uri);
+const emitWorkspaceHistoryChange = (workspace, options) => {
+	options = options || {};
+	const entry = options.entry || createNavigationEntry(workspace, options.tab);
+	if(!(entry && entry.uri)) return null;
+
+	workspace.app().emit("devtools-workspace-history", [{
+		workspace: workspace,
+		entry: entry,
+		kind: options.kind || "push",
+		browser: options.browser !== false,
+		replace: options.replace === true
+	}]);
+
+	return entry;
+};
+const recordWorkspaceHistory = (workspace, tab, options) => {
+	options = options || {};
+
+	const navigation = getWorkspaceNavigation(workspace);
+	const pending = navigation.pending;
+	let entry = createNavigationEntry(workspace, tab, pending || options.entry);
+	let current;
+	let index;
+
+	if(!entry) return null;
+
+	if(!entry.id) {
+		entry.id = js.sf("%s:%d:%d",
+			entry.workspace,
+			Date.now(),
+			++navigation.seq);
+	}
+
+	if(pending) {
+		delete navigation.pending;
+
+		index = pending.id ?
+			navigation.entries.findIndex(item => item.id === pending.id) :
+			navigation.entries.findIndex(item => isSameNavigationEntry(item, entry));
+
+		if(index !== -1) {
+			navigation.entries[index] = js.mixIn({}, navigation.entries[index], entry);
+			navigation.index = index;
+			entry = navigation.entries[index];
+		} else {
+			if(navigation.index < navigation.entries.length - 1) {
+				navigation.entries.splice(navigation.index + 1);
+			}
+			navigation.entries.push(entry);
+			navigation.index = navigation.entries.length - 1;
+		}
+
+		return emitWorkspaceHistoryChange(workspace, {
+			entry: entry,
+			kind: pending.kind || "apply",
+			browser: pending.browser === true
+		});
+	}
+
+	current = navigation.entries[navigation.index];
+	if(isSameNavigationEntry(current, entry)) {
+		navigation.entries[navigation.index] = js.mixIn({}, current, entry);
+		return emitWorkspaceHistoryChange(workspace, {
+			entry: navigation.entries[navigation.index],
+			kind: options.kind || "activate",
+			replace: options.replace === true
+		});
+	}
+
+	if(navigation.index < navigation.entries.length - 1) {
+		navigation.entries.splice(navigation.index + 1);
+	}
+
+	navigation.entries.push(entry);
+	navigation.index = navigation.entries.length - 1;
+
+	return emitWorkspaceHistoryChange(workspace, {
+		entry: entry,
+		kind: options.kind || "push"
+	});
+};
+const applyWorkspaceHistoryEntry = (workspace, entry, options) => {
+	if(!(entry && entry.uri)) return null;
+
+	const navigation = getWorkspaceNavigation(workspace);
+
+	navigation.pending = {
+		id: entry.id,
+		uri: entry.uri,
+		type: entry.type,
+		workspace: entry.workspace || workspace.getSpecializer(),
+		kind: options && options.kind || "apply",
+		browser: options && options.browser === true
+	};
+
+	return workspace.down("#editor-needed").execute({
+		resource: asResource(entry.uri),
+		selected: true
+	});
+};
+const navigateWorkspaceHistory = (workspace, direction) => {
+	const navigation = getWorkspaceNavigation(workspace);
+	const entry = navigation.entries[navigation.index + direction];
+
+	if(!entry) return null;
+
+	if(workspace.isSelected && workspace.isSelected()) {
+		const state = getHistoryHostWindow().history.state;
+		if(state && state.devtoolsWorkspaceHistory) {
+			getHistoryHostWindow().history[direction < 0 ? "back" : "forward"]();
+			return entry;
+		}
+	}
+
+	applyWorkspaceHistoryEntry(workspace, entry, {
+		kind: direction < 0 ? "back" : "forward"
+	});
+
+	return entry;
+};
 
 [["ui/Form"], {
     onLoad: function() {
@@ -153,6 +318,13 @@ const setDocumentTitle = (title) => { try { top.document.title = title; } catch(
         }
         
         expandColonInNavigatorFavorites(this);
+		this.getDocumentHistoryEntry = (tab) => createNavigationEntry(this, tab);
+		this.applyDocumentHistoryEntry = (entry, options) =>
+			applyWorkspaceHistoryEntry(this, entry, options);
+		this.navigateDocumentHistory = (direction) =>
+			navigateWorkspaceHistory(this, direction);
+		this.emitDocumentHistory = (options) =>
+			emitWorkspaceHistoryChange(this, options);
 
 		this.nav = this.navigate = (resource) => {
 			const fs = this.qs("#fs");
@@ -232,6 +404,7 @@ const setDocumentTitle = (title) => { try { top.document.title = title; } catch(
         });
         this.setSelected(true);
         this.ud("#update-title").execute();
+		recordWorkspaceHistory(this, getSelectedEditorTab(this), { kind: "activate" });
     },
     onDeactivate: function() {
     	this.setSelected(false);
@@ -717,6 +890,7 @@ const setDocumentTitle = (title) => { try { top.document.title = title; } catch(
 // TODO tell application to render it's title
 				this.ud("#update-title").execute({tab: tab});
                 this._owner.emit("state-dirty");
+				recordWorkspaceHistory(this._owner, tab);
             },
             onDblClick: function() {
             	var me = this, parent = this.up().qsa("devtools/Editor<>:root:visible").pop();

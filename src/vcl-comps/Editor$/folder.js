@@ -15,6 +15,7 @@ var Resources = require("devtools/Resources");
 
 function allowResource(resource) {
 	return [".git", ".svn", ".DS_Store"].includes(resource.uri.split("/").pop()) === false
+		&& ["smdl"].includes(resource.uri.split(".").pop()) === false
 		&& ["zip", "7z"].includes(resource.uri.split(".").pop()) === false
 		&& ["prj", "sbn", "dbf", "sbx", "shp", "shx"].includes(resource.uri.split(".").pop()) === false;
 }
@@ -268,7 +269,7 @@ function common(tab) {
 	    	resources = resources.map(function(resource) {
 	    		resource = typeof resource === "string" ? {uri: resource} : js.mixIn(resource);
 	    		return resource;
-	    	});
+	    	}).filter(allowResource);
 	    	
 	    	var folders = resources.filter(_ => _.uri.indexOf("/") >= 0).map(_ => _.uri.split("/").shift());
 	    	folders = folders.filter(function(path, index) {

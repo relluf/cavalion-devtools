@@ -16,6 +16,9 @@ var Event = require("util/Event");
 var Console = require("vcl/ui/Console");
 var Control = require("vcl/Control");
 
+var LOGGING = 0;
+var AUTO_HIDE_EMPTY_COLUMNS_MAX_ROWS = 10000;
+
 function match(obj, q) {
 	q = q.toLowerCase();	
 	if(typeof obj ==="string") {
@@ -41,6 +44,24 @@ function nameOf(ft) {
 		return ft.split(":").pop();
 	}
 	return ft;	
+}
+function uniqueSelectionKeys(keys) {
+	var counts = {}, seen = {};
+	
+	keys.forEach(key => {
+		key = key || "";
+		counts[key] = (counts[key] || 0) + 1;
+	});
+	
+	return keys.map((key, index) => {
+		key = key || js.sf("selection %d", index + 1);
+		if(counts[key] <= 1) {
+			return key;
+		}
+		
+		seen[key] = (seen[key] || 0) + 1;
+		return js.sf("%s [%d/%d]", key, seen[key], counts[key]);
+	});
 }
 
 var css = {
@@ -235,13 +256,88 @@ const applyVisibleColumns = function(list, attrs) {
 		);
 	});
 };
+const getListColumns = function(list) {
+	return (list && (list._columns || (list.getColumns && list.getColumns()))) || [];
+};
+const showAllColumns = function(list) {
+	var columns = getListColumns(list);
+
+	columns.forEach(function(column) { column.setVisible(true); });
+	list.vars("autoColumns.emptyColumnsSkipped", 0);
+	list.vars("autoColumns.emptyColumnsHidden", 0);
+
+	return { skipped: false, rows: 0, hidden: 0, total: columns.length };
+};
+const hideEmptyColumns = function(list, opts) {
+	opts = opts || {};
+
+	var columns = getListColumns(list);
+	var source = list && list.getSource && list.getSource();
+	var objs = (source && source.getObjects && source.getObjects()) || [];
+	var hidden = 0;
+
+	if(objs.length === 0 || (opts.maxRows !== undefined && objs.length > opts.maxRows)) {
+		showAllColumns(list);
+		list.vars("autoColumns.emptyColumnsSkipped", objs.length);
+		return { skipped: objs.length > 0, rows: objs.length, hidden: 0, total: columns.length };
+	}
+
+	list.vars("autoColumns.emptyColumnsSkipped", 0);
+	columns.forEach(function(column) {
+		var visible = objs.some(function(obj, row) {
+			return list.valueByColumnAndRow(column, row);
+		});
+
+		column.setVisible(visible);
+		hidden += visible ? 0 : 1;
+	});
+	list.vars("autoColumns.emptyColumnsHidden", hidden);
+
+	return { skipped: false, rows: objs.length, hidden: hidden, total: columns.length };
+};
+const applyDefaultColumnVisibility = function(list) {
+	var q, parsed, attrs;
+
+	if(!list || list.vars("autoColumns.applying")) return;
+
+	list.vars("autoColumns.applying", true);
+	try {
+		q = list.ud("#q");
+		parsed = parseFilterAndAttributes(q && q.getValue());
+
+		if(parsed.hasAttrsSpec) {
+			applyVisibleColumns(list, parsed.allColumns ? null : parsed.attrs);
+			list.vars("autoColumns.emptyColumnsSkipped", 0);
+			list.vars("autoColumns.emptyColumnsHidden", 0);
+		} else if((attrs = list.vars("autoColumns.attributes"))) {
+			applyVisibleColumns(list, attrs);
+			list.vars("autoColumns.emptyColumnsSkipped", 0);
+			list.vars("autoColumns.emptyColumnsHidden", 0);
+		} else if(list.vars("autoColumns.hideEmpty") === false) {
+			showAllColumns(list);
+		} else if(list.vars("autoColumns.hideEmptyForced") === true) {
+			hideEmptyColumns(list);
+		} else {
+			hideEmptyColumns(list, { maxRows: AUTO_HIDE_EMPTY_COLUMNS_MAX_ROWS });
+		}
+	} finally {
+		list.vars("autoColumns.applying", false);
+	}
+};
 const updateList = (list) => {
 	list.destroyColumns();
 	list.updateColumns();
-	const attrs = list.vars("autoColumns.attributes");
-	if(attrs) {
-		applyVisibleColumns(list, attrs);
-	}
+	applyDefaultColumnVisibility(list);
+};
+const clearFilter = function(owner) {
+	const q = owner.ud("#q"), array = owner.ud("#array");
+
+	q.getNode().value = "";
+	q._value = "";
+	q.vars("previous", null);
+	array.vars("q", "");
+	array.updateFilter();
+	owner.ud("#status").render();
 };
 
 ["Container", (""), { 
@@ -287,6 +383,10 @@ const updateList = (list) => {
 	onLoad() { 
 		const alias = (forkey) => ({ get: function() { return this[forkey]; } });
 		
+		LOGGING && this.print("logging alphaview.load", {
+			uri: this.getUri(),
+			vars: this.vars()
+		});
 		this.qsa("#load").execute(); 
 		this.vars("history", []);
 		this.vars("ctx", Object.create(null, {
@@ -329,6 +429,8 @@ const updateList = (list) => {
 						["max-width-320", "max-width-500", "max-width-750"],
 						[columns.length > 6, columns.length > 3 && columns.length <= 6, columns.length <= 3]
 					);
+					applyDefaultColumnVisibility(list);
+					this.qs("#status").render();
 					
 				}, 200);
 			}
@@ -342,6 +444,11 @@ const updateList = (list) => {
 		on(evt) {
 			var sel, cons = (evt && evt.cons) || this.vars(["console"]);
 			sel = (evt && evt.sel) || (!(evt && evt.cons) && this.vars(["sel"]));
+			LOGGING && this.print("logging alphaview.load.execute", {
+				evt: evt,
+				hasConsole: cons instanceof Console,
+				hasSelection: sel instanceof Array ? sel.length : !!sel
+			});
 			
 			this.ud("#button-refresh").set("visible", cons instanceof Console);
 			
@@ -372,6 +479,7 @@ const updateList = (list) => {
 					sel = this.app().down("vcl/ui/Console#console").sel || [];
 				}
 			} else if(!sel && (cons && cons.sel && cons.sel.length > 1)) {
+				const selectionKeys = uniqueSelectionKeys(keys);
 				
 				const wait = () => this.setTimeout("waiting", () => {
 					if(now === this.vars("now")) {
@@ -383,7 +491,7 @@ const updateList = (list) => {
 				sel = [
 					Promise.allSettled(cons.sel.map(o => Promise.resolve(o)))
 						.then(values => values.reduce((t, o, i) => { 
-							t[keys[i]] = o.value instanceof Array ? o.value : [o.value]; return t; }, {}))
+							t[selectionKeys[i] || js.sf("selection %d", i + 1)] = o.value instanceof Array ? o.value : [o.value]; return t; }, {}))
 						.then(_ => {
 							this.setTimeout("waiting", () => {}, 0);
 							this.ud("#q").set("placeholder", "");
@@ -401,6 +509,11 @@ const updateList = (list) => {
 			}
 			this.ud("#tabs").set("visible", true);//sel.length > 1);
 			this.ud("#q").setPlaceholder(keys.length === 1 ? keys.join(", ") : this.vars(["placeholder"]) || "");
+			LOGGING && this.print("logging alphaview.load.resolved", {
+				selectionCount: sel && sel.length,
+				keys: keys,
+				leaveTabs: evt && evt.leaveTabs
+			});
 			this.ud("#reflect").execute(sel);
 		}
 	}],
@@ -409,87 +522,109 @@ const updateList = (list) => {
 			var root = this._owner;
 			var value = sel instanceof Array ? sel[sel.length - 1] : undefined;
 			var list = root.qs("#list");
+			LOGGING && this.print("logging alphaview.reflect.execute", {
+				selectionCount: sel instanceof Array ? sel.length : undefined,
+				valueType: value === null ? "null" : value instanceof Array ? "array" : typeof value
+			});
 
 			// list.setCount(0);
 			list._source.setBusy(true);
 			return Promise.resolve(value).then(value => {
-					this.vars("value", value);
+				this.vars("value", value);
 	
-					const tx = (value) => this.applyVar("devtools/Alphaview<> #reflect:transform", [value]);
-					
-					if(value instanceof Array) {
+				const tx = (value) => this.applyVar("devtools/Alphaview<> #reflect:transform", [value]);
+				
+				if(value instanceof Array) {
 // list.show();
 // root.qs("#array").setArray([]);
-						const txd = tx(value);
-						root.qs("#array").setArray(txd || value);
+					const txd = tx(value);
+					root.qs("#array").setArray(txd || value);
+					LOGGING && this.print("logging alphaview.reflect.array", {
+						length: value.length,
+						transformed: !!txd
+					});
 	
-					} else if(value !== null) {
-						if(typeof value === "object") {
-							var src = [], values = Object.values(value);
-							if(values.length && values.every(value => value instanceof Array)) {
-								src.push(["Tab", {
+				} else if(value !== null) {
+					if(typeof value === "object") {
+						var src = [], values = Object.values(value);
+						if(values.length && values.every(value => value instanceof Array)) {
+							src.push(["Tab", {
+								textReflects: "innerHTML",
+								text: js.sf("<small>(%d)</small>", values.flat().length), 
+								vars: { array: values.flat(), key: "" }
+							}]);
+								
+							for(var ft in value) {
+								src.push(["Tab", { 
 									textReflects: "innerHTML",
-									text: js.sf("<small>(%d)</small>", values.flat().length), 
-									vars: { array: values.flat(), key: "" }
+									text: js.sf("%H <small>(%d)</small>", nameOf(ft), value[ft].length), 
+									vars: { array: tx(value[ft]) || value[ft], key: ft }
 								}]);
-									
-								for(var ft in value) {
-									src.push(["Tab", { 
-										textReflects: "innerHTML",
-										text: js.sf("%H <small>(%d)</small>", nameOf(ft), value[ft].length), 
-										vars: { array: tx(value[ft]) || value[ft], key: ft }
-									}]);
-								}
 							}
-							
-							if(src.length) {
-								B.i(["Container", src]).then(c => {
-									var tabs = root.qs("#tabs");
-									var dest = tabs._controls || [];
-	
-									if(src.length === dest.length) {
-	
-										dest.forEach((t, i) => t.set(src[i][1]));
-										tabs.dispatch("change", tabs.getSelectedControl(1), null, { updateList: false });
-	
-									} else {
-										tabs.destroyControls();
-										tabs.clearState("acceptChildNodes");
+						}
 		
-										[].concat(c._controls).forEach(tab => tab.setParent(tabs));
-		
-										tabs.setState("acceptChildNodes", true);
-										tabs._controls[tabs._controls.length > 1 ? 1 : 0].setSelected(true);
-									}
-	
-									tabs.show();
-									root.qs("#bar").show();
+						if(src.length) {
+							B.i(["Container", src]).then(c => {
+								var tabs = root.qs("#tabs");
+								var dest = tabs._controls || [];
+								LOGGING && this.print("logging alphaview.reflect.tabs", {
+									tabCount: src.length,
+									reused: src.length === dest.length
 								});
-							} else {
-								// root.qs("#tabs").hide();
-								// root.qs("#bar").hide();
-								// root.qs("#tabs").destroyControls();
 	
-								var arr = [];
-								// for(var k in value) arr.push({key:k, value:value[k]});\
-								js.keys(value).forEach(k => arr.push({key: k, value: value[k]}));
-								root.qs("#array").setArray(arr.sort((i1, i2) => i1.key < i2.key ? -1 : 1));
-							}
+								if(src.length === dest.length) {
+		
+									dest.forEach((t, i) => t.set(src[i][1]));
+									tabs.dispatch("change", tabs.getSelectedControl(1), null, { updateList: false });
+	
+								} else {
+									tabs.destroyControls();
+									tabs.clearState("acceptChildNodes");
+		
+									[].concat(c._controls).forEach(tab => tab.setParent(tabs));
+		
+									tabs.setState("acceptChildNodes", true);
+									tabs._controls[tabs._controls.length > 1 ? 1 : 0].setSelected(true);
+								}
+	
+								tabs.show();
+								root.qs("#bar").show();
+							});
+						} else {
+							// root.qs("#tabs").hide();
+							// root.qs("#bar").hide();
+							// root.qs("#tabs").destroyControls();
+	
+							var arr = [];
+							// for(var k in value) arr.push({key:k, value:value[k]});\
+							js.keys(value).forEach(k => arr.push({key: k, value: value[k]}));
+							root.qs("#array").setArray(arr.sort((i1, i2) => i1.key < i2.key ? -1 : 1));
+							LOGGING && this.print("logging alphaview.reflect.object", {
+								keyCount: arr.length
+							});
+						}
 // list.show();
 // root.qs("#array").setArray(Object.values(value));
 
-						} else if(typeof value === "function") {
-							// root.qs("#ace").show();
-						}
-						root.qs("#status").render();
-						root.qs("#list").render_();
+					} else if(typeof value === "function") {
+						// root.qs("#ace").show();
 					}
-				})
-				.finally(() => list._source.setBusy(false));
+					root.qs("#status").render();
+					root.qs("#list").render_();
+				}
+				LOGGING && this.print("logging alphaview.reflect.resolved", {
+					valueType: value === null ? "null" : value instanceof Array ? "array" : typeof value
+				});
+			})
+			.finally(() => list._source.setBusy(false));
 		}
 	}],
 	["Executable", ("refresh"), {
 		on(evt) {
+			LOGGING && this.print("logging alphaview.refresh.execute", {
+				evt: evt,
+				delegate: evt.altKey === true ? "#load" : "#reflect"
+			});
 			this.ud("#list").render_(true);
 			
 			const delegate = this.ud(evt.altKey === true ? "#load" : "#reflect");
@@ -507,6 +642,9 @@ const updateList = (list) => {
 		enabled: false,
 		on() {
 			var history = this.vars(["history"]);
+			LOGGING && this.print("logging alphaview.back.execute", {
+				historyDepth: history.length
+			});
 			// var value = history.pop();
 			// this.ud("#q").setValue(value.pop());
 			// value = value.pop();
@@ -515,6 +653,7 @@ const updateList = (list) => {
 				// this.ud("#array").setArray([]);
 				// this.nextTick(() => this.ud("#array").setArray(value));
 				restoreHistoryEntry(this._owner, entry);
+				LOGGING && this.print("logging alphaview.back.restored", entry);
 			}
 			this.setEnabled(history.length > 0);
 			updateList(this.ud("#list"));
@@ -524,6 +663,10 @@ const updateList = (list) => {
 		on(evt) {
 			const list = this.ud("#list");
 			const sel = list.getSelection(true);
+			LOGGING && this.print("logging alphaview.forward.execute", {
+				selectionCount: sel.length,
+				ctrlKey: evt.ctrlKey === true
+			});
 
 			if(evt.ctrlKey === true) {
 				return this.ud("#open").execute(evt);
@@ -537,23 +680,22 @@ const updateList = (list) => {
 					nsel = sel;
 				}
 				
-				if(nsel !== undefined) {
-					const history = list.vars(["history"]), q = this.ud("#q"), array = this.ud("#array");
+					if(nsel !== undefined) {
+						const history = list.vars(["history"]);
 					// history.push([list._source._array, q.getValue()]);
 					history.push(captureHistoryEntry(this._owner));
 					
-					// q.setValue("");
-					q.getNode().value = "";
-					q._value = "";
-					array.vars("q", "");
-					array.updateFilter();
-					this.ud("#status").render();
+					clearFilter(this);
 
-					this.ud("#back").setEnabled(true); 
-					this.ud("#bar").show();
-					
-					if(!(nsel instanceof Array)) {
-						nsel = [nsel];
+						this.ud("#back").setEnabled(true); 
+						this.ud("#bar").show();
+						LOGGING && this.print("logging alphaview.forward.resolved", {
+							nextSelectionCount: nsel.length,
+							drilldownType: nsel.length === 1 && nsel[0] && typeof nsel[0] === "object" ? "object" : "selection"
+						});
+						
+						if(!(nsel instanceof Array)) {
+							nsel = [nsel];
 					} 
 
 					if(nsel.length === 1 && typeof nsel[0] === "object" && nsel[0] !== null) {
@@ -585,10 +727,19 @@ const updateList = (list) => {
 		on() {
 			if(this.ud("#q").isFocused()) {
 				const list = this.ud("#list");
-				const columns = list.getColumns();
-				const objs = list.getSource().getObjects();
+				const hideEmptyEnabled = list.vars("autoColumns.hideEmptyForced") === true ||
+					list.vars("autoColumns.emptyColumnsHidden") > 0;
 				
-				columns.forEach(column => column.setVisible(objs.some((obj, row) => list.valueByColumnAndRow(column, row))));
+				if(hideEmptyEnabled) {
+					list.vars("autoColumns.hideEmpty", false);
+					list.vars("autoColumns.hideEmptyForced", false);
+					showAllColumns(list);
+				} else {
+					list.vars("autoColumns.hideEmpty", true);
+					list.vars("autoColumns.hideEmptyForced", true);
+					hideEmptyColumns(list);
+				}
+				this.ud("#status").render();
 			}
 		}
 	}],
@@ -784,6 +935,9 @@ const updateList = (list) => {
 			onChange() {
 				var array = this.ud("#array");
 				var list = this.ud("#list");
+				LOGGING && this.print("logging alphaview.filter.change", {
+					value: this.getValue()
+				});
 			
 				this.setTimeout("updateFilter", () => {
 					var parsed = parseFilterAndAttributes(this.getValue());
@@ -803,20 +957,20 @@ const updateList = (list) => {
 					}
 					this.vars("previous", signature);
 			
+					array.vars("q", q);
+					array.updateFilter();
+
 					if(parsed.hasAttrsSpec) {
 						// Explicit column instruction from the input
 						attrs = parsed.allColumns ? null : parsed.attrs;
-			
+						applyVisibleColumns(list, attrs);
 					} else {
 						// No valid column instruction in the input:
-						// fall back to remembered/default visible columns
-						attrs = list.vars("autoColumns.attributes");
+						// fall back to remembered/default visible columns,
+						// otherwise hide empty columns for reasonably sized data.
+						applyDefaultColumnVisibility(list);
 					}
-			
-					applyVisibleColumns(list, attrs);
-			
-					array.vars("q", q);
-					array.updateFilter();
+
 					this.ud("#status").render();
 				}, 250);
 			}
@@ -836,10 +990,13 @@ const updateList = (list) => {
 							var total = arr._array.length;
 							var filtered = this.ud("#q").getValue().length > 0 ? (arr._arr||[]).length : 0;
 							var selected = this.ud("#list").getSelection().length;
+							var columns = getListColumns(this.ud("#list"));
+							var hiddenColumns = columns.filter(function(column) { return !column.isVisible(); }).length;
 							
 							selected && status.push(js.sf("%s (%d%%) selected", selected, selected/total*100));
 							filtered && status.push(js.sf("%d (%d%%) filtered", filtered, filtered/total*100));
-							status.push(js.sf("%d %s", total, status.length>1 ? "total" : "items"));
+							hiddenColumns && status.push(js.sf("%d %s hidden", hiddenColumns, hiddenColumns === 1 ? "column" : "columns"));
+							status.push(js.sf("%d %s", total, status.length ? "total" : "items"));
 						}						
 						this.setContent(status.join(" / "));
 					}, 250);
@@ -901,54 +1058,59 @@ const updateList = (list) => {
 			return js.sf("%n", value).substring(0, 1024);
 		},
 		onSelectionChange() {
+			LOGGING && this.print("logging alphaview.selection.change", {
+				selectionCount: this.getSelection().length
+			});
 			this.ud("#status").render();
 			this.ud("#forward").setVisible(this.getSelection().length > 0);
 		},
 		onDispatchChildEvent(component, name, evt, f, ms) {
 			if(name === "dblclick" && component instanceof ListColumn) {
+				LOGGING && this.print("logging alphaview.column.dblclick", {
+					column: component._attribute
+				});
 				this.setTimeout("clicked", () => {
-					var arr = this._source._arr.map(_ => js.mixIn({'_' : _}, _ && _[component._attribute]));
-					var history = this.vars(["history"]);
-					// history.push([this._source._array, this.ud("#q").getValue()]);
-					history.push(captureHistoryEntry(this._owner));
-					
-					// clearQ(this);
-					const q = this.ud("#q"), array = this.ud("#array");
-					q.getNode().value = "";
-					q._value = "";
-					array.vars("q", "");
-					array.updateFilter();
-					this.ud("#status").render();
-					
-					array.setArray(null);
+				var arr = this._source._arr.map(_ => js.mixIn({'_' : _}, _ && _[component._attribute]));
+				var history = this.vars(["history"]);
+				// history.push([this._source._array, this.ud("#q").getValue()]);
+				history.push(captureHistoryEntry(this._owner));
+				
+				const array = this.ud("#array");
+				clearFilter(this);
+				
+				array.setArray(null);
 					array.setArray(arr.filter(_ => _ !== undefined));
+					LOGGING && this.print("logging alphaview.column.drilldown", {
+						column: component._attribute,
+						count: arr.filter(_ => _ !== undefined).length
+					});
 
 					this.ud("#back").setEnabled(true); this.ud("#bar").show();
-					
-					// this.ud("#list").destroyColumns();
-					// this.ud("#list").updateColumns();
-					updateList(this.ud("#list"));
-				});
-			} else if(name === "click") {
-				this.setTimeout("clicked", () => {
-					if(this._columns && this._columns.includes(component)) {
-						if(this.vars("sorted-by") !== component) {
-							this.vars("sorted-by", component);
-							dir = this.vars("sorted-by-dir", "asc");
-						} else {
-							dir = this.vars("sorted-by-dir", this.vars("sorted-by-dir") === "asc" ? "desc" : "asc");
-						}
-						this.sortBy(component, dir);
+				
+				// this.ud("#list").destroyColumns();
+				// this.ud("#list").updateColumns();
+				updateList(this.ud("#list"));
+			});
+		} else if(name === "click") {
+			this.setTimeout("clicked", () => {
+				if(this._columns && this._columns.includes(component)) {
+					if(this.vars("sorted-by") !== component) {
+						this.vars("sorted-by", component);
+						dir = this.vars("sorted-by-dir", "asc");
+					} else {
+						dir = this.vars("sorted-by-dir", this.vars("sorted-by-dir") === "asc" ? "desc" : "asc");
 					}
-				}, 300);
-			}
+					this.sortBy(component, dir);
+				}
+			}, 300);
+		}
 			
 		},
-		onDblClick(evt) { 
-			this.clearTimeout("click");
+			onDblClick(evt) { 
+				this.clearTimeout("click");
 
-			const cell = evt.target.soup(".ListCell");
-			if(evt.target.matches(".ListCell")) {
+				const cell = evt.target.soup(".ListCell");
+				if(evt.target.matches(".ListCell")) {
 				const row = Control.findByNode(cell.parentNode);
 				const index = Array.from(cell.parentNode.childNodes).indexOf(cell);
 				const column = this._header.getControls()[index];
@@ -963,6 +1125,11 @@ const updateList = (list) => {
 				const isobj = type === "object";
 				const isarr = value instanceof Array;
 				const isdate = value instanceof Date;
+				LOGGING && this.print("logging alphaview.cell.dblclick", {
+					column: column && column._attribute,
+					row: row && row._rowIndex,
+					valueType: value === null ? "null" : isarr ? "array" : type
+				});
 
 				if(isobj && !isdate) {
 					if(isarr && value.length === 1) {
@@ -973,14 +1140,23 @@ const updateList = (list) => {
 					// history.push([this._source._array, this.ud("#q").getValue()]);
 					history.push(captureHistoryEntry(this._owner));
 					
+					clearFilter(this);
 					this.ud("#array").setArray(null);
 					this.ud("#array").setArray(value instanceof Array ? value : Object.keys(value).map(k => ({ key: k, value: value[k] })));
+					LOGGING && this.print("logging alphaview.cell.drilldown", {
+						column: column && column._attribute,
+						count: value instanceof Array ? value.length : Object.keys(value).length
+					});
 					this.ud("#back").setEnabled(true); this.ud("#bar").show();
 					
 					// this.ud("#list").destroyColumns();
 					// this.ud("#list").updateColumns();
 					updateList(this.ud("#list"));
 				} else {
+					LOGGING && this.print("logging alphaview.scalar.prompt", {
+						column: column && column._attribute,
+						value: value
+					});
 					prompt("", js.n(value));
 				}
 			}
@@ -1001,6 +1177,11 @@ const updateList = (list) => {
 	}],
 	["Tabs", ("tabs"), {
 		onChange(newTab, oldTab, opts) {
+			LOGGING && this.print("logging alphaview.tabs.change", {
+				newTab: newTab && newTab.vars("key"),
+				oldTab: oldTab && oldTab.vars("key"),
+				opts: opts
+			});
 			var list = this.scope().list;
 			var n = list.nodeNeeded();
 			

@@ -1,8 +1,8 @@
-"vcl/ui/Node, vcl/Factory";
+"use vcl/ui/Node, vcl/Factory";
 
 ["vcl/ui/Tree", {
     css: {
-        ".{./Node}": {
+        ".{Node}": {
             "&:not(.selected) > .text > .class": {
                 color: "silver",
                 ">a": {

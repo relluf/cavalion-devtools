@@ -136,6 +136,9 @@ const Component = require("vcl/Component");
 const HE = require("util/HtmlElement");
 const resolveUri_comps = require("vcl/Factory").resolveUri;
 const CONSOLE_ALLOW_ALT_META_CLICK_VAR = "console/allow-alt-meta-click";
+const PREVIEW_FOLLOW_STORAGE_KEY = "md-preview-follow-source";
+const PREVIEW_SCROLL_STORAGE_KEY = "md-preview-scroll-state";
+const CHECKBOX_STATE_STORAGE_KEY = "md-checkbox-state";
 
 // CVLN-20221106-1, CVLN-20220418-1
 js.dt = (a) => a === undefined ? new Date() : new Date(a);
@@ -151,6 +154,29 @@ function encodeMdLinks(md) {
 			return `[${id}]: ${encodeURI(url)}${title}`;
 		});
 }
+function isEscapedAt(text, index) {
+	var count = 0;
+	for(var i = index - 1; i >= 0 && text.charAt(i) === "\\"; --i) {
+		++count;
+	}
+	return count % 2 === 1;
+}
+function escapeMarkdownLinkDescription(text) {
+	return (text || "").split("").map((ch, index) => {
+		if((ch === "_" || ch === "<") && isEscapedAt(text, index) === false) {
+			return "\\" + ch;
+		}
+		return ch;
+	}).join("");
+}
+function escapeMarkdownLinkDescriptions(md) {
+	return (md || "").replace(/(!?)\[((?:\\.|[^\]\\])*)\]\(([^)\n]*)\)/g, (match, bang, description, href) => {
+		if(bang === "!") {
+			return match;
+		}
+		return `[${escapeMarkdownLinkDescription(description)}](${href})`;
+	});
+}
 // function encodeMdLinks(md) {
 // 	return md
 // 		.replace(/\]\((\S+)(\s+"[^"]*")?\)/g, (m, url, title = "") => {
@@ -162,6 +188,37 @@ function encodeMdLinks(md) {
 // }
 const SECTION_STATE_STORAGE_KEY = "md-section-state";
 const getEditorRoot = (control) => control && typeof control.up === "function" ? control.up() : null;
+const getPreviewScrollState = (control) => {
+	const root = getEditorRoot(control);
+	let state = root && root.vars(["md-preview-scroll-state"]);
+	if(!state) {
+		state = { left: 0, top: 0 };
+		root && root.vars("md-preview-scroll-state", state);
+	}
+	return state;
+};
+const persistPreviewScrollState = (control) => {
+	const root = getEditorRoot(control);
+	const state = getPreviewScrollState(control);
+	if(root) {
+		root.writeStorage(PREVIEW_SCROLL_STORAGE_KEY, state);
+	}
+};
+const capturePreviewScrollState = (control, preview) => {
+	if(!preview) return getPreviewScrollState(control);
+
+	const state = getPreviewScrollState(control);
+	state.left = preview.scrollLeft || 0;
+	state.top = preview.scrollTop || 0;
+	return state;
+};
+const restorePreviewScrollState = (control, preview) => {
+	if(!preview) return;
+
+	const state = getPreviewScrollState(control);
+	preview.scrollLeft = state.left || 0;
+	preview.scrollTop = state.top || 0;
+};
 const getSectionState = (control) => {
 	const root = getEditorRoot(control);
 	let state = root && root.vars(["md-section-state"]);
@@ -178,12 +235,526 @@ const persistSectionState = (control) => {
 		root.writeStorage(SECTION_STATE_STORAGE_KEY, state);
 	}
 };
+const getCheckboxState = (control) => {
+	const root = getEditorRoot(control);
+	let state = root && root.vars(["md-checkbox-state"]);
+	if(!state) {
+		state = {};
+		root && root.vars("md-checkbox-state", state);
+	}
+	return state;
+};
+const persistCheckboxState = (control) => {
+	const root = getEditorRoot(control);
+	const state = getCheckboxState(control);
+	if(root) {
+		root.writeStorage(CHECKBOX_STATE_STORAGE_KEY, state);
+	}
+};
 const normalizeText = (text) => (text || "").replace(/\s+/g, " ").trim();
 const headingLevel = (node) => node && node.nodeType === 1 && /^H[1-6]$/.test(node.tagName) ? parseInt(node.tagName.substring(1), 10) : 0;
 const slugifyHeading = (text) => normalizeText(text)
 	.toLowerCase()
 	.replace(/[^\w\s-]/g, "")
 	.replace(/\s+/g, "-") || "section";
+const renderInlineMarkdownToText = (text) => {
+	var div = document.createElement("DIV");
+	if(marked.parseInline) {
+		div.innerHTML = marked.parseInline(text || "");
+		return normalizeText(div.textContent);
+	}
+	return normalizeText((text || "")
+		.replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
+		.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+		.replace(/[`*_~]/g, ""));
+};
+const buildHeadingKey = (stack, counts, level, text) => {
+	while(stack.length > 1 && stack[stack.length - 1].level >= level) {
+		stack.pop();
+	}
+
+	var parent = stack[stack.length - 1];
+	var count_key = js.sf("%s|%d|%s", parent.key, level, text);
+	var count = counts[count_key] = (counts[count_key] || 0) + 1;
+	var key = js.sf("%s/%d:%s#%d", parent.key, level, text, count);
+
+	stack.push({ level: level, key: key });
+	return key;
+};
+const buildMarkdownHeadingIndex = (value) => {
+	var lines = (value || "").split("\n");
+	var headings = [];
+	var counts = Object.create(null);
+	var stack = [{ level: 0, key: "" }];
+	var fenced;
+
+	for(var i = 0; i < lines.length; ++i) {
+		var line = lines[i];
+		var fence = line.match(/^\s*([`~]{3,})/);
+		if(fence) {
+			var marker = fence[1];
+			if(!fenced) {
+				fenced = marker;
+			} else if(marker.charAt(0) === fenced.charAt(0) && marker.length >= fenced.length) {
+				fenced = null;
+			}
+			continue;
+		}
+		if(fenced) {
+			continue;
+		}
+
+		var atx = line.match(/^\s{0,3}(#{1,6})[ \t]+(.+?)\s*#*\s*$/);
+		if(atx) {
+			var level = atx[1].length;
+			var text = renderInlineMarkdownToText(atx[2]);
+			if(text !== "") {
+				headings.push({
+					row: i,
+					level: level,
+					text: text,
+					key: buildHeadingKey(stack, counts, level, text)
+				});
+			}
+			continue;
+		}
+
+		var next = lines[i + 1];
+		var setext = next && next.match(/^\s{0,3}(=+|-+)\s*$/);
+		if(setext && line.trim() !== "") {
+			var text = renderInlineMarkdownToText(line.trim());
+			var level = setext[1].charAt(0) === "=" ? 1 : 2;
+			if(text !== "") {
+				headings.push({
+					row: i,
+					level: level,
+					text: text,
+					key: buildHeadingKey(stack, counts, level, text)
+				});
+			}
+			++i;
+		}
+	}
+
+	return headings;
+};
+const buildMarkdownOutlineNodes = (headings, total_lines) => {
+	var roots = [];
+	var stack = [];
+
+	headings.forEach((heading, index) => {
+		var next = headings[index + 1];
+		var node = {
+			id: heading.key,
+			key: heading.key,
+			level: heading.level,
+			text: heading.text,
+			row: heading.row,
+			endRow: next ? Math.max(heading.row, next.row - 1) : Math.max(heading.row, (total_lines || 1) - 1),
+			parentId: null,
+			children: []
+		};
+
+		while(stack.length && stack[stack.length - 1].level >= node.level) {
+			stack.pop();
+		}
+
+		if(stack.length) {
+			node.parentId = stack[stack.length - 1].key;
+			stack[stack.length - 1].children.push(node);
+		} else {
+			roots.push(node);
+		}
+
+		stack.push(node);
+	});
+
+	return roots;
+};
+const findHeadingIndexForRow = (headings, row) => {
+	var active = -1;
+	for(var i = 0; i < headings.length; ++i) {
+		if(headings[i].row > row) {
+			break;
+		}
+		active = i;
+	}
+	return active;
+};
+const getAceEditor = (control) => {
+	var root = getEditorRoot(control);
+	var ace = root && root.qsa && root.qsa("#ace")[0];
+	return ace && ace.getEditor ? ace.getEditor() : null;
+};
+const getOutputControl = (control) => {
+	if(control && control.ud) {
+		var output = control.ud("#output");
+		if(output) {
+			return output;
+		}
+	}
+
+	var root = getEditorRoot(control);
+	return root && root.qsa ? root.qsa("#output")[0] : null;
+};
+const getPreviewFollowEnabled = (control) => {
+	var root = getEditorRoot(control);
+	return root ? root.vars(["md-preview-follow-source"]) !== false : true;
+};
+const isSourceVisible = (control) => {
+	var root = getEditorRoot(control);
+	return root ? root.vars(["md-source-visible"]) !== false : true;
+};
+const buildEditorFoldState = (control) => {
+	var root = getEditorRoot(control);
+	var editor = getAceEditor(control);
+	var headings = root && root.vars(["md-heading-index"]);
+	var state = {};
+
+	(headings || []).forEach(heading => state[heading.key] = false);
+	if(!editor || !headings || headings.length === 0) {
+		return state;
+	}
+
+	editor.session.getAllFolds().forEach(fold => {
+		var index = findHeadingIndexForRow(headings, fold.start.row);
+		if(index !== -1) {
+			state[headings[index].key] = true;
+		}
+	});
+
+	return state;
+};
+const snapshotEditorFoldState = (control) => {
+	var root = getEditorRoot(control);
+	root && root.vars("md-editor-fold-state", buildEditorFoldState(control));
+};
+const createMarkdownOutlineProxy = (control) => {
+	var root = getEditorRoot(control) || control;
+	var ace = root && root.ud ? root.ud("#ace") : null;
+	var editor = ace && ace.getEditor ? ace.getEditor() : null;
+	var resource = root && root.vars ? root.vars(["resource"]) : null;
+	var cached_source = null;
+	var cached_outline = null;
+	var getOutline = () => {
+		var source = ace ? ace.getValue() : "";
+		if(cached_outline && source === cached_source) {
+			return cached_outline;
+		}
+
+		var headings = buildMarkdownHeadingIndex(source);
+		cached_source = source;
+		cached_outline = {
+			headings: headings,
+			nodes: buildMarkdownOutlineNodes(headings, source.split("\n").length)
+		};
+		return cached_outline;
+	};
+
+	return {
+		type: "markdown-outline",
+		dialect: root && root.vars ? (root.vars(["dialect"]) || "markdown") : "markdown",
+		resource: resource,
+		ace: ace,
+		editor: root,
+		getSource() {
+			return ace ? ace.getValue() : "";
+		},
+		getOutline() {
+			return getOutline();
+		},
+		getNodes() {
+			return getOutline().nodes;
+		},
+		getHeadings() {
+			return getOutline().headings;
+		},
+		getActiveKey() {
+			if(!editor) return null;
+			var headings = getOutline().headings;
+			var index = findHeadingIndexForRow(headings, editor.getCursorPosition().row);
+			return index === -1 ? null : headings[index].key;
+		},
+		navigate(target) {
+			if(!editor) return;
+
+			var key = typeof target === "string" ? target : js.get("key", target);
+			var heading = getOutline().headings.find(item => item.key === key);
+			if(!heading) return;
+
+			editor.gotoLine(heading.row + 1, 0, true);
+			ace && ace.setFocus && ace.setFocus();
+		},
+		toJSON() {
+			return {
+				type: this.type,
+				dialect: this.dialect,
+				resource: this.resource,
+				nodes: this.getNodes()
+			};
+		}
+	};
+};
+const ensurePreviewCursorBand = (preview) => {
+	var band = preview.querySelector(".md-cursor-band");
+	if(!band) {
+		band = document.createElement("DIV");
+		band.className = "md-cursor-band";
+		preview.appendChild(band);
+	}
+	return band;
+};
+const ensurePreviewSelectionLayer = (preview) => {
+	var layer = preview.querySelector(".md-selection-layer");
+	if(!layer) {
+		layer = document.createElement("DIV");
+		layer.className = "md-selection-layer";
+		preview.appendChild(layer);
+	}
+	return layer;
+};
+const clearPreviewCursorState = (control, preview) => {
+	if(!preview) return;
+
+	var output = getOutputControl(control);
+	var active = output && output.vars(["md-active-section"]);
+	if(active) {
+		active.classList.remove("cursor-active");
+		output.vars("md-active-section", null);
+	}
+
+	var band = preview.querySelector(".md-cursor-band");
+	if(band) {
+		band.style.display = "none";
+	}
+
+	var layer = preview.querySelector(".md-selection-layer");
+	if(layer) {
+		layer.innerHTML = "";
+		layer.style.display = "none";
+	}
+};
+const getPreviewSectionByKey = (control, key) => {
+	var output = getOutputControl(control);
+	var preview = output && output.nodeNeeded ? output.nodeNeeded() : null;
+	var map = output && output.vars(["md-section-map"]);
+
+	if(map && map[key]) {
+		return map[key];
+	}
+	if(!preview) return null;
+
+	return Array.from(preview.querySelectorAll(".md-section"))
+		.find(section => section.getAttribute("data-section-key") === key) || null;
+};
+const keepPreviewBandInView = (preview, band, block = "center") => {
+	if(!preview || !band) return;
+
+	var band_top = band.offsetTop;
+	var band_bottom = band_top + band.offsetHeight;
+	var window_top = preview.scrollTop + (preview.clientHeight * 0.18);
+	var window_bottom = preview.scrollTop + (preview.clientHeight * 0.62);
+
+	if(band_top < window_top || band_bottom > window_bottom) {
+		var target;
+		if(block === "nearest") {
+			target = band_top - 24;
+		} else {
+			target = band_top - Math.round(preview.clientHeight * 0.35);
+		}
+		preview.scrollTop = Math.max(0, target);
+	}
+};
+const placePreviewCursorBand = (preview, band, target, top) => {
+	var preview_rect = preview.getBoundingClientRect();
+	var target_rect = target.getBoundingClientRect();
+	var inset = 10;
+	var left = Math.max(0, (target_rect.left - preview_rect.left) + inset);
+	var width = Math.max(48, target_rect.width - (inset * 2));
+
+	band.style.left = js.sf("%dpx", Math.round(left));
+	band.style.width = js.sf("%dpx", Math.round(width));
+	band.style.top = js.sf("%dpx", Math.max(0, top));
+	band.style.display = "";
+};
+const placePreviewSelectionBand = (preview, layer, target, top, height) => {
+	var preview_rect = preview.getBoundingClientRect();
+	var target_rect = target.getBoundingClientRect();
+	var inset = 10;
+	var band = document.createElement("DIV");
+
+	band.className = "md-selection-band";
+	band.style.left = js.sf("%dpx", Math.round(Math.max(0, (target_rect.left - preview_rect.left) + inset)));
+	band.style.width = js.sf("%dpx", Math.round(Math.max(48, target_rect.width - (inset * 2))));
+	band.style.top = js.sf("%dpx", Math.max(0, top));
+	band.style.height = js.sf("%dpx", Math.max(10, height));
+	layer.appendChild(band);
+	layer.style.display = "";
+};
+const renderPreviewSelection = (control, preview, editor, headings) => {
+	var layer = ensurePreviewSelectionLayer(preview);
+	var range = editor.selection.getRange();
+	var max_bands = 64;
+
+	if(!range || (range.isEmpty && range.isEmpty())) {
+		layer.style.display = "none";
+		return;
+	}
+
+	var start_row = Math.min(range.start.row, range.end.row);
+	var end_row = Math.max(range.start.row, range.end.row);
+	var start_index = findHeadingIndexForRow(headings, start_row);
+	var end_index = findHeadingIndexForRow(headings, end_row);
+
+	if(start_index === -1 || end_index === -1) {
+		layer.style.display = "none";
+		return;
+	}
+
+	if(end_index - start_index > max_bands) {
+		end_index = Math.min(headings.length - 1, start_index + max_bands);
+	}
+
+	for(var i = start_index; i <= end_index; ++i) {
+		var heading = headings[i];
+		var next = headings[i + 1];
+		var section = getPreviewSectionByKey(control, heading.key);
+		var target = section && (getVisibleSectionElement(section) || section);
+		if(!section || target !== section) {
+			continue;
+		}
+
+		var section_start_row = heading.row;
+		var section_end_row = next ? next.row : Math.max(editor.session.getLength() - 1, section_start_row + 1);
+		var span = Math.max(1, section_end_row - section_start_row);
+		var from_row = i === start_index ? start_row : section_start_row;
+		var to_row = i === end_index ? end_row + 1 : section_end_row;
+		var from_ratio = Math.max(0, Math.min(1, (from_row - section_start_row) / span));
+		var to_ratio = Math.max(from_ratio, Math.min(1, (to_row - section_start_row) / span));
+		var top = section.offsetTop + ((section.offsetHeight || 0) * from_ratio);
+		var bottom = section.offsetTop + ((section.offsetHeight || 0) * to_ratio);
+
+		placePreviewSelectionBand(preview, layer, section, top, bottom - top);
+	}
+};
+const getVisibleSectionElement = (section) => {
+	while(section && section.classList && section.classList.contains("md-section")) {
+		var parent = section.parentNode;
+		var parent_section = null;
+		if(parent && parent.classList && parent.classList.contains("md-section-body")) {
+			parent_section = parent.parentNode;
+			if(parent_section && parent_section.classList.contains("collapsed")) {
+				return parent_section;
+			}
+		}
+		section = parent_section;
+	}
+	return null;
+};
+const syncPreviewToEditorRow = (control, row) => {
+	var root = getEditorRoot(control);
+	var output = getOutputControl(control);
+	var preview = output && output.nodeNeeded ? output.nodeNeeded() : null;
+	if(getPreviewFollowEnabled(control) !== true || isSourceVisible(control) !== true) {
+		clearPreviewCursorState(control, preview);
+		return;
+	}
+
+	var editor = getAceEditor(control);
+	var headings = root && root.vars(["md-heading-index"]);
+	clearPreviewCursorState(control, preview);
+	if(!preview || !editor || !headings || headings.length === 0) {
+		if(preview && row <= 0) {
+			preview.scrollTop = 0;
+		}
+		return;
+	}
+
+	var index = findHeadingIndexForRow(headings, row);
+	if(index === -1) {
+		preview.scrollTop = 0;
+		return;
+	}
+
+	var current = headings[index];
+	var next = headings[index + 1];
+	var section = getPreviewSectionByKey(control, current.key);
+	if(!section) {
+		return;
+	}
+
+	var target = getVisibleSectionElement(section) || section;
+	if(target.classList) {
+		target.classList.add("cursor-active");
+		output && output.vars("md-active-section", target);
+	}
+	renderPreviewSelection(control, preview, editor, headings);
+	var band = ensurePreviewCursorBand(preview);
+	var band_top;
+	if(target !== section) {
+		var target_heading = target.firstElementChild;
+		band_top = target.offsetTop + (target_heading ? target_heading.offsetHeight - 3 : Math.round(target.offsetHeight / 2));
+		placePreviewCursorBand(preview, band, target, band_top);
+		keepPreviewBandInView(preview, band, "nearest");
+		return;
+	}
+
+	var section_end_row = next ? next.row : Math.max(editor.session.getLength() - 1, current.row + 1);
+	var span = Math.max(1, section_end_row - current.row);
+	var ratio = Math.max(0, Math.min(1, (row - current.row) / span));
+	band_top = section.offsetTop + ((section.offsetHeight || 0) * ratio);
+	placePreviewCursorBand(preview, band, target, band_top);
+	keepPreviewBandInView(preview, band, "center");
+};
+const schedulePreviewSync = (control, row) => {
+	if(control && control.setTimeout) {
+		control.setTimeout("sync-preview-to-editor", () => syncPreviewToEditorRow(control, row), 60);
+	}
+};
+const syncPreviewToEditorFolds = (control) => {
+	var root = getEditorRoot(control);
+	var output = getOutputControl(control);
+	var preview = output && output.nodeNeeded ? output.nodeNeeded() : null;
+	var previous = root && root.vars(["md-editor-fold-state"]);
+	var current = buildEditorFoldState(control);
+	var changed = false;
+
+	if(!root) {
+		return;
+	}
+	if(root.vars(["md-fold-sync-ready"]) !== true) {
+		root.vars("md-editor-fold-state", current);
+		return;
+	}
+	if(!preview || !previous) {
+		root.vars("md-editor-fold-state", current);
+		return;
+	}
+
+	Object.keys(current).forEach(key => {
+		var before = previous[key];
+		var after = current[key];
+		if(before === after) {
+			return;
+		}
+
+		var section = getPreviewSectionByKey(control, key);
+		if(!section) {
+			return;
+		}
+
+		var preview_collapsed = section.classList.contains("collapsed");
+		if(preview_collapsed === before) {
+			setSectionCollapsed(control, section, after, false);
+			changed = true;
+		}
+	});
+
+	root.vars("md-editor-fold-state", current);
+	if(changed) {
+		persistSectionState(control);
+	}
+};
 const setSectionCollapsed = (control, section, collapsed, persist = true) => {
 	if(!section) return;
 
@@ -206,24 +777,191 @@ const setSectionsCollapsed = (control, sections, collapsed) => {
 	sections.forEach(section => setSectionCollapsed(control, section, collapsed, false));
 	persistSectionState(control);
 };
-const decorateLinks = (node) => {
+const expandSectionsUpToLevel = (control, sections, level) => {
+	level = parseInt(level, 10);
+	sections.forEach(section => {
+		var section_level = parseInt(section.getAttribute("data-section-level"), 10);
+		if(section_level <= level) {
+			setSectionCollapsed(control, section, false, false);
+		}
+	});
+	persistSectionState(control);
+};
+const resolveLinkHintHref = (anchor, control) => {
+	var href = window.unescape(js.get("attributes.href.value", anchor) || "");
+    var blocks, blocks_vars, comps, comps_vars;
+    var backticks = false;
+    var swp, uri;
+	var base = control.vars(["resource.uri"]);
+
+    if(href.startsWith("javascript:")) {
+    	return href;
+    }
+    
+    if(href.startsWith("`") && href.endsWith("`")) {
+    	backticks = true;
+    	href = href.substring(1, href.length - 1);
+        if(href === "!") {
+        	href = "${p(:)}";
+        }
+    }
+
+	var silent = href.match(/!!\$\{/);
+	if(silent) {
+		href = href.substring(2);
+	}
+
+    if(href === "[]") {
+    	href = "[:]";
+    }
+    
+    if(href === "[.]") {
+    	href = "blocks:./:";
+    } else if(href === "[!]") {
+    	href = "blocks:!:";
+    } else if(href.startsWith("[") && href.endsWith("]")) {
+    	href = "blocks:" + href.substring(1, href.length - 1);
+    } else if(href.startsWith("<<[") && href.endsWith("]>>")) {
+    	href = "blocks:*" + href.substring(3, href.length - 3);
+    } else if(href.startsWith("<[") && href.endsWith("]>")) {
+    	href = "blocks:*" + href.substring(2, href.length - 2);
+    } else if(href.startsWith("<[") && href.endsWith("]>>")) {
+    	href = "blocks:*" + href.substring(2, href.length - 3);
+    } else if((blocks = href.match(/(\[[^\]]*\])({.*})/))) {
+    	href = "blocks:" + blocks[1].substring(1).split("]")[0];
+    	blocks_vars = blocks[2];
+    }
+
+    if(href === "()") {
+    	href = "(:)";
+    }
+    
+    if(href === "(.)") {
+    	href = "comps:./:";
+    } else if(href === "(!)") {
+    	href = "comps:!:";
+    } else if(href.startsWith("(") && href.endsWith(")")) {
+    	href = "comps:" + href.substring(1, href.length - 1);
+    } else if((comps = href.match(/(\([^\)]*\))({.*})/))) {
+    	href = "comps:" + comps[1].substring(1).split(")")[0];
+    	comps_vars = comps[2];
+    }
+    
+    if(href === "{}") href = "{:}"
+    
+    if(href.startsWith(":") && !href.startsWith("://")) {
+    	href = anchor.textContent + href.substring(1);
+    } else if(href.startsWith("blocks:")) {
+		href = href.substring("blocks:".length);
+		blocks = true;
+    } else if(href.startsWith("comps:")) {
+		href = href.substring("comps:".length);
+		comps = true;
+	}
+	
+	swp = startsWithProtocol(href);
+	if(!swp || href.split(":").length > 2) {
+		if(href.charAt(0) === "#") {
+			if(!href.endsWith(":")) {
+				return href;
+			}
+		} else {
+			href = href.replace(/:([^:]*)$/, anchor.textContent + "$1");
+		}
+	}
+		
+	if(href === "" || href === "*") {
+		href = href + anchor.textContent;
+	}
+	
+	if(backticks) {
+		return js.sf("[dynamic] %s", href);
+	}
+
+	if(href.startsWith("https://") || 
+		href.startsWith("http://") || 
+		href.startsWith("file://") ||
+		href.startsWith("ftp://") ||
+		href.startsWith("codex://") ||
+		href.startsWith("///")
+	) {
+		return href.startsWith("///") ? href.substring(3) : href;
+	}
+	
+    if(href.endsWith("::")) {
+    	var hs = href.split(":");
+    	hs.pop(); hs.pop(); hs.shift();
+    	return js.normalize(base, hs.join(":").replace(/::/g, anchor.textContent) || anchor.textContent);
+    }
+
+	if(blocks) {
+		if(href.charAt(0) === "*") href = href.substring(1);
+		if(href.charAt(0) === "!") href = href.substring(1);
+		
+		if(href.startsWith("./")) {
+			uri = js.normalize(base, href);
+		} else if(href.startsWith("/")) {
+			uri = href.substring(1);
+		} else if(!swp) {
+			uri = "Library/cavalion-blocks/" + href;
+		} else {
+			uri = href;
+		}
+		return resolveUri_blocks(uri).substring("cavalion-blocks/".length) + ".js";
+	} else if(comps) {
+		if(href.charAt(0) === "!") href = href.substring(1);
+		if(href.startsWith("./")) {
+			uri = js.normalize(base, href);
+		} else if(href.startsWith("/")) {
+			uri = href.substring(1);
+		} else if(!swp) {
+			uri = "Library/vcl-comps/" + href;
+		} else {
+			uri = href;
+		}
+		return resolveUri_comps(uri).substring("vcl-comps/".length) + ".js";
+	}
+
+	swp = startsWithProtocol(href);
+	if(!swp) {
+		var _ = window.require.s.contexts._;
+        if(href.startsWith("{") && href.endsWith("}")) {
+        	uri = _.nameToUrl(href.substring(1, href.length - 1));
+        	uri = uri.replace(/^\.\/lib/, "/Library/");
+        } else {
+			uri = href;
+        }
+		uri = js.normalize(base, uri.charAt(0) === "/" ? uri.substring(1) : ("./" + uri));
+	} else {
+		uri = href;
+	}
+
+	return uri.endsWith("/") ? uri.substring(0, uri.length - 1) : uri;
+};
+const decorateLinks = (node, control) => {
 	node.qsa("a").forEach(a => {
-		var href = window.unescape(js.get("attributes.href.value", a) || "");
-		if(a.classList.contains("md-heading-anchor") || href === "") {
+		if(a.classList.contains("md-heading-anchor")) {
 			a.removeAttribute("data-href-hint");
 		} else {
-			a.setAttribute("data-href-hint", href);
+			var href = resolveLinkHintHref(a, control);
+			if(href) {
+				a.setAttribute("data-href-hint", href);
+			} else {
+				a.removeAttribute("data-href-hint");
+			}
 		}
 	});
 };
 const decorateSections = (node, control) => {
 	var children = Array.from(node.childNodes);
 	if(children.some(child => headingLevel(child) > 0) === false) {
+		control.vars("md-section-map", {});
 		return;
 	}
 
 	var state = getSectionState(control);
 	var counts = Object.create(null);
+	var map = {};
 
 	while(node.firstChild) {
 		node.removeChild(node.firstChild);
@@ -258,9 +996,63 @@ const decorateSections = (node, control) => {
 		section.appendChild(child);
 		section.appendChild(body);
 		parent.body.appendChild(section);
+		map[key] = section;
 		stack.push({ level: level, body: body, key: key });
 
 		setSectionCollapsed(control, section, state[key] === true, false);
+	});
+
+	control.vars("md-section-map", map);
+};
+const getCheckboxItemText = (item) => {
+	var clone = item.cloneNode(true);
+
+	Array.from(clone.querySelectorAll("input, ul, ol")).forEach(node => {
+		node.parentNode && node.parentNode.removeChild(node);
+	});
+
+	return normalizeText(clone.textContent) || "item";
+};
+const buildCheckboxKey = (item, counts) => {
+	var section = item.closest ? item.closest(".md-section") : null;
+	var section_key = section ? section.getAttribute("data-section-key") : "";
+	var path = [];
+	var current = item;
+
+	while(current && current.nodeName === "LI") {
+		path.unshift(getCheckboxItemText(current));
+		var list = current.parentNode;
+		current = list && list.parentNode && list.parentNode.nodeName === "LI" ? list.parentNode : null;
+	}
+
+	path = path.join(" > ") || "item";
+	var count_key = js.sf("%s|%s", section_key, path);
+	var count = counts[count_key] = (counts[count_key] || 0) + 1;
+	return js.sf("%s::%s#%d", section_key, path, count);
+};
+const decorateCheckboxes = (node, control) => {
+	var state = getCheckboxState(control);
+	var counts = Object.create(null);
+
+	node.qsa('input[type="checkbox"]').forEach(input => {
+		var item = input.closest ? input.closest("LI") : null;
+		if(!item) {
+			input.removeAttribute("disabled");
+			return;
+		}
+
+		var key = buildCheckboxKey(item, counts);
+		input.removeAttribute("disabled");
+		input.setAttribute("data-checkbox-key", key);
+
+		if(state[key] !== undefined) {
+			input.checked = state[key] === true;
+		}
+
+		input.addEventListener("change", () => {
+			state[key] = input.checked === true;
+			persistCheckboxState(control);
+		});
 	});
 };
 function render() {
@@ -279,6 +1071,7 @@ function render() {
 	var resource = this.vars(["resource"]);
 	var content;
 	var root_control = this.up();
+	var render_value = dialect === "marked" ? escapeMarkdownLinkDescriptions(value) : value;
 
 	if(root_control && dialect !== undefined && root_control.vars("dialect-persisted") !== dialect) {
 		root_control.vars("dialect-persisted", dialect);
@@ -286,20 +1079,27 @@ function render() {
 	}
 
 	if(!dialect || dialect === "markdown") {
-		var root = markdown.toHTMLTree(encodeMdLinks(value), 
+		var root = markdown.toHTMLTree(encodeMdLinks(render_value), 
 				this.vars(["markdown.dialect"]), 
 				this.vars(["markdown.options"]));
 				
 		content = markdown.renderJsonML(root);
 	} else if(dialect === "marked") {
 
-		content = marked(value);
+		content = marked(render_value);
 	}
 	
-	this.up().vars("root", root);
-    this.up().qsa("#output").forEach(_ => {
-    	_.setContent(content);
-    	_.update(function() {
+	root_control && root_control.vars("md-heading-index", buildMarkdownHeadingIndex(value));
+	root_control && root_control.vars("root", root);
+
+	var output = getOutputControl(this);
+	if(!output) {
+		return;
+	}
+
+	capturePreviewScrollState(this, output.nodeNeeded ? output.nodeNeeded() : null);
+	output.setContent(content);
+	output.update(function() {
     		var node = this.nodeNeeded(), me = this;
     		
     		node.qsa("a").forEach(a => {
@@ -382,12 +1182,17 @@ function render() {
 				return a.href;
 			};
 			
-			"h1,h2,h3,h4,h5".split(",").forEach(H => node.qsa(H).map(insertA));
-			decorateLinks(node);
-			decorateSections(node, this);
-		    
-    	}.bind(_));
-    });
+				"h1,h2,h3,h4,h5".split(",").forEach(H => node.qsa(H).map(insertA));
+				decorateLinks(node, this);
+				decorateSections(node, this);
+				if(dialect === "marked") {
+					decorateCheckboxes(node, this);
+				}
+				restorePreviewScrollState(this, node);
+				var editor = getAceEditor(this);
+				schedulePreviewSync(this, editor ? editor.getCursorPosition().row : 0);
+			    
+	}.bind(output));
 }
 document.addEventListener("click", (evt) => {
 // #CVLN-20210102-2
@@ -735,91 +1540,9 @@ const Handlers = {
 const Css = {
 	'a > img': "border: 2px solid rgb(56, 121, 217);"
 };
-
-["", { css: Css, handlers: Handlers }, [
-    [("#evaluate"), {
-    	onLoad() {
-    		this.vars("eval", () => this.vars(["root"]));
-    		return this.inherited(arguments);
-    	}
-    }],
-    [("#ace"), { 
-    	align: "left", width: 600, action: "toggle-source",
-    	executesAction: "none",
-	    onLoad() {
-    		var root = this.up();
-    		if(root) {
-    			root.readStorage("dialect", (dialect) => {
-    				if(dialect !== undefined && root.vars(["dialect"]) === undefined) {
-    					root.vars("dialect", dialect);
-    					root.vars("dialect-persisted", dialect);
-    					this.setTimeout("render", render.bind(this), 0);
-    				}
-    			});
-    			root.readStorage(SECTION_STATE_STORAGE_KEY, (state) => {
-    				if(state && typeof state === "object") {
-    					root.vars("md-section-state", state);
-    					this.setTimeout("render", render.bind(this), 0);
-    				}
-    			});
-    		}
-    	},
-        onChange() { 
-        	if(!this._vars) {
-        		render.apply(this, []);
-        		this.vars();
-        	} else {
-        		this.setTimeout("render", render.bind(this), 750);
-        	}
-        }
-    }],
-    
-    ["vcl/Action", ("toggle-source"), {
-        hotkey: "Shift+MetaCtrl+S",
-        selected: "state", visible: "state", 
-        state: true,
-        onLoad() {
-        	var resource = this.vars(["resource"]);
-        	var md_sourceInitiallyHidden = this.vars(["markdown-source-intially-hidden"]) === true;
-        	if(!resource.name) resource.name = resource.uri.split("/").pop();
-    		this.up().readStorage("source-visible", (visible) => {
-    			if(typeof visible === "boolean") {
-    				this.setState(visible);
-    				update_shrink(this, visible);
-    				// this.ud("#output").syncClass("shrink", visible);
-    			} else if(visible === undefined && (md_sourceInitiallyHidden || (
-    					resource.uri.split("/").pop() === ".md" ||
-    					isUpperCase(resource.name.split(".md")[0])
-    				))
-    			) {
-    				this.setState(false);
-    				update_shrink(this, false);
-    				// this.ud("#output").syncClass("shrink", false);
-    			}
-    		});
-        },
-        onExecute() {
-        	var state = !this.getState();
-        	this.setState(state);
-        	if(state === true) {
-        		var ace = this.ud("#ace");
-        		ace.setFocus();
-        		// this.nextTick(() => ace.focus());
-        		// this.ud("#output").toggleClass("shrink");
-        	}
-			update_shrink(this, state);
-        	this.up().writeStorage("source-visible", this.getState());
-        	
-        }
-    }],
-    ["vcl/ui/Panel", ("output"), { 
-    	align: "client", 
-    	vars: {
-    		[CONSOLE_ALLOW_ALT_META_CLICK_VAR]: true
-    	},
-    	css: {
+const Css_content = {
 /*- TODO should be centralized */
-			"": "margin-left:auto;margin-right:auto;",
+			"": "margin-left:auto;margin-right:auto;",//position:relative;",
 			':not(.shrink)': "width:795px;",
 		    "background-color": "rgba(240,240,240,1)", 
 		    "border-left": "1px solid silver",
@@ -837,15 +1560,172 @@ const Css = {
 		    "a[data-href-hint]:hover::after": "content:attr(data-href-hint);position:absolute;left:0;bottom:calc(100% + 6px);z-index:20;display:block;max-width:36em;padding:4px 7px;border-radius:4px;background:rgba(32,32,32,.92);color:white;font-size:9pt;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.2);",
 		    ".md-heading-anchor": "display:none;",
 		    ".md-section > .md-section-heading": "position:relative;cursor:pointer;padding-left:18px;margin-left:-18px;",
+		    ".md-section > .md-section-body": "position:relative;",
+		    ".md-section.cursor-active > .md-section-heading": "background:linear-gradient(90deg, rgba(56,121,217,.16), rgba(56,121,217,.05));border-radius:4px;color:rgb(19,71,144);",
+		    ".md-section.cursor-active > .md-section-body": "background:linear-gradient(180deg, rgba(56,121,217,.05), rgba(56,121,217,.015));",
 		    ".md-section > .md-section-heading::before": "content:'';position:absolute;left:2px;top:50%;width:7px;height:7px;border-right:2px solid rgba(60,60,60,.75);border-bottom:2px solid rgba(60,60,60,.75);transform:translateY(-65%) rotate(-45deg);opacity:0;transition:opacity 120ms ease, transform 120ms ease;",
-		    ".md-section > .md-section-heading:hover::before": "opacity:.85;",
-		    ".md-section:not(.collapsed) > .md-section-heading::before": "transform:translateY(-70%) rotate(45deg);",
-		    ".md-section.collapsed > .md-section-heading::before": "opacity:.4;",
-		    ".md-section.collapsed > .md-section-heading": "color:rgba(20,20,20,.78);",
+			    ".md-section > .md-section-heading:hover::before": "opacity:.85;",
+			    ".md-section:not(.collapsed) > .md-section-heading::before": "transform:translateY(-70%) rotate(45deg);",
+			    ".md-section.collapsed > .md-section-heading::before": "opacity:.2;",
+			    ".md-section.collapsed > .md-section-heading": "color:rgba(20,20,20,.78);",
 		    ".md-section.collapsed > .md-section-body": "display:none;",
+		    ".md-cursor-band": "position:absolute;height:12px;margin-top:-6px;border-top:1px solid rgba(56,121,217,.35);border-bottom:1px solid rgba(56,121,217,.18);background:linear-gradient(180deg, rgba(56,121,217,.10), rgba(56,121,217,.03));border-radius:999px;pointer-events:none;z-index:6;box-shadow:0 0 0 1px rgba(56,121,217,.04) inset;",
+		    ".md-selection-layer": "position:absolute;inset:0;pointer-events:none;z-index:4;",
+		    ".md-selection-band": "position:absolute;border-radius:10px;background:linear-gradient(180deg, rgba(56,121,217,.12), rgba(56,121,217,.05));box-shadow:0 0 0 1px rgba(56,121,217,.08) inset;",
 		    // "img:hover": "width:100%;max-width:600px;",
-		    "code": "border-radius:7px;font-size: 7.5pt;background-color:white;padding:4px;",
-	    },
+		    "code": "border-radius:7px;font-size: 7.5pt;background-color:white;padding:4px;vertical-align:middle;",
+		    "&.small-images": {
+		    	"img:not(:hover)": "width: 10%; height: 10%;",
+		    	"img:not(.inline)": "margin: 8px; margin-left: 24px;"
+		    },
+		    "&.hide-images": {
+		    	"img": "display: none;"
+		    }
+	    };
+
+[(""), { css: Css, handlers: Handlers }, [
+    [("#evaluate"), {
+    	onLoad() {
+    		this.vars("eval", () => this.vars(["root"]));
+    		return this.inherited(arguments);
+    	}
+    }],
+    [("#ace"), { 
+    	align: "left", width: 600, action: "toggle-source",
+    	executesAction: "none",
+	    onLoad() {
+    		var root = this.up();
+    		var editor = this.getEditor();
+    		var sync_cursor = () => schedulePreviewSync(this, editor.getCursorPosition().row);
+    		var sync_selection = () => schedulePreviewSync(this, editor.getCursorPosition().row);
+    		var sync_scroll = () => schedulePreviewSync(this,
+    			editor.getFirstVisibleRow ? editor.getFirstVisibleRow() : editor.renderer.getFirstVisibleRow());
+    		var sync_folds = () => syncPreviewToEditorFolds(this);
+
+    		editor.selection.on("changeCursor", sync_cursor);
+    		editor.selection.on("changeSelection", sync_selection);
+    		editor.session.on("changeScrollTop", sync_scroll);
+    		editor.session.on("changeFold", sync_folds);
+
+	    		if(root) {
+	    			this.up("vcl/ui/Tab").once("resource-loaded", () => {
+    				this.setTimeout("md-fold-sync-ready", () => {
+    					root.vars("md-fold-sync-ready", true);
+    					snapshotEditorFoldState(this);
+    					schedulePreviewSync(this, editor.getCursorPosition().row);
+    				}, 150);
+    			});
+
+    			root.readStorage("dialect", (dialect) => {
+    				if(dialect !== undefined && root.vars(["dialect"]) === undefined) {
+    					root.vars("dialect", dialect);
+    					root.vars("dialect-persisted", dialect);
+    					this.setTimeout("render", render.bind(this), 0);
+    				}
+    			});
+    			root.readStorage(SECTION_STATE_STORAGE_KEY, (state) => {
+    				if(state && typeof state === "object") {
+    					root.vars("md-section-state", state);
+    					this.setTimeout("render", render.bind(this), 0);
+    				}
+    			});
+	    			root.readStorage(CHECKBOX_STATE_STORAGE_KEY, (state) => {
+	    				if(state && typeof state === "object") {
+	    					root.vars("md-checkbox-state", state);
+	    					this.setTimeout("render", render.bind(this), 0);
+	    				}
+	    			});
+	    			root.readStorage(PREVIEW_FOLLOW_STORAGE_KEY, (state) => {
+	    				if(typeof state === "boolean") {
+	    					root.vars("md-preview-follow-source", state);
+	    				}
+	    			});
+	    			root.readStorage(PREVIEW_SCROLL_STORAGE_KEY, (state) => {
+	    				if(state && typeof state === "object") {
+	    					root.vars("md-preview-scroll-state", {
+	    						left: state.left || 0,
+	    						top: state.top || 0
+	    					});
+	    					this.setTimeout("restore-preview-scroll", () =>
+	    						restorePreviewScrollState(this, this.ud("#output").nodeNeeded()), 0);
+	    				}
+	    			});
+	    		}
+	    	},
+        onChange() { 
+        	if(!this._vars) {
+        		render.apply(this, []);
+        		this.vars();
+        	} else {
+        		this.setTimeout("render", render.bind(this), 750);
+        	}
+        }
+    }],
+    
+    ["vcl/Action", ("toggle-source"), {
+	    hotkey: "Shift+MetaCtrl+S",
+	    selected: "state", visible: "state", 
+	    state: true,
+	    onLoad() {
+	    	var resource = this.vars(["resource"]);
+	    	var md_sourceInitiallyHidden = this.vars(["markdown-source-intially-hidden"]) === true;
+	    	if(!resource.name) resource.name = resource.uri.split("/").pop();
+    		this.up().readStorage("source-visible", (visible) => {
+    			if(typeof visible === "boolean") {
+    				this.setState(visible);
+    				this.up().vars("md-source-visible", visible);
+    				update_shrink(this, visible);
+    				// this.ud("#output").syncClass("shrink", visible);
+    			} else if(visible === undefined && (md_sourceInitiallyHidden || (
+    					resource.uri.split("/").pop() === ".md" ||
+    					isUpperCase(resource.name.split(".md")[0])
+    				))
+    			) {
+    				this.setState(false);
+    				this.up().vars("md-source-visible", false);
+    				update_shrink(this, false);
+    				// this.ud("#output").syncClass("shrink", false);
+    			} else {
+    				this.up().vars("md-source-visible", this.getState());
+    			}
+    		});
+        },
+        onExecute() {
+        	var state = !this.getState();
+        	this.setState(state);
+        	this.up().vars("md-source-visible", state);
+        	schedulePreviewSync(this, this.ud("#ace").getEditor().getCursorPosition().row);
+        	if(state === true) {
+        		var ace = this.ud("#ace");
+        		ace.setFocus();
+		// this.nextTick(() => ace.focus());
+		// this.ud("#output").toggleClass("shrink");
+	}
+	update_shrink(this, state);
+	this.up().writeStorage("source-visible", this.getState());
+	
+    }
+    }],
+    ["vcl/Action", ("outline-proxy-generate"), {
+    	on() {
+    		return createMarkdownOutlineProxy(this.up());
+    	}
+    }],
+    ["vcl/Action", ("show-outline"), {
+    	hotkey: "Shift+MetaCtrl+O",
+    	on() {
+    		return H("vcl-comps:devtools/Outline<md>", {
+    			ace: this.ud("#ace"),
+    			outline: this.ud("#outline-proxy-generate").execute()
+    		});
+    	}
+    }],
+    ["vcl/ui/Panel", ("output"), { 
+    	align: "client", 
+		vars: {
+			[CONSOLE_ALLOW_ALT_META_CLICK_VAR]: true
+		},
+		css: Css_content,
 	    classes: "shrink",
 	    
 	    onMouseMove(evt) {
@@ -858,17 +1738,17 @@ const Css = {
 	    	}
 	    	
 	    	var last = this.vars("last");
-    		if(last !== current) {
-    			if(last) {
-    				last.style.width = "";
-    			}
-    			last = current;
-    			if(last) {
-    				last.style.width = last.style.widthWhenHovered;
-    			}
-    		}
-    		
-    		last && this.vars("last", last);
+			if(last !== current) {
+				if(last) {
+					last.style.width = "";
+				}
+				last = current;
+				if(last) {
+					last.style.width = last.style.widthWhenHovered;
+				}
+			}
+			
+			last && this.vars("last", last);
 	    },
 	    onMouseLeave(evt) {
 	    	var last = this.removeVar("last");
@@ -876,34 +1756,41 @@ const Css = {
 				last.style.width = "";
 			}
 	    },
+	    onScroll() {
+	    	capturePreviewScrollState(this, this.nodeNeeded());
+	    	this.setTimeout("persist-preview-scroll-state",
+	    		() => persistPreviewScrollState(this), 150);
+	    },
 	    onClick(evt) {
 	    	var anchor = evt.target.up("A", true);
 	    	if(anchor) return;
 
-	    	var heading = evt.target.up("H1,H2,H3,H4,H5,H6", true);
-	    	if(!heading || heading.classList.contains("md-section-heading") === false) {
-	    		return;
-	    	}
+    	var heading = evt.target.up("H1,H2,H3,H4,H5,H6", true);
+    	if(!heading || heading.classList.contains("md-section-heading") === false) {
+    		return;
+    	}
 
-	    	var section = heading.parentNode;
-	    	if(!section || section.classList.contains("md-section") === false) {
-	    		return;
-	    	}
+    	var section = heading.parentNode;
+    	if(!section || section.classList.contains("md-section") === false) {
+    		return;
+    	}
 
-	    	evt.preventDefault();
-	    	evt.stopPropagation();
+    	evt.preventDefault();
+    	evt.stopPropagation();
 
-	    	var collapsed = section.classList.contains("collapsed");
-	    	if(evt.altKey === true && evt.metaKey === true) {
-	    		var level = section.getAttribute("data-section-level");
-	    		setSectionsCollapsed(this,
-	    			this._node.qsa(js.sf('.md-section[data-section-level="%s"]', level)),
-	    			true);
-	    	} else if(evt.altKey === true) {
-	    		setSectionsCollapsed(this, this._node.qsa(".md-section"), !collapsed);
-	    	} else {
-	    		setSectionCollapsed(this, section, !collapsed);
-	    	}
-	    }
-    }]
+    	var collapsed = section.classList.contains("collapsed");
+    		var level = section.getAttribute("data-section-level");
+    	if(evt.shiftKey === true && evt.altKey === true && evt.metaKey === true) {
+    		expandSectionsUpToLevel(this, this._node.qsa(".md-section"), level);
+    	} else if(evt.altKey === true && evt.metaKey === true) {
+    		setSectionsCollapsed(this,
+    			this._node.qsa(js.sf('.md-section[data-section-level="%s"]', level)),
+    			true);
+    	} else if(evt.altKey === true) {
+    		setSectionsCollapsed(this, this._node.qsa(".md-section"), !collapsed);
+    	} else {
+    		setSectionCollapsed(this, section, !collapsed);
+    	}
+    }
+	}]
 ]];
