@@ -170,6 +170,15 @@ define([], function() {
 	// //         }
 	// //     }
 	// // });
+
+	var require_context = window.require && window.require.s &&
+		window.require.s.contexts && window.require.s.contexts._;
+	var require_config = require_context && require_context.config;
+	var require_paths = require_config && (require_config.paths = require_config.paths || {});
+
+	if(require_paths && !require_paths.acorn) {
+		require_paths.acorn = "https://cdn.jsdelivr.net/npm/acorn@8.15.0/dist/acorn";
+	}
 	
 	define("clipboard-copy", [], () => {
 		return function clipboardCopy (text) {

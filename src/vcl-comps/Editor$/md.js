@@ -187,7 +187,13 @@ function escapeMarkdownLinkDescriptions(md) {
 // 		});
 // }
 const SECTION_STATE_STORAGE_KEY = "md-section-state";
-const getEditorRoot = (control) => control && typeof control.up === "function" ? control.up() : null;
+const getEditorRoot = (control) => {
+	if(!control) return null;
+	if(control.hasVar && control.hasVar("topLevelNavigation")) {
+		return control;
+	}
+	return typeof control.up === "function" ? control.up() : null;
+};
 const getPreviewScrollState = (control) => {
 	const root = getEditorRoot(control);
 	let state = root && root.vars(["md-preview-scroll-state"]);
@@ -522,6 +528,7 @@ const clearPreviewCursorState = (control, preview) => {
 		active.classList.remove("cursor-active");
 		output.vars("md-active-section", null);
 	}
+	syncTopLevelNavActive(control, null);
 
 	var band = preview.querySelector(".md-cursor-band");
 	if(band) {
@@ -657,6 +664,7 @@ const syncPreviewToEditorRow = (control, row) => {
 	var preview = output && output.nodeNeeded ? output.nodeNeeded() : null;
 	if(getPreviewFollowEnabled(control) !== true || isSourceVisible(control) !== true) {
 		clearPreviewCursorState(control, preview);
+		syncTopLevelNavActiveToPreviewScroll(control, preview);
 		return;
 	}
 
@@ -687,6 +695,7 @@ const syncPreviewToEditorRow = (control, row) => {
 	if(target.classList) {
 		target.classList.add("cursor-active");
 		output && output.vars("md-active-section", target);
+		syncTopLevelNavActiveToSourcePosition(control);
 	}
 	renderPreviewSelection(control, preview, editor, headings);
 	var band = ensurePreviewCursorBand(preview);
@@ -709,6 +718,17 @@ const syncPreviewToEditorRow = (control, row) => {
 const schedulePreviewSync = (control, row) => {
 	if(control && control.setTimeout) {
 		control.setTimeout("sync-preview-to-editor", () => syncPreviewToEditorRow(control, row), 60);
+	}
+};
+const syncTopLevelNavToSourcePositionThrottled = (control, interval) => {
+	var root = getEditorRoot(control);
+	var throttle = root && root.vars && root.vars(["runTopLevelNavigationThrottled"]);
+
+	if(throttle) {
+		throttle(root, "md-toplevel-nav-source-sync",
+			() => syncTopLevelNavActiveToSourcePosition(control), interval || 50);
+	} else {
+		syncTopLevelNavActiveToSourcePosition(control);
 	}
 };
 const syncPreviewToEditorFolds = (control) => {
@@ -786,6 +806,298 @@ const expandSectionsUpToLevel = (control, sections, level) => {
 		}
 	});
 	persistSectionState(control);
+};
+const getTopLevelOutlineNodes = (control) => {
+	var root = getEditorRoot(control);
+	var headings = root && root.vars(["md-heading-index"]);
+	var ace = root && root.ud ? root.ud("#ace") : null;
+	var source = ace && ace.getValue ? ace.getValue() : "";
+
+	if(!headings || headings.length === 0) {
+		headings = buildMarkdownHeadingIndex(source);
+	}
+
+	return buildMarkdownOutlineNodes(headings || [], source.split("\n").length);
+};
+const getSectionTitleText = (section) => {
+	if(headingLevel(section) > 0) {
+		return normalizeText(section.textContent) || "Section";
+	}
+
+	var heading = section && section.firstElementChild;
+	return normalizeText(heading ? heading.textContent : "") || "Section";
+};
+const getTopLevelSectionForSection = (section) => {
+	var current = section;
+	var top = section;
+
+	while(current && current.classList && current.classList.contains("md-section")) {
+		top = current;
+		var parent = current.parentNode;
+		current = parent && parent.classList && parent.classList.contains("md-section-body") ?
+			parent.parentNode : null;
+	}
+
+	return top;
+};
+const getTopLevelNavigation = (control) => {
+	var root = getEditorRoot(control);
+	return root && root.vars ? root.vars(["topLevelNavigation"]) : null;
+};
+const syncTopLevelNavActive = (control, active_sections, caret_sections) => {
+	var output = getOutputControl(control);
+	var preview = output && output.nodeNeeded ? output.nodeNeeded() : null;
+	var nav = preview && preview.querySelector(".md-toplevel-nav");
+	var active_keys = Object.create(null);
+	var caret_keys = Object.create(null);
+	var helper = getTopLevelNavigation(control);
+	var collect = (sections, target) => {
+		(sections ? (Array.isArray(sections) ? sections : [sections]) : [])
+			.forEach(section => {
+				var top_section = getTopLevelSectionForSection(section);
+				var key = top_section && top_section.getAttribute &&
+					top_section.getAttribute("data-section-key");
+				if(key) {
+					target[key] = true;
+				}
+			});
+	};
+
+	if(!nav || !helper) return;
+
+	collect(active_sections, active_keys);
+	collect(caret_sections, caret_keys);
+
+	helper.syncActive(nav, Object.keys(active_keys), Object.keys(caret_keys));
+};
+const expandSectionForNavigation = (control, section) => {
+	var current = section;
+
+	while(current && current.classList) {
+		if(current.classList.contains("md-section")) {
+			setSectionCollapsed(control, current, false, false);
+		}
+
+		var parent = current.parentNode;
+		current = parent && parent.classList && parent.classList.contains("md-section-body") ?
+			parent.parentNode : null;
+	}
+
+	persistSectionState(control);
+};
+const navigateToTopLevelSection = (control, key) => {
+	var section = getPreviewSectionByKey(control, key);
+	var output = getOutputControl(control);
+	var preview = output && output.nodeNeeded ? output.nodeNeeded() : null;
+
+	if(!section && preview) {
+		section = Array.from(preview.querySelectorAll("[data-md-nav-key]"))
+			.find(node => node.getAttribute("data-md-nav-key") === key);
+	}
+	if(!section) return;
+
+	expandSectionForNavigation(control, section);
+	section.scrollIntoView({ block: "start", behavior: "smooth" });
+	navigateSourceToHeading(control, key);
+	section.classList.add("cursor-active");
+	if(output) {
+		var previous = output.vars(["md-active-section"]);
+		if(previous && previous !== section) {
+			previous.classList.remove("cursor-active");
+		}
+		output.vars("md-active-section", section);
+	}
+	syncTopLevelNavActive(control, section, isSourceVisible(control) ? section : null);
+};
+const buildTopLevelSectionItems = (preview, control) => {
+	var outline_nodes = getTopLevelOutlineNodes(control);
+	var outline_by_key = {};
+
+	outline_nodes.forEach(node => outline_by_key[node.key] = node);
+
+	var sections = Array.from(preview.querySelectorAll(".md-section"))
+		.filter(section => section.closest(".md-section-body") === null)
+		.map(section => {
+			var key = section.getAttribute("data-section-key");
+			var outline = outline_by_key[key];
+			return {
+				key: key,
+				section: section,
+				row: outline && outline.row,
+				endRow: outline && outline.endRow
+			};
+		})
+		.filter(item => item.key && item.section);
+
+	if(sections.length > 0) {
+		return sections;
+	}
+
+	var map = control.vars(["md-section-map"]) || {};
+	sections = outline_nodes.map(node => ({
+		key: node.key,
+		section: map[node.key],
+		row: node.row,
+		endRow: node.endRow
+	})).filter(item => item.key && item.section);
+
+	if(sections.length > 0) {
+		return sections;
+	}
+
+	return Array.from(preview.querySelectorAll("h1,h2,h3,h4,h5,h6"))
+		.filter(heading => heading.closest(".md-toplevel-nav") === null)
+		.map((heading, index) => {
+			var key = js.sf("heading:%d", index);
+			heading.setAttribute("data-md-nav-key", key);
+			heading.setAttribute("data-section-key", key);
+			return {
+				key: key,
+				section: heading
+			};
+		});
+};
+const getTopLevelSectionItems = (preview, control) => {
+	var output = getOutputControl(control);
+	var items = output && output.vars(["md-toplevel-nav-items"]);
+
+	return items || buildTopLevelSectionItems(preview, control);
+};
+const getTopLevelSectionsForPreviewScroll = (preview, control) => {
+	var items = getTopLevelSectionItems(preview, control);
+	var top = preview.scrollTop;
+	var bottom = top + preview.clientHeight;
+	var active;
+
+	if(items.length === 0) {
+		return [];
+	}
+
+	active = items.filter(item => {
+		var section = item.section;
+		var section_top = section.offsetTop;
+		var section_bottom = section_top + Math.max(section.offsetHeight, 1);
+		return section_top < bottom && section_bottom > top;
+	});
+
+	if(preview.scrollTop + preview.clientHeight >= preview.scrollHeight - 2 &&
+			active.indexOf(items[items.length - 1]) === -1) {
+		active.push(items[items.length - 1]);
+	}
+
+	return active.length ? active.map(item => item.section) : [items[0].section];
+};
+const syncTopLevelNavActiveToPreviewScroll = (control, preview) => {
+	if(!preview) return;
+
+	syncTopLevelNavActive(control, getTopLevelSectionsForPreviewScroll(preview, control));
+};
+const syncTopLevelNavActiveToSourcePosition = (control) => {
+	var root = getEditorRoot(control);
+	var editor = getAceEditor(control);
+	var headings = root && root.vars(["md-heading-index"]);
+	var output = getOutputControl(control);
+	var preview = output && output.nodeNeeded ? output.nodeNeeded() : null;
+	var items = preview ? getTopLevelSectionItems(preview, control) : [];
+	var first_row;
+	var last_row;
+	var active;
+	var index;
+	var cursor_row;
+	var caret_section;
+
+	if(!editor || !headings || headings.length === 0) {
+		syncTopLevelNavActive(control, null);
+		return;
+	}
+
+	cursor_row = editor.getCursorPosition().row;
+	if(editor.renderer && editor.renderer.getFirstVisibleRow) {
+		first_row = editor.renderer.getFirstVisibleRow();
+		last_row = editor.renderer.getLastVisibleRow ?
+			editor.renderer.getLastVisibleRow() : first_row;
+	} else {
+		first_row = last_row = cursor_row;
+	}
+
+	active = items
+		.filter(item => typeof item.row === "number" && typeof item.endRow === "number")
+		.filter(item => item.row <= last_row && item.endRow >= first_row)
+		.map(item => item.section);
+
+	index = findHeadingIndexForRow(headings, cursor_row);
+	caret_section = index === -1 ? null : getPreviewSectionByKey(control, headings[index].key);
+	if(active.length === 0) {
+		active = caret_section ? [caret_section] : [];
+	}
+
+	syncTopLevelNavActive(control, active.filter(Boolean),
+		isSourceVisible(control) && caret_section ? [caret_section] : []);
+};
+const navigateSourceToHeading = (control, key) => {
+	var root = getEditorRoot(control);
+	var editor = getAceEditor(control);
+	var headings = root && root.vars(["md-heading-index"]);
+	var heading = headings && headings.find(item => item.key === key);
+	var ace = root && root.ud ? root.ud("#ace") : null;
+
+	if(!editor || !heading || isSourceVisible(control) !== true) {
+		return;
+	}
+
+	editor.gotoLine(heading.row + 1, 0, true);
+	ace && ace.setFocus && ace.setFocus();
+};
+const decorateTopLevelNavigation = (preview, control) => {
+	var output = getOutputControl(control);
+	var helper = getTopLevelNavigation(control);
+	var nodes = buildTopLevelSectionItems(preview, control);
+	var total_row = nodes.reduce((value, node) =>
+		Math.max(value, typeof node.endRow === "number" ? node.endRow :
+			typeof node.row === "number" ? node.row : 0), 0) || 1;
+	var nav;
+
+	nodes.forEach(node => {
+		if(typeof node.row === "number") {
+			node.positionRatio = node.row / total_row;
+		}
+	});
+	output && output.vars("md-toplevel-nav-items", nodes);
+	if(!helper || nodes.length === 0) {
+		var previous = preview.querySelector(".md-toplevel-nav");
+		previous && previous.parentNode.removeChild(previous);
+		output && output.vars("md-toplevel-nav-elements", []);
+		return;
+	}
+
+	nav = helper.render({
+		root: getEditorRoot(control),
+		ownerNode: preview,
+		fallback: preview,
+		className: "md-toplevel-nav",
+		railClassName: "md-toplevel-nav-rail",
+		menuClassName: "md-toplevel-nav-menu",
+		tickClassName: "md-toplevel-nav-tick",
+		itemClassName: "md-toplevel-nav-item",
+		keyAttribute: "data-section-key",
+		ariaLabel: "Document sections",
+		items: nodes,
+		side: isSourceVisible(control) ? "right" : undefined,
+		minGap: 6,
+		getKey: node => node.key,
+		getLabel: node => getSectionTitleText(node.section),
+		onNavigate: key => navigateToTopLevelSection(control, key)
+	});
+	output && output.vars("md-toplevel-nav-elements", nav && nav._topLevelNav ? nav._topLevelNav.elements : []);
+	syncTopLevelNavActiveToPreviewScroll(control, preview);
+};
+const updateTopLevelNavigationPosition = (control) => {
+	var output = getOutputControl(control);
+	var preview = output && output.nodeNeeded ? output.nodeNeeded() : null;
+
+	if(preview) {
+		decorateTopLevelNavigation(preview, control);
+	}
 };
 const resolveLinkHintHref = (anchor, control) => {
 	var href = window.unescape(js.get("attributes.href.value", anchor) || "");
@@ -1185,6 +1497,7 @@ function render() {
 				"h1,h2,h3,h4,h5".split(",").forEach(H => node.qsa(H).map(insertA));
 				decorateLinks(node, this);
 				decorateSections(node, this);
+				decorateTopLevelNavigation(node, this);
 				if(dialect === "marked") {
 					decorateCheckboxes(node, this);
 				}
@@ -1524,6 +1837,7 @@ const Handlers = {
     onResize() {
     	var cs = this.getComputedStyle();
 		this.ud("#output").syncClass("shrink", parseInt(cs.width, 10) < 900);
+		updateTopLevelNavigationPosition(this);
     },
 	"#output onDblClick": function(evt) {
     	if(evt.metaKey === true) {
@@ -1566,8 +1880,8 @@ const Css_content = {
 		    ".md-section > .md-section-heading::before": "content:'';position:absolute;left:2px;top:50%;width:7px;height:7px;border-right:2px solid rgba(60,60,60,.75);border-bottom:2px solid rgba(60,60,60,.75);transform:translateY(-65%) rotate(-45deg);opacity:0;transition:opacity 120ms ease, transform 120ms ease;",
 			    ".md-section > .md-section-heading:hover::before": "opacity:.85;",
 			    ".md-section:not(.collapsed) > .md-section-heading::before": "transform:translateY(-70%) rotate(45deg);",
-			    ".md-section.collapsed > .md-section-heading::before": "opacity:.2;",
-			    ".md-section.collapsed > .md-section-heading": "color:rgba(20,20,20,.78);",
+		    ".md-section.collapsed > .md-section-heading::before": "opacity:.2;",
+		    ".md-section.collapsed > .md-section-heading": "color:rgba(20,20,20,.78);",
 		    ".md-section.collapsed > .md-section-body": "display:none;",
 		    ".md-cursor-band": "position:absolute;height:12px;margin-top:-6px;border-top:1px solid rgba(56,121,217,.35);border-bottom:1px solid rgba(56,121,217,.18);background:linear-gradient(180deg, rgba(56,121,217,.10), rgba(56,121,217,.03));border-radius:999px;pointer-events:none;z-index:6;box-shadow:0 0 0 1px rgba(56,121,217,.04) inset;",
 		    ".md-selection-layer": "position:absolute;inset:0;pointer-events:none;z-index:4;",
@@ -1583,7 +1897,15 @@ const Css_content = {
 		    }
 	    };
 
-[(""), { css: Css, handlers: Handlers }, [
+[(""), {
+	css: Css,
+	handlers: Handlers,
+	vars: {
+		topLevelNavigation: {
+			side: "left"
+		}
+	}
+}, [
     [("#evaluate"), {
     	onLoad() {
     		this.vars("eval", () => this.vars(["root"]));
@@ -1596,16 +1918,25 @@ const Css_content = {
 	    onLoad() {
     		var root = this.up();
     		var editor = this.getEditor();
-    		var sync_cursor = () => schedulePreviewSync(this, editor.getCursorPosition().row);
+    		var bindResize = root && root.vars(["bindTopLevelNavigationResize"]);
+    		var sync_cursor = () => {
+    			syncTopLevelNavActiveToSourcePosition(this);
+    			schedulePreviewSync(this, editor.getCursorPosition().row);
+    		};
     		var sync_selection = () => schedulePreviewSync(this, editor.getCursorPosition().row);
-    		var sync_scroll = () => schedulePreviewSync(this,
-    			editor.getFirstVisibleRow ? editor.getFirstVisibleRow() : editor.renderer.getFirstVisibleRow());
+    		var sync_scroll = () => {
+    			syncTopLevelNavToSourcePositionThrottled(this, 50);
+    			schedulePreviewSync(this,
+    				editor.getFirstVisibleRow ? editor.getFirstVisibleRow() : editor.renderer.getFirstVisibleRow());
+    		};
     		var sync_folds = () => syncPreviewToEditorFolds(this);
 
     		editor.selection.on("changeCursor", sync_cursor);
     		editor.selection.on("changeSelection", sync_selection);
     		editor.session.on("changeScrollTop", sync_scroll);
     		editor.session.on("changeFold", sync_folds);
+    		bindResize && bindResize(root, "md-toplevel-nav-window-resize",
+    			() => updateTopLevelNavigationPosition(this), 120);
 
 	    		if(root) {
 	    			this.up("vcl/ui/Tab").once("resource-loaded", () => {
@@ -1702,6 +2033,7 @@ const Css_content = {
 		// this.ud("#output").toggleClass("shrink");
 	}
 	update_shrink(this, state);
+	this.setTimeout("md-nav-position", () => updateTopLevelNavigationPosition(this), 0);
 	this.up().writeStorage("source-visible", this.getState());
 	
     }
@@ -1757,6 +2089,11 @@ const Css_content = {
 			}
 	    },
 	    onScroll() {
+	    	if(isSourceVisible(this)) {
+	    		syncTopLevelNavActiveToSourcePosition(this);
+	    	} else {
+	    		syncTopLevelNavActiveToPreviewScroll(this, this.nodeNeeded());
+	    	}
 	    	capturePreviewScrollState(this, this.nodeNeeded());
 	    	this.setTimeout("persist-preview-scroll-state",
 	    		() => persistPreviewScrollState(this), 150);

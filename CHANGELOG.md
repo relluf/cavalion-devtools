@@ -1,10 +1,42 @@
 * [diffs]()
 
-Generate a git commit message, first line lowercased like: "(categorized): summary" , followed by bulleted phrases, starting with verbs like "Adds/Changes/Removes/Introduces/Refactors/Enhances/..."
+### `2026/07/02` — Editor navigation and outline overhaul
 
-Generate a RELEASENOTES entry for players of the game
+#### Navigation framework
 
----
+* Adds reusable top-level navigation infrastructure in `Editor.js`.
+* Introduces clustered navigation ticks with searchable popup menus.
+* Adds active/caret highlighting and synchronized navigation state.
+* Adds reusable resize binding and throttled update helpers.
+* Adds `Cmd+E` (`links-open`) to toggle the navigation menu.
+
+#### JavaScript editor
+
+* Replaces the line-based outline with an Acorn AST-based symbol parser.
+* Adds support for functions, classes, methods, variables, namespaces and nested object members.
+* Detects AMD `define()` scopes for cleaner module outlines.
+* Falls back to the legacy parser when AST parsing fails.
+* Synchronizes navigation with cursor movement, scrolling, edits and window resizing.
+
+#### VCL DSL support
+
+* Detects VCL component DSL inside JavaScript automatically.
+* Generates hierarchical navigation for nested VCL component trees.
+* Enables VCL DSL outlining through `javascriptOutline.vclDsl`.
+
+#### Markdown editor
+
+* Adds top-level section navigation for Markdown previews.
+* Synchronizes navigation between editor position and preview scroll.
+* Allows navigation items to expand collapsed sections before jumping.
+* Keeps active section highlighting synchronized across source and preview.
+* Repositions navigation automatically during resize and layout changes.
+
+#### Runtime / infrastructure
+
+* Registers an `acorn` RequireJS path automatically when none exists.
+* Exposes shared `topLevelNavigation`, resize binding and throttling services to editor instances.
+* Refactors editor integration to reuse the shared navigation framework across JavaScript and Markdown editors.
 
 ### `2026/06/24` — Editor, Navigation and Viewer UX Improvements 
 

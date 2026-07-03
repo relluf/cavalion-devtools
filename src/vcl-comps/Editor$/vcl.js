@@ -6,6 +6,11 @@ var Node = require("vcl/ui/Node");
 var Tab = require("vcl/ui/Tab");
 
 [["./Editor<js>"], {
+	vars: {
+		javascriptOutline: {
+			vclDsl: true
+		}
+	},
     onLoad: function() {
         var tab = this.up("vcl/ui/Tab");
         var scope = this.scope();
