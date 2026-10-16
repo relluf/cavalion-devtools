@@ -42,7 +42,7 @@ const default_workspaces =  [{
     	"specializer": "cavalion-blocks:Dropbox-veldapps/Issues/VA-20220501-1-Map/Map."
     }];
 
-[{
+["", {
 	vars: {
 		"default-workspaces": default_workspaces
 	}

@@ -12,6 +12,8 @@
 /*- ### 2020-10-02 Console hook - SIKB12 inspired */
 
 var ListColumn = require("vcl/ui/ListColumn");
+var List = require("vcl/ui/List");
+var ArraySource = require("vcl/data/Array");
 var Event = require("util/Event");
 var Console = require("vcl/ui/Console");
 var Control = require("vcl/Control");
@@ -70,12 +72,18 @@ var css = {
 	"#bar input": "font-size:12pt;width:50%; border-radius: 5px; border-width: 1px; padding: 2px 4px; border-color: #f0f0f0;",
 	"#bar #left": "float:left;", 
 	"#bar #right": "float:right; direction: rtl;",
-	'#status': "direction: ltr;"
+	"#presets": "display:inline-block;white-space:nowrap;",
+	"#presets .alphaview-preset": "margin:0 2px;padding:2px 6px;",
+	'#status': "direction: ltr;",
+	"#status .alphaview-column-visibility-toggle": "cursor:pointer;text-decoration:underline;"
 	// "#bar #right > .{Button}": "float:right;"
 };
 
-const captureNavigationState = function(root) {
-	var list = root.ud("#list");
+const getActiveList = function(root) {
+	return root.vars("navigation.activeList") || root.ud("#list");
+};
+const captureNavigationState = function(root, list) {
+	list = list || getActiveList(root);
 	var body = list.getNodes().body;
 
 	return {
@@ -115,28 +123,21 @@ const restoreNavigationState = function(root, state) {
 	}
 };
 const captureHistoryEntry = function(root) {
-	var list = root.ud("#list");
+	var list = getActiveList(root);
 	var q = root.ud("#q");
-	var value = list._source._array;
-
 
 	var entry = {
-		value: value,
+		list: list,
 		state: {
 			q: q ? q.getValue() : undefined,
-			list: list ? captureNavigationState(root, {
-				getKey: function(obj) {
-					return obj && (obj.id !== undefined ? obj.id :
-						(obj._id !== undefined ? obj._id : js.nameOf(obj)));
-				}
-			}) : null
+			list: list ? captureNavigationState(root, list) : null
 		}
 	};
 	// root.print("captureHE", entry);
 	return entry;
 };
 const restoreHistoryEntry = function(root, entry) {
-	var list = root.ud("#list"), array = root.ud("#array");
+	var list = getActiveList(root);
 	var q = root.ud("#q");
 	var state = entry && entry.state;
 
@@ -144,34 +145,28 @@ const restoreHistoryEntry = function(root, entry) {
 
 	if(!entry) return;
 
+	if(!entry.list) return;
+
+	var index = list.getIndex();
+	list.setVisible(false);
+	list.setName(js.sf("list-history-%d", root.vars("navigation.nextListId", 0)));
+	entry.list.setName("list");
+	entry.list.setIndex(index);
+	moveNavigationBar(root, entry.list);
+	entry.list.setEnabled(true);
+	entry.list.setVisible(true);
+	root.vars("navigation.activeList", entry.list);
+	syncNavigationButtons(root, true);
+
 	if(q && state && state.q !== undefined) {
 		q.setValue(state.q);
+		entry.list.getSource().vars("q", parseFilterAndAttributes(state.q).q);
+		entry.list.getSource().updateFilter();
 	}
-	
-	const restore = () => {
-		if(list && state && state.list) {
-			restoreNavigationState(root, state.list, {
-				getKey: function(obj) {
-					return obj && (obj.id !== undefined ? obj.id :
-						(obj._id !== undefined ? obj._id : js.nameOf(obj)));
-				}
-			});
-		}
-	};
-	
-	const updateFilter = array.updateFilter;
-
-	// root.setValue(entry.value);
-	array.setArray([]);
-	array.updateFilter = function() {
-		this.updateFilter = updateFilter;
-		this.updateFilter.apply(this, arguments);
-		
-		this.setTimeout(() => { restore(); list = null; }, 650);
-	};
-	array.nextTick(() => array.setArray(entry.value));
-
-	root.setTimeout("restore-history-state", () => list && array.updateFilter(), 1000);
+	root.setTimeout("restore-history-state", function() {
+		state && state.list && restoreNavigationState(root, state.list);
+		root.ud("#status").render();
+	}, 0);
 };
 
 const parseFilterAndAttributes = function(input) {
@@ -239,6 +234,8 @@ const getVisibleColumnAttributes = function(list) {
 		.map(function(column) { return column._attribute; });
 };
 const applyVisibleColumns = function(list, attrs) {
+	var autoVisible = {};
+
 	if(!list || !list._columns) return;
 
 	list._controls.forEach(function(r) {
@@ -246,23 +243,82 @@ const applyVisibleColumns = function(list, attrs) {
 	});
 
 	list._columns.forEach(function(column) {
-		column.setVisible(
-			!attrs || attrs.some(function(a) {
-				if(!a) return false;
-				return a.endsWith(" ") ? column._attribute.startsWith(a.trim()) :
-					a.startsWith("=") ? column._attribute === a.substring(1) :
-					column._attribute.includes(a.trim());
-			})
-		);
+		var visible = !attrs || attrs.some(function(a) {
+			if(!a) return false;
+			return a.endsWith(" ") ? column._attribute.startsWith(a.trim()) :
+				a.startsWith("=") ? column._attribute === a.substring(1) :
+				column._attribute.includes(a.trim());
+		});
+
+		setColumnAutoVisible(list, column, visible, autoVisible);
 	});
+	list.vars("autoColumns.autoVisible", autoVisible);
 };
 const getListColumns = function(list) {
 	return (list && (list._columns || (list.getColumns && list.getColumns()))) || [];
 };
+const getColumnAttribute = function(column) {
+	return column && column._attribute;
+};
+const getManualHiddenColumnAttrs = function(list) {
+	return list.vars("autoColumns.manualHiddenAttributes") || [];
+};
+const setManualHiddenColumnAttrs = function(list, attrs) {
+	list.vars("autoColumns.manualHiddenAttributes", attrs);
+};
+const isManualHiddenColumn = function(list, column) {
+	var attr = getColumnAttribute(column);
+	return attr !== undefined && getManualHiddenColumnAttrs(list).indexOf(attr) !== -1;
+};
+const rememberManualColumnVisibility = function(list) {
+	var autoVisible = list.vars("autoColumns.autoVisible") || {};
+	var manualHidden = getManualHiddenColumnAttrs(list).reduce(function(map, attr) {
+		map[attr] = true;
+		return map;
+	}, {});
+	var changed = false;
+
+	getListColumns(list).forEach(function(column) {
+		var attr = getColumnAttribute(column);
+		var expectsHidden = autoVisible[attr] === false;
+
+		if(attr === undefined) return;
+
+		if(!column.isVisible() && !expectsHidden && manualHidden[attr] !== true) {
+			manualHidden[attr] = true;
+			changed = true;
+		} else if(column.isVisible() && manualHidden[attr] === true) {
+			delete manualHidden[attr];
+			changed = true;
+		}
+	});
+
+	if(changed) {
+		setManualHiddenColumnAttrs(list, Object.keys(manualHidden));
+	}
+};
+const setColumnAutoVisible = function(list, column, visible, autoVisible) {
+	var attr = getColumnAttribute(column);
+
+	if(attr !== undefined) {
+		autoVisible[attr] = visible;
+	}
+	column.setVisible(visible && !isManualHiddenColumn(list, column));
+};
+const updateListWidthClasses = function(list) {
+	var count = getListColumns(list).filter(function(column) { return column.isVisible(); }).length;
+
+	list.syncClasses(
+		["max-width-320", "max-width-500", "max-width-750"],
+		[count > 1 && count <= 3, count > 3 && count <= 6, count > 6]
+	);
+};
 const showAllColumns = function(list) {
 	var columns = getListColumns(list);
+	var autoVisible = {};
 
-	columns.forEach(function(column) { column.setVisible(true); });
+	columns.forEach(function(column) { setColumnAutoVisible(list, column, true, autoVisible); });
+	list.vars("autoColumns.autoVisible", autoVisible);
 	list.vars("autoColumns.emptyColumnsSkipped", 0);
 	list.vars("autoColumns.emptyColumnsHidden", 0);
 
@@ -274,6 +330,7 @@ const hideEmptyColumns = function(list, opts) {
 	var columns = getListColumns(list);
 	var source = list && list.getSource && list.getSource();
 	var objs = (source && source.getObjects && source.getObjects()) || [];
+	var autoVisible = {};
 	var hidden = 0;
 
 	if(objs.length === 0 || (opts.maxRows !== undefined && objs.length > opts.maxRows)) {
@@ -288,17 +345,29 @@ const hideEmptyColumns = function(list, opts) {
 			return list.valueByColumnAndRow(column, row);
 		});
 
-		column.setVisible(visible);
+		setColumnAutoVisible(list, column, visible, autoVisible);
 		hidden += visible ? 0 : 1;
 	});
+	list.vars("autoColumns.autoVisible", autoVisible);
 	list.vars("autoColumns.emptyColumnsHidden", hidden);
 
 	return { skipped: false, rows: objs.length, hidden: hidden, total: columns.length };
 };
+const toggleEmptyColumnVisibility = function(list) {
+	var showingAll = list.vars("autoColumns.showingAll");
+
+	if(showingAll) {
+		hideEmptyColumns(list);
+	} else {
+		showAllColumns(list);
+	}
+	list.vars("autoColumns.showingAll", !showingAll);
+	updateListWidthClasses(list);
+};
 const applyDefaultColumnVisibility = function(list) {
 	var q, parsed, attrs;
 
-	if(!list || list.vars("autoColumns.applying")) return;
+	if(!list || list.vars("autoColumns.applying") || list.vars("autoColumns.showingAll")) return;
 
 	list.vars("autoColumns.applying", true);
 	try {
@@ -320,6 +389,7 @@ const applyDefaultColumnVisibility = function(list) {
 		} else {
 			hideEmptyColumns(list, { maxRows: AUTO_HIDE_EMPTY_COLUMNS_MAX_ROWS });
 		}
+		list.vars("autoColumns.showingAll", false);
 	} finally {
 		list.vars("autoColumns.applying", false);
 	}
@@ -328,9 +398,168 @@ const updateList = (list) => {
 	list.destroyColumns();
 	list.updateColumns();
 	applyDefaultColumnVisibility(list);
+	updateListWidthClasses(list);
+};
+const moveNavigationBar = function(root, list) {
+	var bar = root.qs("#bar");
+	var parent = list.getParent();
+
+	if(bar && parent) {
+		if(bar.getParent() !== parent) {
+			bar.setParent(parent);
+		}
+		bar.setIndex(list.getIndex()); // keep the bar directly above its active grid
+	}
+};
+const syncNavigationButtons = function(root, canGoBack) {
+	var back = root.qs("#back");
+	var backButton = root.qs("#button-back");
+	var forward = root.qs("#forward");
+
+	[back, backButton].forEach(function(control) {
+		if(control) {
+			control.setEnabled(canGoBack);
+			control.update();
+		}
+	});
+	if(forward) forward.setVisible(false);
+};
+const installListColumnVisibilitySync = function(root, list) {
+	list.override("notifyEvent", (event, data) => {
+		if(event === "columnsChanged") {
+			root.setTimeout("update-columns-" + list.hashCode(), () => {
+				list.qsa("vcl/ui/ListColumn")
+					.filter(_ => _._attribute === "_")
+					.map(_ => _.set("index", 0));
+
+				rememberManualColumnVisibility(list);
+				applyDefaultColumnVisibility(list);
+				updateListWidthClasses(list);
+				root.qs("#status").render();
+			}, 200);
+		}
+	});
+};
+const pushNavigationList = function(root, value) {
+	var previous = getActiveList(root);
+	var previousSource = previous.getSource();
+	var id = root.vars("navigation.nextListId", 0) + 1;
+	var source = new ArraySource(root);
+	var list = new List(root);
+
+	root.vars("navigation.nextListId", id);
+	previous.setVisible(false);
+	previous.setName(js.sf("list-history-%d", id));
+
+	source.set({
+		onFilterObject: previousSource._onFilterObject,
+		onGetAttributeValue: previousSource._onGetAttributeValue,
+		onUpdate: previousSource._onUpdate
+	});
+	list.set({
+		autoColumns: previous.getAutoColumns(),
+		classes: previous.getClasses(),
+		css: previous.getCss(),
+		onColumnGetValue: previous.getOnColumnGetValue(),
+		onSelectionChange: previous.getOnSelectionChange(),
+		onDispatchChildEvent: previous._onDispatchChildEvent,
+		onDblClick: previous._onDblClick,
+		onScroll: previous._onScroll
+	});
+	list.setName("list");
+	list.setParent(previous.getParent());
+	list.setIndex(previous.getIndex());
+	list.setSource(source);
+	moveNavigationBar(root, list);
+	list.setEnabled(true);
+	list.setVisible(true);
+	installListColumnVisibilitySync(root, list);
+	source.setArray(value);
+	root.vars("navigation.activeList", list);
+	updateList(list);
+	syncNavigationButtons(root, true);
+	root.setTimeout("sync-navigation-buttons", function() {
+		syncNavigationButtons(root, true);
+	}, 0);
+	root.ud("#status").render();
+
+	return list;
+};
+const listCellContext = (list, evt) => {
+	const cell = evt && evt.target && evt.target.soup && evt.target.soup(".ListCell");
+
+	if(!cell || !cell.parentNode || !list._header || !list._source) return null;
+	const row = Control.findByNode(cell.parentNode);
+	const index = Array.from(cell.parentNode.childNodes).indexOf(cell);
+	const column = list._header.getControls()[index];
+
+	return row && column ? {
+		cell: cell,
+		row: row,
+		column: column
+	} : null;
+};
+const updateAltCellHover = (list, evt) => {
+	const context = evt && evt.altKey === true && listCellContext(list, evt);
+	const previous = list.vars(["alphaview.altCellHover"]);
+	const cell = context && context.cell;
+
+	if(previous && previous !== cell && previous.classList) {
+		previous.classList.remove("alphaview-alt-cell");
+	}
+	if(cell && cell.classList) {
+		cell.classList.add("alphaview-alt-cell");
+	}
+	list.vars("alphaview.altCellHover", cell || null);
+};
+const activateAlphaviewCell = (list, evt, attributeOnly) => {
+	const context = listCellContext(list, evt);
+
+	if(!context) return false;
+	let value = list._source.getAttributeValue(attributeOnly ? context.column._attribute : ".", context.row._rowIndex, true);
+	if(value && value.value && value.key && Object.values(value).length === 2) {
+		value = value.value;
+	}
+
+	const type = typeof value;
+	const isobj = type === "object";
+	const isarr = value instanceof Array;
+	const isdate = value instanceof Date;
+	LOGGING && list.print("logging alphaview.cell.activate", {
+		column: context.column && context.column._attribute,
+		row: context.row && context.row._rowIndex,
+		attributeOnly: attributeOnly,
+		valueType: value === null ? "null" : isarr ? "array" : type
+	});
+
+	if(isobj && !isdate) {
+		if(isarr && value.length === 1) {
+			value = value[0];
+		}
+
+		var history = list.vars(["history"]);
+		history.push(captureHistoryEntry(list._owner));
+
+		clearFilter(list._owner);
+		list = pushNavigationList(list._owner, value instanceof Array ? value : Object.keys(value).map(k => ({ key: k, value: value[k] })));
+		LOGGING && list.print("logging alphaview.cell.drilldown", {
+			column: context.column && context.column._attribute,
+			count: value instanceof Array ? value.length : Object.keys(value).length
+		});
+		list._owner.qs("#back").setEnabled(true); list.ud("#bar").show();
+	} else {
+		LOGGING && list.print("logging alphaview.scalar.prompt", {
+			column: context.column && context.column._attribute,
+			value: value
+		});
+		prompt("", js.n(value));
+	}
+
+	window.getSelection().removeAllRanges();
+	return true;
 };
 const clearFilter = function(owner) {
-	const q = owner.ud("#q"), array = owner.ud("#array");
+	const q = owner.ud("#q"), array = getActiveList(owner).getSource();
 
 	q.getNode().value = "";
 	q._value = "";
@@ -338,6 +567,34 @@ const clearFilter = function(owner) {
 	array.vars("q", "");
 	array.updateFilter();
 	owner.ud("#status").render();
+};
+const renderPresets = function(control) {
+	const presets = (control.vars(["presets"]) || []).filter(function(preset) {
+		return preset && typeof preset.expression === "string" && preset.label;
+	});
+	const node = control.getNode();
+
+	if(presets.length === 0) {
+		control.setVisible(false);
+		node.textContent = "";
+		return;
+	}
+
+	control.setVisible(true);
+	node.textContent = "";
+	presets.forEach(function(preset) {
+		const button = document.createElement("button");
+		button.type = "button";
+		button.className = "alphaview-preset";
+		button.textContent = preset.label;
+		button.title = preset.expression;
+		button.addEventListener("click", function() {
+			const q = control.ud("#q");
+			q.setValue(preset.expression);
+			q.fire("onChange", [true]);
+		});
+		node.appendChild(button);
+	});
 };
 
 ["Container", (""), { 
@@ -356,7 +613,7 @@ const clearFilter = function(owner) {
             var scope = this.scope();
             if (component === scope.q) {
                 if ([13, 27, 38, 40].indexOf(evt.keyCode) !== -1) {
-                    var list = scope.list;
+                    var list = getActiveList(this);
                     if(evt.keyCode === 13 && evt.metaKey === false && list.getSelection().length === 0 && list.getCount()) {
                         list.setSelection([0]);
                     } else if(evt.keyCode === 27 && Event.eventModifiersMatch(evt, [])) {
@@ -391,10 +648,11 @@ const clearFilter = function(owner) {
 		this.vars("history", []);
 		this.vars("ctx", Object.create(null, {
 			selection: { get: () => {
-				var selection = this.qs("#list").getSelection(true);
+				var list = getActiveList(this);
+				var selection = list.getSelection(true);
 				var filtered = this.qs("#q").getValue().length > 0;
 				if(selection.length === 0) {
-					selection = this.qs("#array")[filtered ? '_arr' : '_array'];
+					selection = list.getSource()[filtered ? '_arr' : '_array'];
 				}
 				
 				if (!selection || selection.length === 0) {
@@ -416,25 +674,7 @@ const clearFilter = function(owner) {
 		}));
 
 		const list = this.qs("#list");
-		list.override("notifyEvent", (event, data) => {
-			// this.print("notifyEvent-" + event, data);
-			if(event === "columnsChanged") {
-				this.setTimeout("update", () => {
-					let columns; (columns = this
-						.qsa("vcl/ui/ListColumn"))
-						.filter(_ => _._attribute === "_")
-						.map(_ => _.set("index", 0));
-
-					list.syncClasses(
-						["max-width-320", "max-width-500", "max-width-750"],
-						[columns.length > 6, columns.length > 3 && columns.length <= 6, columns.length <= 3]
-					);
-					applyDefaultColumnVisibility(list);
-					this.qs("#status").render();
-					
-				}, 200);
-			}
-		});
+		installListColumnVisibilitySync(this, list);
 		
 		return this.inherited(arguments);
 	}
@@ -507,7 +747,8 @@ const clearFilter = function(owner) {
 			if(!evt || !evt.leaveTabs) {
 				this.ud("#tabs").destroyControls();
 			}
-			this.ud("#tabs").set("visible", true);//sel.length > 1);
+			const tabs = this.ud("#tabs");
+			tabs.setVisible(tabs.getControlCount() > 0);
 			this.ud("#q").setPlaceholder(keys.length === 1 ? keys.join(", ") : this.vars(["placeholder"]) || "");
 			LOGGING && this.print("logging alphaview.load.resolved", {
 				selectionCount: sel && sel.length,
@@ -656,12 +897,11 @@ const clearFilter = function(owner) {
 				LOGGING && this.print("logging alphaview.back.restored", entry);
 			}
 			this.setEnabled(history.length > 0);
-			updateList(this.ud("#list"));
 		}
 	}],
 	["Executable", ("do-forward"), {
 		on(evt) {
-			const list = this.ud("#list");
+			const list = getActiveList(this._owner);
 			const sel = list.getSelection(true);
 			LOGGING && this.print("logging alphaview.forward.execute", {
 				selectionCount: sel.length,
@@ -687,7 +927,7 @@ const clearFilter = function(owner) {
 					
 					clearFilter(this);
 
-						this.ud("#back").setEnabled(true); 
+						this._owner.qs("#back").setEnabled(true); 
 						this.ud("#bar").show();
 						LOGGING && this.print("logging alphaview.forward.resolved", {
 							nextSelectionCount: nsel.length,
@@ -699,14 +939,11 @@ const clearFilter = function(owner) {
 					} 
 
 					if(nsel.length === 1 && typeof nsel[0] === "object" && nsel[0] !== null) {
-						nsel = [Object.keys(nsel[0]).map(key => ({key: key, value: nsel[0][key]}))];
-					} else {
-						nsel = [nsel];
+						nsel = Object.keys(nsel[0]).map(key => ({key: key, value: nsel[0][key]}));
 					}
-					
-					list.destroyColumns();
-					
-					return this.ud("#load").execute({ sel: nsel, leaveTabs: true });
+
+					pushNavigationList(this._owner, nsel);
+					return nsel;
 				}
 			}
 		}
@@ -716,6 +953,9 @@ const clearFilter = function(owner) {
 		parent: "do-forward",
 		parentExecute: true,
 		visible: false
+	}],
+	["Executable", ("refresh-presets"), {
+		on() { renderPresets(this.ud("#presets")); }
 	}],
 	["Executable", ("focus-q"), {
 		hotkey: "MetaCtrl+191",
@@ -829,42 +1069,10 @@ const clearFilter = function(owner) {
 				}
 			}
 		},
-		onFilterObject_1st(obj, row, context) {
-			var q = this.vars("q"), match = this.vars("match") || this.vars("match_columns");
-		
-			if(!context.list) {
-				context.list = this.ud("#list");
-				context.columns = {};
-				context.q = q ? q.split(" ") : [""];
-			}
-
-			if(!q) return false;
-			
-			var parts = q.split(/(?<!\\)\s/).map(
-					s => s.split(/(?<!\\)\=/).map(s => String.unescape(s)));
-			
-			while(parts.length) {
-				var part = parts.pop();
-				if(part.length === 2) {
-					var k = getMatchingKey(part[0], obj), v = part[1].trim().toLowerCase(), inverse = false;
-					if((inverse = v.charAt(0)) === "!") {
-						v = v.substring(1);
-					}
-					if(obj.hasOwnProperty(k) && js.sf("%s", obj[k]).toLowerCase().indexOf(v) !== -1) {
-						return false;
-					}
-				} else {
-					return !match(obj, part[0]);
-					// return context.q.some(q => q ? !(match(obj, q, context, row)) : false);
-				}
-			}
-			
-			return true;//!parts.length ? false : !match(obj, parts[0]);
-		},
 		onFilterObject(obj, row, context) {
 			var q = this.vars("q");
 			var match = this.vars("match") || this.vars("match_columns");
-		
+
 			if(!context.list) {
 				context.list = this.ud("#list");
 				context.columns = {};
@@ -903,7 +1111,15 @@ const clearFilter = function(owner) {
 				// plain term: must match somewhere; if not => filter out (true)
 				} else {
 					var term = (part[0] || "");
-					if(term && !match(obj, term, context, row)) return true;
+					var inverse = term.charAt(0) === "!";
+					if(inverse) term = term.substring(1);
+
+					if(!inverse) {
+						if(term && !match(obj, term, context, row)) return true;
+					} else {
+						if(term && match(obj, term, context, row)) return true;
+					}
+
 				}
 			}
 		
@@ -930,11 +1146,15 @@ const clearFilter = function(owner) {
 			["Button", ("button-forward"), { action: "forward" }],
 			["Button", ("button-open"), { action: "print" }]
 		]],
+		["Element", ("presets"), {
+			visible: false,
+			onLoad() { renderPresets(this); }
+		}],
 		["Input", ("q"), { 
 			placeholder: "Filter (⌘/)", 
 			onChange() {
-				var array = this.ud("#array");
-				var list = this.ud("#list");
+				var list = getActiveList(this._owner);
+				var array = list.getSource();
 				LOGGING && this.print("logging alphaview.filter.change", {
 					value: this.getValue()
 				});
@@ -959,6 +1179,7 @@ const clearFilter = function(owner) {
 			
 					array.vars("q", q);
 					array.updateFilter();
+					list.vars("autoColumns.showingAll", false);
 
 					if(parsed.hasAttrsSpec) {
 						// Explicit column instruction from the input
@@ -980,11 +1201,20 @@ const clearFilter = function(owner) {
 			["Group", ("export"), [
 				
 			]],
-			["Element", ("status"), { 
+		["Element", ("status"), { 
 				content: "-",
+				onClick(evt) {
+					var target = evt.target;
+					var toggle = target && (target.closest ? target.closest(".alphaview-column-visibility-toggle") : target.up(".alphaview-column-visibility-toggle", true));
+
+					if(toggle && this.getNode().contains(toggle)) {
+						toggleEmptyColumnVisibility(this.ud("#list"));
+						this.render();
+					}
+				},
 				onRender() {
 					this.setTimeout(() => {
-						var arr = this.ud("#array"), status = [];
+						var arr = getActiveList(this._owner).getSource(), status = [];
 						if(arr._array) {;
 						
 							var total = arr._array.length;
@@ -995,10 +1225,12 @@ const clearFilter = function(owner) {
 							
 							selected && status.push(js.sf("%s (%d%%) selected", selected, selected/total*100));
 							filtered && status.push(js.sf("%d (%d%%) filtered", filtered, filtered/total*100));
-							hiddenColumns && status.push(js.sf("%d %s hidden", hiddenColumns, hiddenColumns === 1 ? "column" : "columns"));
+							if(hiddenColumns || this.ud("#list").vars("autoColumns.showingAll")) {
+								status.push(js.sf("<span class=\"alphaview-column-visibility-toggle\" title=\"Show or hide empty columns\">%d %s hidden</span>", hiddenColumns, hiddenColumns === 1 ? "column" : "columns"));
+							}
 							status.push(js.sf("%d %s", total, status.length ? "total" : "items"));
-						}						
-						this.setContent(status.join(" / "));
+						} 						
+						this.getNode().innerHTML = status.join(" / ");
 					}, 250);
 				}
 			}]
@@ -1036,6 +1268,7 @@ const clearFilter = function(owner) {
 				"&.autowidth": "max-width: 320px;", 
 				"&.ListCell": "max-width: 332px;"
 			},
+			".ListCell.alphaview-alt-cell": "cursor: pointer; text-decoration: underline;",
 			// '.ListCell:hover': "cursor: pointer; text-decoration: underline;",
 			'.{ListColumn}': { ':active': "font-weight:bold;" },
 			'.{ListHeader}': { 
@@ -1055,6 +1288,14 @@ const clearFilter = function(owner) {
 
 		onColumnGetValue(column, value, row, source) {
 			if(value instanceof Date) return value;
+			if(value instanceof Array && value.every(function(item) { return typeof item === "string"; })) {
+				return value.join(", ").substring(0, 1024);
+			}
+			var objectContentKey = this.vars(["presentation.objectContentKey"]);
+			if(objectContentKey && value && typeof value === "object" &&
+				Object.prototype.hasOwnProperty.call(value, objectContentKey)) {
+				return js.sf("%n", value[objectContentKey]).substring(0, 1024);
+			}
 			return js.sf("%n", value).substring(0, 1024);
 		},
 		onSelectionChange() {
@@ -1065,6 +1306,17 @@ const clearFilter = function(owner) {
 			this.ud("#forward").setVisible(this.getSelection().length > 0);
 		},
 		onDispatchChildEvent(component, name, evt, f, ms) {
+			if(name === "mousemove") {
+				updateAltCellHover(this, evt);
+				} else if(name === "mouseleave" || (name === "mouseout" && !(evt.relatedTarget && this.getNode().contains(evt.relatedTarget)))) {
+				updateAltCellHover(this, null);
+			} else if(name === "click" && evt.altKey === true && listCellContext(this, evt)) {
+				this.clearTimeout("clicked");
+				evt.preventDefault && evt.preventDefault();
+				evt.stopPropagation && evt.stopPropagation();
+				activateAlphaviewCell(this, evt, true);
+				return false;
+			}
 			if(name === "dblclick" && component instanceof ListColumn) {
 				LOGGING && this.print("logging alphaview.column.dblclick", {
 					column: component._attribute
@@ -1075,21 +1327,15 @@ const clearFilter = function(owner) {
 				// history.push([this._source._array, this.ud("#q").getValue()]);
 				history.push(captureHistoryEntry(this._owner));
 				
-				const array = this.ud("#array");
-				clearFilter(this);
-				
-				array.setArray(null);
-					array.setArray(arr.filter(_ => _ !== undefined));
+				clearFilter(this._owner);
+				pushNavigationList(this._owner, arr.filter(_ => _ !== undefined));
 					LOGGING && this.print("logging alphaview.column.drilldown", {
 						column: component._attribute,
 						count: arr.filter(_ => _ !== undefined).length
 					});
 
-					this.ud("#back").setEnabled(true); this.ud("#bar").show();
+					this._owner.qs("#back").setEnabled(true); this.ud("#bar").show();
 				
-				// this.ud("#list").destroyColumns();
-				// this.ud("#list").updateColumns();
-				updateList(this.ud("#list"));
 			});
 		} else if(name === "click") {
 			this.setTimeout("clicked", () => {
@@ -1108,58 +1354,14 @@ const clearFilter = function(owner) {
 		},
 			onDblClick(evt) { 
 				this.clearTimeout("click");
-
-				const cell = evt.target.soup(".ListCell");
-				if(evt.target.matches(".ListCell")) {
-				const row = Control.findByNode(cell.parentNode);
-				const index = Array.from(cell.parentNode.childNodes).indexOf(cell);
-				const column = this._header.getControls()[index];
-				let value;
-				
-				value = this._source.getAttributeValue(evt.altKey ? column._attribute : ".", row._rowIndex, true);
-				if(value.value && value.key && Object.values(value).length === 2) {
-					value = value.value;
+				if(evt.altKey === true) {
+					window.getSelection().removeAllRanges();
+					return false;
 				}
-				
-				const type = typeof value;
-				const isobj = type === "object";
-				const isarr = value instanceof Array;
-				const isdate = value instanceof Date;
-				LOGGING && this.print("logging alphaview.cell.dblclick", {
-					column: column && column._attribute,
-					row: row && row._rowIndex,
-					valueType: value === null ? "null" : isarr ? "array" : type
-				});
 
-				if(isobj && !isdate) {
-					if(isarr && value.length === 1) {
-						value = value[0];
-					}
-				
-					var history = this.vars(["history"]);
-					// history.push([this._source._array, this.ud("#q").getValue()]);
-					history.push(captureHistoryEntry(this._owner));
-					
-					clearFilter(this);
-					this.ud("#array").setArray(null);
-					this.ud("#array").setArray(value instanceof Array ? value : Object.keys(value).map(k => ({ key: k, value: value[k] })));
-					LOGGING && this.print("logging alphaview.cell.drilldown", {
-						column: column && column._attribute,
-						count: value instanceof Array ? value.length : Object.keys(value).length
-					});
-					this.ud("#back").setEnabled(true); this.ud("#bar").show();
-					
-					// this.ud("#list").destroyColumns();
-					// this.ud("#list").updateColumns();
-					updateList(this.ud("#list"));
-				} else {
-					LOGGING && this.print("logging alphaview.scalar.prompt", {
-						column: column && column._attribute,
-						value: value
-					});
-					prompt("", js.n(value));
+				if(listCellContext(this, evt)) {
+					activateAlphaviewCell(this, evt, false);
 				}
-			}
 			
 			window.getSelection().removeAllRanges();
 		},
@@ -1176,6 +1378,7 @@ const clearFilter = function(owner) {
 		}
 	}],
 	["Tabs", ("tabs"), {
+		visible: false,
 		onChange(newTab, oldTab, opts) {
 			LOGGING && this.print("logging alphaview.tabs.change", {
 				newTab: newTab && newTab.vars("key"),
@@ -1197,7 +1400,7 @@ const clearFilter = function(owner) {
 					var cur_length = array.getSize();
 					
 					var arr = newTab.vars("array");
-					if(arr.length === 1) {
+					if(arr.length === 1 && this.vars(["presentation.singleton"]) !== "table") {
 						arr = Object.keys(arr[0]).map(key => ({key: key, value: arr[0][key]}));
 					}
 					

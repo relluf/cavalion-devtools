@@ -2,6 +2,9 @@
 
 `devtools/Main` keyboard shortcuts (hotkey-) proxy to Workspace-actions
 
+- **⌘P** - Quick open resources (press again to switch workspace/all-workspaces scope)
+- **⇧⌘P** - Command palette
+
 ## General
 - **⇧⌘0** - Toggle sidebar
 - **⌘1-9** - Focus workspace 1-9, keeping pressing to switch focus between sidebar and editor

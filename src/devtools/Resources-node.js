@@ -7,6 +7,10 @@ define(function(require) {
 		if(uri.charAt(0) === "/") uri = uri.substring(1);
 		return BASE_URL + (window.escape(uri) || "");
 	}
+	function link(uri) {
+		uri = String(uri || "").replace(/^\/+/, "");
+		return "/home/" + uri.split("/").map(window.encodeURIComponent).join("/");
+	}
 	function request(urlOrOpts, opts = {}) {
 	    let url, options;
 	
@@ -22,16 +26,25 @@ define(function(require) {
 	    // Set defaults and destructure options
 	    const { method = 'GET', data = null, headers = {} } = options;
 	
-	    return fetch(url, {
-	        method,
-	        headers: js.mi({ 'Content-Type': 'application/json' }, headers),
-	        body: data ? JSON.stringify(data) : null
-	    }).then(response => {
-	    	if(opts.method === "DELETE") return response;
-	    	
-	        if (!response.ok) {
-	        	throw response;
-	        }
+		    return fetch(url, {
+		        method,
+		        headers: js.mi({ 'Content-Type': 'application/json' }, headers),
+		        body: data ? JSON.stringify(data) : null
+		    }).then(response => {
+	    	if(method === "DELETE") return response;
+		    	
+		        if (!response.ok) {
+		        	return response.text().then(text => {
+		        			let body = text;
+		        			try { body = text && JSON.parse(text); } catch(ignore) {}
+		        			const error = new Error(body && (body.reason || body.message) || response.statusText);
+		        			error.status = response.status;
+		        			error.statusText = response.statusText;
+		        			error.response = response;
+		        			error.body = body;
+		        			throw error;
+		        	});
+		        }
 	        return response.json();
 	    });
 	}
@@ -89,7 +102,13 @@ define(function(require) {
 					return arr;
 				});
 		},
-		get: function(uri) {
+		get: function(uri, opts) {
+			if(opts && opts.arrayBuffer) {
+				return fetch(link(uri)).then(function(response) {
+					if(!response.ok) throw response;
+					return response.arrayBuffer();
+				});
+			}
 			return (request(adjust(uri)).then(function(res) {
 					return js.mixIn({
 						name: uri.split("/").pop(),
@@ -103,7 +122,7 @@ define(function(require) {
 				method: "POST",
 				contentType: "application/json",
 				data: ({
-					"text": resource.text,
+					"text": typeof resource.text === "string" ? resource.text : "",
 					"revision": resource.revision,
 					"position": 0
 				})
@@ -124,7 +143,7 @@ define(function(require) {
 			}));
 		},
 		link: function(uri) {
-			return Promise.resolve(String.format("/home/%s", uri));
+			return Promise.resolve(link(uri));
 		}
 	};
 

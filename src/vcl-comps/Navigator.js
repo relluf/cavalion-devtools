@@ -21,6 +21,75 @@ function getNodeText(uri, usedNames) {
 	
 	return r.join("/");
 }
+function hasScheme(uri) {
+	return new RegExp("^[^/:]+://").test(uri);
+}
+function canonicalUri(uri) {
+	uri = String(uri || "");
+	if(uri === "/") return "";
+	if(!hasScheme(uri)) uri = uri.replace(/^\/+/, "");
+	if(/^[^\/:]+:\/\/$/.test(uri)) return uri;
+	return uri.replace(/\/+$/, "");
+}
+function resourceIsPrefix(resource) {
+	var type = String(resource && resource.type || "");
+	return type === "Package" || type.indexOf("Folder") !== -1;
+}
+function uriStartsWithPrefix(uri, prefix) {
+	uri = canonicalUri(uri);
+	prefix = canonicalUri(prefix);
+	if(prefix === "") return !hasScheme(uri);
+	if(uri === prefix) return true;
+	if(prefix.endsWith("://")) return uri.indexOf(prefix) === 0;
+	return uri.indexOf(prefix + "/") === 0;
+}
+function nextUriInPrefix(uri, prefix) {
+	var rest;
+	uri = canonicalUri(uri);
+	prefix = canonicalUri(prefix);
+	
+	if(uri === prefix) return null;
+	if(prefix === "") {
+		rest = uri;
+	} else if(prefix.endsWith("://")) {
+		rest = uri.substring(prefix.length);
+	} else {
+		rest = uri.substring(prefix.length + 1);
+	}
+	
+	rest = rest.split("/").shift();
+	if(!rest) return null;
+	return prefix === "" ? rest : prefix + (prefix.endsWith("://") ? "" : "/") + rest;
+}
+function collectResourceNodes(parent, arr) {
+	arr = arr || [];
+	(parent.getControls ? parent.getControls() : []).forEach(function(node) {
+		if(node.getVar && node.getVar("resource.uri") !== undefined) {
+			arr.push(node);
+		}
+		collectResourceNodes(node, arr);
+	});
+	return arr;
+}
+function findBestPrefixNode(tree, uri) {
+	var best = null, bestScore = -1;
+	collectResourceNodes(tree).forEach(function(node) {
+		var resource = node.getVar("resource") || {};
+		var nodeUri = canonicalUri(resource.uri);
+		var exact = canonicalUri(uri) === nodeUri;
+		var score;
+		
+		if(!exact && !resourceIsPrefix(resource)) return;
+		if(!uriStartsWithPrefix(uri, nodeUri)) return;
+		
+		score = nodeUri.length + (exact ? 10000 : 0);
+		if(score > bestScore) {
+			best = node;
+			bestScore = score;
+		}
+	});
+	return best;
+}
 function onNodesNeeded(parent) {
     var owner = this._owner;
     var root = parent === this;
@@ -107,7 +176,7 @@ function onNodesNeeded(parent) {
     		if(i1.type === i2.type) {
     			return i1.name < i2.name ? -1 : 1;
     		}
-    		return i1.type !== "Folder" ? 1 : -1;
+    		return resourceIsPrefix(i1) ? -1 : 1;
     	});
     	parent.beginLoading();
         res.forEach(function (item, index) {
@@ -322,45 +391,45 @@ function onNodesNeeded(parent) {
     [("vcl/Action"), "resource-focus", {
         onExecute: function(evt) {
             var scope = this.getScope();
-            var names = evt.resource.uri.split("/");
-            var path = [];
+            var uri = canonicalUri(evt.resource.uri);
             
             var sidebar = this.up("devtools/Workspace<>:root").down("#left-sidebar");
             sidebar.show();
             sidebar.update(function() {
 	            var node = scope.tree.getSelection()[0] || null;
-	            if(node !== null && evt.resource.uri === node.getVar("resource.uri")) {
+	            if(node !== null && uri === canonicalUri(node.getVar("resource.uri"))) {
 	            	scope.tree.makeVisible(node);
 	            	return;
 	            }
 	            scope['search-list'].hide();
 	            function walk(parent) {
-	                path.push(names.shift());
-	
-	                node = parent.getControls().find(function(node) {
-	                    return node.getVar("resource.uri") === path.join("/");
+	            	var parentUri = canonicalUri(parent.getVar("resource.uri"));
+	            	var nextUri = nextUriInPrefix(uri, parentUri);
+	            	
+	            	scope.tree.setTimeout("makeVisible", function() {
+	                    scope.tree.makeVisible(parent);
+	            	}, 20);
+	            	
+	            	if(nextUri === null) {
+	                    scope.tree.setSelection([parent]);
+	                    return;
+	            	}
+	            	
+	                parent.childNodesNeeded(function() {
+	                    parent.setExpanded(true);
+	                    parent.setTimeout("walk", function() {
+			                node = parent.getControls().find(function(node) {
+			                    return canonicalUri(node.getVar("resource.uri")) === nextUri;
+			                });
+			
+			                if(node) {
+		                		walk(node);
+			                }
+	                    }, 50);
 	                });
-	
-	                if(node) {
-	                	scope.tree.setTimeout("makeVisible", function() {
-	                        scope.tree.makeVisible(node);
-	                	}, 20);
-	                        
-	                    if(names.length) {
-	                        node.childNodesNeeded(function() {
-	                            node.setExpanded(true);
-	                            /*- TODO how to know when nodes are actually created? */
-	                            node.setTimeout("walk", function() {
-	                        		walk(node);
-	                            }, 50);
-	                        });
-	                    } else {
-	                        scope.tree.setSelection([node]);
-	                    }
-	                }
 	            }
 	            
-	            walk(scope.fs);
+	            walk(findBestPrefixNode(scope.tree, uri) || scope.fs);
             });
             
         }
@@ -679,7 +748,7 @@ function onNodesNeeded(parent) {
 	            		if(i1.type === i2.type) {
 	            			return i1.name < i2.name ? -1 : 1;
 	            		}
-	            		return i1.type !== "Folder" ? 1 : -1;
+	            		return resourceIsPrefix(i1) ? -1 : 1;
 	            	});
 	            	parent.beginLoading();
 	                res.forEach(function (item, index) {
@@ -705,7 +774,7 @@ function onNodesNeeded(parent) {
 	                    }
 	                    
 console.log(node, js.sf("expandable: %s", item.expandable));
-	                    node.setExpandable(item.expandable || item.type.indexOf("Folder") !== -1);
+	                    node.setExpandable(item.expandable || resourceIsPrefix(item));
 	                    node.setParent(parent);
 	                });
 	            	parent.endLoading();
@@ -936,7 +1005,7 @@ console.log(node, js.sf("expandable: %s", item.expandable));
                 if (classes.length === 4) {
                     classes.pop();
                 }
-                classes.push(orgValue.type === "Folder" ? "folder" : "file");
+                classes.push(resourceIsPrefix(orgValue) ? "folder" : "file");
                 cell.className = classes.join(" ");
             }
         }]

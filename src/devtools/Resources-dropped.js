@@ -10,7 +10,12 @@
 define(function(require) {
 	const Hash = require("util/Hash");
 	const Mapper = (item, index) => {
-		return item.kind === "package" || item.zipped ? ({
+		return item.kind === "resource-group" ? ({
+			path: js.sf("%s", index),
+			name: item.name,
+			created: item.created,
+			type: "Folder"
+		}) : item.kind === "package" || item.zipped ? ({
 			path: js.sf("%s", index),
 			name: js.get("fileValue.name", item),
 			lastModified: js.get("fileValue.lastModified", item),
@@ -31,6 +36,36 @@ define(function(require) {
 			type: "File"
 		}) : js.mi({}, item);
 	};
+	const resourceGroupTarget = uri => {
+		const path = uri.split("/").filter(part => part !== "");
+		const index = parseInt(path.shift(), 10);
+		const group = allDroppedItems()[index];
+
+		if(!group || group.kind !== "resource-group") return null;
+		if(path[0] === group.name) path.shift();
+		if(!path.length) return {index: index, group: group};
+
+		const resourceIndex = parseInt(path.shift(), 10);
+		const resource = group.resources[resourceIndex];
+		if(!resource) return {index: index, group: group};
+		if(path[0] === resource.name) path.shift();
+
+		const base = resource.targetUri.replace(/\/$/, "");
+		return {
+			index: index,
+			group: group,
+			resource: resource,
+			resourceIndex: resourceIndex,
+			path: path,
+			uri: base + (path.length ? "/" + path.join("/") : "") || "/"
+		};
+	};
+	const resourceGroupPath = target => [
+		target.index,
+		target.group.name,
+		target.resourceIndex,
+		target.resource.name
+	].concat(target.path || []);
 	const getFolders = (items, index) => {
 		// TODO cache result, ie. only rebuild when necessary (VA-20240904-1-DragDropHandler)
 
@@ -73,14 +108,10 @@ define(function(require) {
 	return {
 		index: function(uris) {
 			return {
-				"": allDroppedItems().map((item, index) => ({
-					path: js.sf("%s", index),
-					name: js.get("fileValue.name", item),
-					uri: js.sf("%s/%s", index, js.get("fileValue.name", item)),
-					lastModified: js.get("fileValue.lastModified", item),
-					size: js.get("fileValue.size", item),
-					type: "File"
-				}))
+				"": allDroppedItems().map(Mapper).map(item => {
+					item.uri = js.sf("%s/%s", item.path, item.name);
+					return item;
+				})
 			};
 		},
 		list: function(path, opts) {
@@ -93,6 +124,23 @@ define(function(require) {
 					return item;
 				}));
 			} 
+
+			const groupTarget = resourceGroupTarget([index].concat(path).join("/"));
+			if(groupTarget && !groupTarget.resource) {
+				return Promise.resolve(groupTarget.group.resources.map((resource, resourceIndex) => {
+					const result = js.mi({}, resource);
+					result.uri = [index, groupTarget.group.name, resourceIndex, resource.name].join("/");
+					return result;
+				}));
+			}
+			if(groupTarget && groupTarget.resource) {
+				return req("devtools/Resources").list(groupTarget.uri, opts).then(resources => resources.map(resource => {
+					const result = js.mi({}, resource);
+					result.uri = resourceGroupPath(groupTarget).concat(resource.name).join("/");
+					result.targetUri = groupTarget.uri.replace(/\/$/, "") + "/" + resource.name;
+					return result;
+				}));
+			}
 			
 			return Promise.resolve(items[index].readerResult || items[index].items).then(res => {
 				if(res instanceof Array) {
@@ -128,6 +176,16 @@ define(function(require) {
 			const index = parseInt(uri.split("/").shift(), 10);
 			const items = allDroppedItems();
 			const item = items[index] || { readerResult: `${uri} no longer valid` };
+			const groupTarget = resourceGroupTarget(uri);
+
+			if(groupTarget && groupTarget.resource) {
+				return Resources.get(groupTarget.uri).then(resource => {
+					const result = js.mi({}, resource);
+					result.uri = uri;
+					result.targetUri = groupTarget.uri;
+					return result;
+				});
+			}
 			
 			const handleR = (uri, text) => text instanceof Array ? ({
 					path: js.up(uri),
@@ -185,14 +243,21 @@ define(function(require) {
 		set_allDroppedItems: function(impl) { allDroppedItems = impl; },
 		allDroppedItems: () => allDroppedItems(),
 		
-	/** not implemented below here */
 		create: function(path, resource) {
+			const target = resourceGroupTarget(path);
+			if(target && target.resource) return req("devtools/Resources").create(target.uri, resource);
 		},
 		'delete': function(path) {
+			const target = resourceGroupTarget(path);
+			if(target && target.resource) return req("devtools/Resources").delete(target.uri);
 		},
 		update: function(path, resource) {
+			const target = resourceGroupTarget(path);
+			if(target && target.resource) return req("devtools/Resources").update(target.uri, resource);
 		},
 		link: function(path) {
+			const target = resourceGroupTarget(path);
+			if(target && target.resource) return req("devtools/Resources").link(target.uri);
 		}
 	};
 });

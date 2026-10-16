@@ -1081,6 +1081,8 @@ const decorateJavaScriptNavigation = (root, ace) => {
 		getKey: symbol => symbol.key,
 		getLabel: symbol => symbol.label || symbol.name,
 		getMenuLabel: symbol => symbol.menuLabel || symbol.label || symbol.name,
+		defaultDepth: 3,
+		onSettingsChanged: () => updateJavaScriptNavigationPosition(root),
 		onNavigate: key => navigateJavaScriptSymbol(root, ace, key)
 	});
 	root.vars(NAV_ELEMENTS_VAR, nav && nav._topLevelNav ? nav._topLevelNav.elements : []);
@@ -1098,6 +1100,17 @@ const scheduleJavaScriptNavigationSync = (root, ace) => {
 		root.setTimeout("js-toplevel-nav-sync", () => syncJavaScriptNavToVisibleRows(root, ace), 40);
 	}
 };
+const scheduleJavaScriptNavigationResize = (root) => {
+	root.setTimeout("js-toplevel-nav-resize", () => {
+		var helper = getTopLevelNavigation(root);
+		var nav = root._node && root._node.querySelector(".js-toplevel-nav");
+		var ace = root.down("#ace");
+		if(!nav || !helper || !root.isVisible()) return;
+		helper.resize(nav);
+		root.vars(NAV_ELEMENTS_VAR, nav._topLevelNav.elements);
+		ace && syncJavaScriptNavToVisibleRows(root, ace);
+	}, 0);
+};
 const updateJavaScriptNavigationPosition = (root) => {
 	var ace = root.down("#ace");
 	ace && decorateJavaScriptNavigation(root, ace);
@@ -1108,20 +1121,32 @@ const updateJavaScriptNavigationPosition = (root) => {
 	onLoad() {
 		var ace = this.down("#ace"), firstRun = false;
 		var editor = ace.getEditor();
+		var disposed = false;
+		var tab = this.up("vcl/ui/Tab"), loadedListener;
+		var selection = editor.selection, session = editor.session;
+		ace.once("destroy", () => {
+			disposed = true;
+			if(loadedListener) tab.off(loadedListener);
+			selection.off("changeCursor", sync_cursor);
+			session.off("changeScrollTop", sync);
+			session.off("change", refresh);
+		});
 		var sync = () => scheduleJavaScriptNavigationSync(this, ace);
 		var sync_cursor = () => syncJavaScriptNavToVisibleRows(this, ace);
 		var refresh = () => scheduleJavaScriptNavigationRefresh(this, ace);
 		var bindResize = this.vars(["bindTopLevelNavigationResize"]);
 
 		ace.up().readStorage("ace", function(state) {
-			firstRun = state === undefined;
+			if(!disposed) firstRun = state === undefined;
 		});
 		bindResize && bindResize(this, "js-toplevel-nav-window-resize",
-			() => updateJavaScriptNavigationPosition(this), 120);
+			() => scheduleJavaScriptNavigationResize(this), 120);
 		editor.selection.on("changeCursor", sync_cursor);
 		editor.session.on("changeScrollTop", sync);
 		editor.session.on("change", refresh);
-		this.up("vcl/ui/Tab").once("resource-loaded", () => {
+		loadedListener = tab.once("resource-loaded", () => {
+			loadedListener = null;
+			if(disposed) return;
 			if(firstRun === true) {
 				editor.execCommand("foldall");
 			
@@ -1134,7 +1159,7 @@ const updateJavaScriptNavigationPosition = (root) => {
 		return this.inherited(arguments);
 	},
 	onResize() {
-		updateJavaScriptNavigationPosition(this);
+		scheduleJavaScriptNavigationResize(this);
 	}
 	
 }];

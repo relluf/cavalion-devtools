@@ -607,6 +607,20 @@ this.app().vars("canunload", () => false);
 }, [
     [["devtools/DragDropHandler<>"], ("ddh"), { isRoot: true }],
     [["devtools/CtrlCtrl<>"], "ctrlctrl", { visible: false}],
+    [["devtools/QuickOpen<>"], "quick-open-palette", { visible: false}],
+
+	[("vcl/Action"), "quick-open", {
+		hotkey: "Cmd+P",
+		on() {
+			this.ud("#quick-open-palette").showPalette("files");
+		}
+	}],
+	[("vcl/Action"), "command-palette", {
+		hotkey: "Shift+Cmd+P",
+		on() {
+			this.ud("#quick-open-palette").showPalette("commands");
+		}
+	}],
     
 	[("vcl/Action"), "⌘.", {
 		hotkey: "Meta+190|Alt+Meta+190",
@@ -631,7 +645,7 @@ this.app().vars("canunload", () => false);
 					app.print(uri, editor);
 					cc(uri);
 				} else {
-					app.toast({classes: "glassy fade", content: uri})
+					app.toast({classes: "glassy fade", content: js.sf("%H", uri)})
 				}
 			}
 		}

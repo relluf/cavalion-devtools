@@ -39,7 +39,7 @@ define(function(require) {
                 var item = this.getVar("resource") || {
                     type: ""
                 };
-                r.push((item.type||"").indexOf("Folder") === -1 ? "file" : "folder");
+                r.push(item.type === "Package" || (item.type||"").indexOf("Folder") !== -1 ? "folder" : "file");
                 return r;
             },
             render: function () {

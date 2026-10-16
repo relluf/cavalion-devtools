@@ -1,5 +1,5 @@
-define(["devtools/Resources-node", "devtools/Resources-pouchdb", "devtools/Resources-dropbox", "devtools/Resources-gdrive", "devtools/Resources-dropped", "devtools/Resources-ddh", "vcl/Component", "js/nameOf"], 
-function(FS, Pouch, Dropbox, GDrive, Dropped, Ddh, Component, nameOf) {
+define(["devtools/Resources-node", "devtools/Resources-pouchdb", "devtools/Resources-dropbox", "devtools/Resources-gdrive", "devtools/Resources-dropped", "devtools/Resources-ddh", "devtools/Resources-gitrepo", "vcl/Component", "js/nameOf"],
+function(FS, Pouch, Dropbox, GDrive, Dropped, Ddh, GitRepo, Component, nameOf) {
 
     // Registry for resource providers
     const ResourceRegistry = {
@@ -41,11 +41,31 @@ function(FS, Pouch, Dropbox, GDrive, Dropped, Ddh, Component, nameOf) {
             return "pouchdb://Resources/";
         },
 
+		dereference(resource) {
+			if(typeof resource === "string") return {uri: resource};
+			if(!resource || typeof resource !== "object") return resource;
+
+			const target = resource.target && typeof resource.target === "object" ? resource.target : null;
+			const targetUri = resource.targetUri || resource.linkedUri || target && target.uri;
+			if(!targetUri) return resource;
+
+			const result = js.mi({}, resource);
+			if(target) js.mi(result, target);
+			result.aliasUri = resource.aliasUri || resource.uri;
+			result.uri = targetUri;
+			result.name = target && target.name || targetUri.replace(/\/$/, "").split("/").pop() || resource.name;
+			delete result.target;
+			delete result.targetUri;
+			delete result.linkedUri;
+			return result;
+		},
+
         index(uris) {
             return FS.index(typeof uris === "string" ? [uris] : uris);
         },
 
         list(uri, opts) {
+			if(uri && typeof uri === "object") uri = this.dereference(uri).uri;
             uri = resolve(uri || "/");
             const provider = ResourceRegistry.getProvider(uri);
             if (provider && provider.list) {
@@ -59,18 +79,27 @@ function(FS, Pouch, Dropbox, GDrive, Dropped, Ddh, Component, nameOf) {
             return FS.list(uri);
         },
 
-        get(uri, opts) {
+		get(uri, opts) {
+			const requested = uri && typeof uri === "object" ? this.dereference(uri) : null;
+			const aliasUri = requested && requested.aliasUri;
+			if(requested) uri = requested.uri;
             uri = resolve(uri);
             const provider = ResourceRegistry.getProvider(uri);
             if (provider && provider.get) {
                 const scheme = uri.split("://")[0];
-                return provider.get(uri.substring(`${scheme}://`.length), opts)
-                    .then(resource => {
-                        resource.uri = `${scheme}://${resource.uri}`;
-                        return resource;
-                    });
-            }
-            return FS.get(uri);
+				return provider.get(uri.substring(`${scheme}://`.length), opts)
+					.then(resource => {
+						if(opts && opts.arrayBuffer) return resource;
+						resource.uri = `${scheme}://${resource.uri}`;
+						if(aliasUri && !resource.aliasUri) resource.aliasUri = aliasUri;
+						return Resources.dereference(resource);
+					});
+			}
+			return FS.get(uri, opts).then(resource => {
+				if(opts && opts.arrayBuffer) return resource;
+				if(aliasUri && !resource.aliasUri) resource.aliasUri = aliasUri;
+				return resource;
+			});
         },
 
         create(uri, resource) {
@@ -120,7 +149,7 @@ function(FS, Pouch, Dropbox, GDrive, Dropped, Ddh, Component, nameOf) {
 
         isPackage(uri, ext) {
             ext = ext || uri.split(".").pop();
-            return ["zip", "kmz", "gz", "shp", "ti"].includes(ext);
+            return String(uri || "").startsWith("gitrepo://") || ["zip", "kmz", "gz", "shp", "ti"].includes(ext);
         },
 
         ls() { return this.list.apply(this, arguments); },
@@ -133,6 +162,7 @@ function(FS, Pouch, Dropbox, GDrive, Dropped, Ddh, Component, nameOf) {
     ResourceRegistry.register("dropbox", Dropbox);
     ResourceRegistry.register("gdrive", GDrive);
     ResourceRegistry.register("dropped", Ddh);
+    ResourceRegistry.register("gitrepo", GitRepo);
     
     //
     nameOf.methods.after.push(obj => (typeof obj === "object" && typeof obj.uri === "string") ? obj.uri.split("/").pop() : undefined);

@@ -1,7 +1,8 @@
-"use vcl/ui/Ace, vcl/ui/FormContainer, vcl/ui/Tab, locale";
+"use vcl/ui/Ace, vcl/ui/FormContainer, vcl/ui/Tab, devtools/Resources, locale";
 
 const Control = require("vcl/Control");
 const Ace = require("vcl/ui/Ace");
+const Resources = require("devtools/Resources");
 
 const Tab = {
 	_content:
@@ -41,8 +42,10 @@ const Tab = {
 const Utils = {
     getState: function(scope) {
         var tabs = scope["editors-tabs"].getControls();
+        var workspace = scope['@owner'];
         return {
         	'left-sidebar.visible': scope['left-sidebar'].getVisible(),
+			'resourcePalette.recent': workspace.vars(["resourcePalette.recent"]) || [],
             editors: tabs.filter(function(tab) {
                 var ace = tab.qsa("devtools/Editor<> #ace")[0];
                 var resource = tab.getVar("resource") || {}, r;
@@ -65,6 +68,7 @@ const Utils = {
         
         var workspace = scope['@owner'];
         if(state) {
+	        workspace.vars(["resourcePalette"]).recent = state['resourcePalette.recent'] || [];
 	        state.editors && state.editors.forEach(function(state) {
 	            var _state = js.mixIn({}, state);
 	            var tab = scope["editor-needed"].execute(js.mixIn(state, {
@@ -152,6 +156,51 @@ const asResource = (uri) => ({
 });
 const getSelectedEditorTab = (workspace) =>
 	workspace.qs("vcl/ui/Tab:selected:childOf(editors-tabs)");
+const revealEditorTab = (component) => {
+	var tab = component && component._parent && component._parent._name === "editors-tabs" ? component :
+		component && component.up && component.up("vcl/ui/Tab");
+	var revealed = [];
+
+	while(tab && tab._parent && tab._parent._name === "editors-tabs" &&
+			revealed.indexOf(tab) === -1) {
+		const current = tab;
+		revealed.push(tab);
+		current.setTimeout("reveal-editor-tab", () => {
+			var node = current.nodeNeeded && current.nodeNeeded();
+			var tabs = current._parent && current._parent.nodeNeeded();
+			var nodeRect = node && node.getBoundingClientRect();
+			var tabsRect = tabs && tabs.getBoundingClientRect();
+
+			if(!(nodeRect && tabsRect)) return;
+			if(nodeRect.left < tabsRect.left) {
+				tabs.scrollLeft += nodeRect.left - tabsRect.left;
+			} else if(nodeRect.right > tabsRect.right) {
+				tabs.scrollLeft += nodeRect.right - tabsRect.right;
+			}
+		}, 0);
+		tab = tab.up && tab.up("vcl/ui/Tab");
+	}
+};
+const getDeepSelectedEditorTab = (tab) => {
+	var next;
+	while(tab && tab.qs) {
+		next = tab.qs("vcl/ui/Tab:selected:childOf(editors-tabs)");
+		if(!next || next === tab) break;
+		tab = next;
+	}
+	return tab;
+};
+const getSelectedEditorAction = (workspace, name) => {
+	var tab = getDeepSelectedEditorTab(getSelectedEditorTab(workspace));
+	var action = tab && tab.qs && tab.qs("#" + name);
+
+	if(action) return action;
+
+	return (workspace.qsa && workspace.qsa("vcl/ui/Tab:selected") || [])
+		.map(tab => tab.qs && tab.qs("#" + name))
+		.filter(Boolean)
+		.pop();
+};
 const getWorkspaceNavigation = (workspace) =>
 	workspace.vars("workspace-navigation", false, () => ({
 		entries: [],
@@ -159,6 +208,21 @@ const getWorkspaceNavigation = (workspace) =>
 		seq: 0,
 		pending: null
 	}));
+const rememberResource = (workspace, entry) => {
+	if(!(entry && entry.uri)) return;
+
+	const recent = workspace.vars(["resourcePalette.recent"]) || [];
+	const resource = {
+		uri: entry.uri,
+		type: entry.type || asResource(entry.uri).type
+	};
+	const previous = recent.findIndex(item => item && item.uri === resource.uri);
+	if(previous !== -1) recent.splice(previous, 1);
+	recent.unshift(resource);
+	recent.splice(workspace.vars(["resourcePalette.maxRecent"]) || 100);
+	workspace.vars(["resourcePalette"]).recent = recent;
+	workspace.setTimeout("persist-resource-palette-recent", () => workspace.emit("state-dirty"), 0);
+};
 const createNavigationEntry = (workspace, tab, seed) => {
 	if(seed && seed.uri) {
 		return js.mixIn({
@@ -207,6 +271,7 @@ const recordWorkspaceHistory = (workspace, tab, options) => {
 	let index;
 
 	if(!entry) return null;
+	rememberResource(workspace, entry);
 
 	if(!entry.id) {
 		entry.id = js.sf("%s:%d:%d",
@@ -304,9 +369,26 @@ const navigateWorkspaceHistory = (workspace, direction) => {
 };
 
 [["ui/Form"], {
+	vars: {
+		revealEditorTab: revealEditorTab,
+		resourcePalette: {
+			folders: null,
+			maxIndexedResources: 10000,
+			maxRecent: 100,
+			recent: []
+		}
+	},
     onLoad: function() {
         var scope = this.scope();
         var workspace = this.vars(["workspace"]) || {};
+		var node = this.nodeNeeded();
+		var focusin = this.vars(["editor-tabs-focusin-listener"]);
+
+		if(!focusin) {
+			focusin = evt => revealEditorTab(Control.findByNode(evt.target));
+			this.vars("editor-tabs-focusin-listener", focusin);
+			node.addEventListener("focusin", focusin);
+		}
         this.readStorage("state", (value) => {
         	value = value || {workspace:0};
             Utils.setState(js.mixIn(workspace.state||{}, value), scope);
@@ -482,6 +564,7 @@ const navigateWorkspaceHistory = (workspace, direction) => {
             }
 
             if(!evt.resource) { evt.resource = { uri: "" } }
+			evt.resource = Resources.dereference(evt.resource);
             if(!evt.parents) {
 	    		var tabs = scope['editors-tabs'].getControls();
 	    		tab = tabs.find(function(tab) {
@@ -673,6 +756,26 @@ const navigateWorkspaceHistory = (workspace, direction) => {
             evt.preventDefault();
         }
     }],
+    ["vcl/Action", ("editor-menu-open"), {
+        hotkey: "Alt+Shift+191|Alt+Shift+/|Shift+Alt+X",
+        on(evt) {
+            var action = getSelectedEditorAction(this._owner, "menu-open");
+            if(action) {
+                action.execute(evt);
+            }
+        }
+    }],
+    ["vcl/Action", ("editor-links-open"), {
+        hotkey: "MetaCtrl+E",
+        on(evt) {
+            var action = getSelectedEditorAction(this._owner, "links-open");
+            if(action) {
+                if(evt && evt.preventDefault) evt.preventDefault();
+                if(evt && evt.stopPropagation) evt.stopPropagation();
+                return action.execute(evt);
+            }
+        }
+    }],
     ["vcl/Action", ("editor-move-to-front"), {
     	on() {
     		this._owner.qs("vcl/ui/Tab:selected:childOf(editors-tabs)").setIndex(0);
@@ -785,7 +888,7 @@ const navigateWorkspaceHistory = (workspace, direction) => {
 
     		this.vars("last-uri", uri);
     		
-			var content = favs.map((s, i) => index === i ? js.sf("<b>%H</b>", s) : s).join("<br>");
+			var content = favs.map((s, i) => index === i ? js.sf("<b>%H</b>", s) : js.sf("%H", s)).join("<br>");
 			var toast = this.vars("toast");
 			if(toast) {
 				toast.element.setContent(content);	
@@ -888,6 +991,7 @@ const navigateWorkspaceHistory = (workspace, direction) => {
         ["vcl/ui/Tabs", ("editors-tabs"), {
             onChange: function(tab, previous) {
 // TODO tell application to render it's title
+				revealEditorTab(tab);
 				this.ud("#update-title").execute({tab: tab});
                 this._owner.emit("state-dirty");
 				recordWorkspaceHistory(this._owner, tab);

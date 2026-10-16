@@ -1,4 +1,10 @@
 define(function(require) {
+	const exposeBlobFile = (resource, blob, file) => {
+		if(blob) Object.defineProperty(resource, "blob", { value: blob, configurable: true });
+		if(file) Object.defineProperty(resource, "file", { value: file, configurable: true });
+		return resource;
+	};
+
 	const PackageHandlerRegistry = {
 	    handlers: {},
 	
@@ -185,13 +191,13 @@ define(function(require) {
 		addFileToNode: async (node, file, r) => {
 		    const isPackage = await PackageUtils.isPackageFile(file);
 		    const index = node.files.findIndex(f => f.name === file.name);
-		    r = {
+		    r = exposeBlobFile({
 		        name: file.name,
 		        size: file.size,
 		        contentType: FileUtils.getFileContentType(file.name),
 		        isPackage,
 		        getContent: () => FileUtils.readAsArrayBuffer(file),
-		    };
+		    }, file, file);
 		    if(index === -1) {
 		        node.files.push(r);
 		    } else {
@@ -203,12 +209,65 @@ define(function(require) {
 	        const parts = path.split('/').filter(Boolean);
 	        return parts.reduce((currentNode, part) => {
 	            if (!currentNode) return null;
-	            return currentNode.directories.find(dir => dir.name === part) || null;
+	            return currentNode.directories.find(dir => (dir.uriName || dir.name) === part) || null;
 	        }, rootNode);
 	    },
 	};
 
     const rootNode = TreeUtils.createNode("root");
+	const linkedResources = {};
+	const removeResourceGroupLinks = group => Object.keys(linkedResources).forEach(uri => {
+		const link = linkedResources[uri];
+		if((group.id && link.groupId === group.id) || link.groupName === group.name) delete linkedResources[uri];
+	});
+	const resolveLinkedResource = uri => {
+		const alias = Object.keys(linkedResources)
+			.filter(candidate => uri === candidate || uri.startsWith(candidate + "/"))
+			.sort((left, right) => right.length - left.length)[0];
+		if(!alias) return null;
+		const link = linkedResources[alias];
+		return {
+			node: link,
+			targetUri: link.targetUri.replace(/\/$/, "") + uri.substring(alias.length)
+		};
+	};
+	const addResourceGroup = group => {
+		const previous = rootNode.directories.findIndex(directory =>
+			directory.kind === "resource-group" &&
+			(directory.groupId === group.id || directory.name === group.name));
+		removeResourceGroupLinks(group);
+		const directory = TreeUtils.createNode(group.name);
+		directory.groupId = group.id;
+		directory.created = group.created;
+		directory.kind = "resource-group";
+
+		group.resources.forEach((resource, index) => {
+			const folder = resource.type === "Folder" || resource.type === "Package";
+			const node = TreeUtils.createNode(resource.name, !folder);
+			node.uriName = resource.name;
+			node.aliasUri = [group.name, index, resource.name].join("/");
+			node.legacyAliasUri = [group.name, index + "-" + resource.name].join("/");
+			node.groupId = group.id;
+			node.groupName = group.name;
+			node.targetUri = resource.targetUri;
+			node.resourceType = resource.type;
+			node.contentType = resource.contentType;
+			linkedResources[node.aliasUri] = node;
+			linkedResources[node.legacyAliasUri] = node;
+			(folder ? directory.directories : directory.files).push(node);
+		});
+
+		if(previous === -1) rootNode.directories.push(directory);
+		else rootNode.directories.splice(previous, 1, directory);
+		return directory;
+	};
+	const setResourceGroups = groups => {
+		rootNode.directories = rootNode.directories.filter(directory =>
+			directory.kind !== "resource-group");
+		Object.keys(linkedResources).forEach(uri => delete linkedResources[uri]);
+		groups.forEach(addResourceGroup);
+		return groups;
+	};
 
 	const mapEntries = (entries, baseUri) => entries.map(([name, entry]) => ({
 	        name: name.replaceAll("/", "\\"),
@@ -424,9 +483,26 @@ define(function(require) {
 	    }));
 	};
 	const list = async (path, opts = { recursive: false, recursePackages: false }) => {
+		const linked = resolveLinkedResource(path);
+		if(linked) {
+			return require("devtools/Resources").list(linked.targetUri, opts).then(resources => resources.map(resource => {
+				const result = js.mi({}, resource);
+				result.uri = `${path}/${resource.name}`;
+				result.targetUri = linked.targetUri.replace(/\/$/, "") + "/" + resource.name;
+				return result;
+			}));
+		}
 	    const dirNode = TreeUtils.findNodeByPath(path, rootNode);
 	    const names = [];
-	
+		if(dirNode && dirNode.targetUri) {
+			return require("devtools/Resources").list(dirNode.targetUri, opts).then(resources => resources.map(resource => {
+				const result = js.mi({}, resource);
+				result.uri = `${path}/${resource.name}`;
+				result.targetUri = dirNode.targetUri.replace(/\/$/, "") + "/" + resource.name;
+				return result;
+			}));
+		}
+
 	    if (!dirNode) {
 	        let packageNode = await findPackageByPath(path);
 	
@@ -455,24 +531,36 @@ define(function(require) {
 	
 	    const fileItems = await Promise.all(dirNode.files.map(async file => {
 	        const isPackage = await PackageUtils.isPackageFile(file);
-	        return {
-	            uri: `${path}/${file.name}`,
+	        return exposeBlobFile({
+	            uri: file.aliasUri || `${path}/${file.uriName || file.name}`,
 	            name: file.name,
-	            type: isPackage ? "Package" : "File",
+	            type: file.resourceType || (isPackage ? "Package" : "File"),
 	            size: file.size,
 	            contentType: FileUtils.getFileContentType(file.name),
-	        };
+				targetUri: file.targetUri,
+	        }, file.blob, file.file);
 	    }));
-	
+
 	    const dirItems = dirNode.directories.map(dir => ({
-	        uri: `${path}/${dir.name}`,
+	        uri: dir.aliasUri || `${path}/${dir.uriName || dir.name}`,
 	        name: dir.name,
-	        type: "Folder",
+	        type: dir.resourceType || "Folder",
+			targetUri: dir.targetUri,
 	    }));
 	
 	    return opts.recursive ? flattenDirectoryRecursively(dirNode, path) : [...dirItems, ...fileItems];
 	};
 	const get = async (uri, opts = {}) => {
+		const linked = resolveLinkedResource(uri);
+		if(linked) {
+			return require("devtools/Resources").get(linked.targetUri, opts).then(resource => {
+				if(opts.arrayBuffer) return resource;
+				const result = js.mi({}, resource);
+				result.uri = uri;
+				result.targetUri = linked.targetUri;
+				return result;
+			});
+		}
 	    const parts = uri.split('/');
 	    let name = parts.pop();
 	    const path = parts.join('/');
@@ -495,21 +583,30 @@ define(function(require) {
 	    }
 	
 	    // Handle standard file retrieval
-	    const fileNode = dirNode.files.find(f => f.name === name);
+	    const fileNode = dirNode.files.find(f => (f.uriName || f.name) === name);
 	    if (!fileNode) {
 	        throw new Error(`File "${name}" not found at "${path}".`);
 	    }
-	
+		if(fileNode.targetUri) {
+			return require("devtools/Resources").get(fileNode.targetUri, opts).then(resource => {
+				if(opts.arrayBuffer) return resource;
+				const result = js.mi({}, resource);
+				result.uri = `${path}/${name}`;
+				result.targetUri = fileNode.targetUri;
+				return result;
+			});
+		}
+
 	    const content = await getFileContent(fileNode, opts);
-	    return opts.arrayBuffer
+		return opts.arrayBuffer
 	        ? content
-	        : {
+	        : exposeBlobFile({
 	              text: content,
 	              uri: `${path}/${name}`,
 	              name,
 	              size: fileNode.size || content.length,
 	              contentType: FileUtils.getFileContentType(fileNode.name),
-	          };
+	          }, fileNode.blob, fileNode.file);
 	};
     const index = (uris) => {
         // This assumes `uris` contains a list of files to index
@@ -725,6 +822,7 @@ define(function(require) {
         PackageHandlerRegistry,
         
         list, get, index,
+		addResourceGroup, setResourceGroups,
 
         handle_document_drop,
         handle_input_change

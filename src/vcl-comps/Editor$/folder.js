@@ -143,6 +143,9 @@ function common(tab) {
 		},
 		onChange(newTab, oldTab) {
 			if(!newTab) return;
+			var workspace = this.up("devtools/Workspace<>:root");
+			var revealEditorTab = workspace && workspace.vars(["revealEditorTab"]);
+			revealEditorTab && revealEditorTab(newTab);
 			this.up().writeStorage("editors-tabs", { selected: newTab && newTab.getIndex() });
 		}
 	}],
