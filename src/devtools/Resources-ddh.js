@@ -193,8 +193,12 @@ define(function(require) {
 		    const index = node.files.findIndex(f => f.name === file.name);
 		    r = exposeBlobFile({
 		        name: file.name,
+		        sourceName: file.name,
+		        sourcePath: file.webkitRelativePath || undefined,
+		        lastModified: file.lastModified,
 		        size: file.size,
 		        contentType: FileUtils.getFileContentType(file.name),
+		        isFile: true,
 		        isPackage,
 		        getContent: () => FileUtils.readAsArrayBuffer(file),
 		    }, file, file);
@@ -215,6 +219,79 @@ define(function(require) {
 	};
 
     const rootNode = TreeUtils.createNode("root");
+	let nextDropId = 0;
+	const droppedNameVersions = {};
+	const nodeMetadata = node => ({
+		sourceName: node.sourceName || node.name,
+		sourcePath: node.sourcePath,
+		dropId: node.dropId,
+		dropVersion: node.dropVersion,
+		nameVersion: node.nameVersion,
+		revision: node.revision,
+		lastModified: node.lastModified
+	});
+	const createDropGeneration = () => {
+		const id = "drop-" + (++nextDropId);
+		const generation = TreeUtils.createNode(id);
+		generation.kind = "drop-generation";
+		generation.dropId = id;
+		generation.created = Date.now();
+		return generation;
+	};
+	const versionedName = (name, version, isFile) => {
+		if(version === 1) return name;
+		if(isFile) {
+			const dot = name.lastIndexOf(".");
+			if(dot > 0) return name.substring(0, dot) + " (" + version + ")" + name.substring(dot);
+		}
+		return name + " (" + version + ")";
+	};
+	const allocateDroppedName = (name, version, isFile) => {
+		let nameVersion = version;
+		let displayName = versionedName(name, nameVersion, isFile);
+		const exists = candidate => rootNode.directories.concat(rootNode.files)
+			.some(node => (node.uriName || node.name) === candidate);
+		while(exists(displayName)) {
+			displayName = versionedName(name, ++nameVersion, isFile);
+		}
+		return { displayName, nameVersion };
+	};
+	const annotateDroppedNode = (node, generation, version, nameVersion, path, topLevel) => {
+		const sourceName = node.sourceName || node.name;
+		node.sourceName = sourceName;
+		node.sourcePath = node.sourcePath || path.concat(sourceName).join("/");
+		node.dropId = generation.dropId;
+		node.dropVersion = version;
+		node.nameVersion = nameVersion;
+		node.revision = ["drop", generation.dropId, version].join(":");
+		if(topLevel) {
+			const allocated = allocateDroppedName(sourceName, version, node.isFile);
+			node.displayName = allocated.displayName;
+			node.uriName = allocated.displayName;
+			node.nameVersion = allocated.nameVersion;
+		}
+		(node.directories || []).forEach(child => annotateDroppedNode(child, generation, version, node.nameVersion,
+			path.concat(sourceName), false));
+		(node.files || []).forEach(child => annotateDroppedNode(child, generation, version, node.nameVersion,
+			path.concat(sourceName), false));
+		return node;
+	};
+	const droppedResource = (node, uri) => exposeBlobFile(Object.assign({
+		uri: "dropped://" + uri,
+		name: node.displayName || node.name,
+		type: node.isFile ? (node.isPackage ? "Package" : "File") : "Folder",
+		size: node.size,
+		contentType: node.contentType
+	}, nodeMetadata(node)), node.blob, node.file);
+	const finalizeDropGeneration = generation => {
+		return generation.directories.concat(generation.files).map(node => {
+			const sourceName = node.sourceName || node.name;
+			const version = droppedNameVersions[sourceName] = (droppedNameVersions[sourceName] || 0) + 1;
+			annotateDroppedNode(node, generation, version, version, [], true);
+			(node.isFile ? rootNode.files : rootNode.directories).push(node);
+			return droppedResource(node, node.uriName);
+		});
+	};
 	const linkedResources = {};
 	const removeResourceGroupLinks = group => Object.keys(linkedResources).forEach(uri => {
 		const link = linkedResources[uri];
@@ -346,10 +423,10 @@ define(function(require) {
 	
 	    for (let i = 0; i < parts.length - 1; i++) {
 	        const dirName = parts[i];
-	        const dir = node.directories.find(d => d.name === dirName);
+	        const dir = node.directories.find(d => (d.uriName || d.name) === dirName);
 	
 	        if (!dir) {
-	            const file = node.files.find(f => f.name === dirName);
+	            const file = node.files.find(f => (f.uriName || f.name) === dirName);
 	
 	            // If it's a package file, process it if the option is enabled
 	            if (file && opts.recursePackages && PackageUtils.isPackage(file)) {
@@ -374,7 +451,7 @@ define(function(require) {
 	
 	    // Look for the file in the last part of the path
 	    const fileName = parts[parts.length - 1];
-	    const fileNode = node.files.find(f => f.name === fileName);
+	    const fileNode = node.files.find(f => (f.uriName || f.name) === fileName);
 	    return fileNode || null; // Return the file node or null if not found
 	};
 	const flattenDirectoryRecursively = async (dirNode, path) => {
@@ -531,22 +608,22 @@ define(function(require) {
 	
 	    const fileItems = await Promise.all(dirNode.files.map(async file => {
 	        const isPackage = await PackageUtils.isPackageFile(file);
-	        return exposeBlobFile({
+	        return exposeBlobFile(Object.assign({
 	            uri: file.aliasUri || `${path}/${file.uriName || file.name}`,
-	            name: file.name,
+	            name: file.displayName || file.name,
 	            type: file.resourceType || (isPackage ? "Package" : "File"),
 	            size: file.size,
 	            contentType: FileUtils.getFileContentType(file.name),
 				targetUri: file.targetUri,
-	        }, file.blob, file.file);
+	        }, nodeMetadata(file)), file.blob, file.file);
 	    }));
 
-	    const dirItems = dirNode.directories.map(dir => ({
+	    const dirItems = dirNode.directories.map(dir => Object.assign({
 	        uri: dir.aliasUri || `${path}/${dir.uriName || dir.name}`,
-	        name: dir.name,
+	        name: dir.displayName || dir.name,
 	        type: dir.resourceType || "Folder",
 			targetUri: dir.targetUri,
-	    }));
+	    }, nodeMetadata(dir)));
 	
 	    return opts.recursive ? flattenDirectoryRecursively(dirNode, path) : [...dirItems, ...fileItems];
 	};
@@ -600,13 +677,13 @@ define(function(require) {
 	    const content = await getFileContent(fileNode, opts);
 		return opts.arrayBuffer
 	        ? content
-	        : exposeBlobFile({
+	        : exposeBlobFile(Object.assign({
 	              text: content,
 	              uri: `${path}/${name}`,
-	              name,
+	              name: fileNode.displayName || name,
 	              size: fileNode.size || content.length,
 	              contentType: FileUtils.getFileContentType(fileNode.name),
-	          }, fileNode.blob, fileNode.file);
+	          }, nodeMetadata(fileNode)), fileNode.blob, fileNode.file);
 	};
     const index = (uris) => {
         // This assumes `uris` contains a list of files to index
@@ -631,17 +708,20 @@ define(function(require) {
 
     const handle_document_drop = async (event) => {
         event.preventDefault();
-        
+		const generation = createDropGeneration();
         const promises = Array.from(event.dataTransfer.items)
             .map(item => item.webkitGetAsEntry())
             .filter(Boolean)
-            .map(entry => traverseEntry(entry, rootNode));
-        return await Promise.all(promises);
+			.map(entry => traverseEntry(entry, generation));
+		await Promise.all(promises);
+		return finalizeDropGeneration(generation);
     };
     const handle_input_change = async (event) => {
         const files = event.target.files;
-        const promises = Array.from(files).map(file => traverseFile(file, rootNode));
-        return await Promise.all(promises);
+		const generation = createDropGeneration();
+		const promises = Array.from(files).map(file => traverseFile(file, generation));
+		await Promise.all(promises);
+		return finalizeDropGeneration(generation);
     };
 
 	// Default Handlers

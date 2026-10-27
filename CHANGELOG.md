@@ -1,4 +1,72 @@
-* [diffs]()
+
+### `2026/10/26` — Editor synchronization, Markdown responsiveness and source navigation
+
+Improves editor reliability for large Markdown documents, remote resource changes and repeated local drops, while extending source-aware navigation and automated regression coverage.
+
+#### Markdown rendering and source navigation
+
+* Introduces `src/devtools/MarkdownRenderScheduler.js` with a 750-ms interaction quiet period, a 2.5-second maximum delay and immediate blur or explicit flushes.
+* Adds `src/devtools/MarkdownRenderSections.js` to replace a single stable top-level preview section when safe and fall back to a full render for structural or global Markdown changes.
+* Enhances `src/devtools/cavalion-md.js` with parse, heading-index, DOM and post-processing metrics while preserving preview scroll, folds, collapsed sections, cursor bands, selections and checkbox state.
+* Adds `src/devtools/MarkdownLinkLocation.js` and `src/devtools/EditorPosition.js` so local Markdown links accept one-based `:<line>` and `:<line>:<column>` suffixes without contaminating resource URIs or breaking description substitution.
+* Changes `src/vcl-comps/Editor$/md.js`, `src/vcl-comps/Editor.js` and `src/vcl-comps/Workspace.js` to schedule preview work and reveal queued source positions after editor state and resource loading complete.
+
+#### Remote resource synchronization and comparison
+
+* Introduces `src/devtools/RemoteResourceMonitor.js` to poll only the active foreground editor, coalesce checks, pause in the background and request confirmation before reloading changed resources.
+* Adds `Resources.revisionOf(...)` and `Resources.getRevision(...)` in `src/devtools/Resources.js`, with provider-specific revisions for filesystem, PouchDB, Dropbox, Google Drive and `gitrepo://` resources.
+* Adds cache-free filesystem metadata checks and propagates Dropbox `rev`, Google Drive version metadata and GitHub blob `sha` values through their resource providers.
+* Introduces `src/devtools/PreviousVersion.js` to retain one in-memory pre-reload snapshot per editor tab after a confirmed remote change.
+* Adds `src/cavalion-blocks/PreviousVersionDiff.js` and the `Diff with Previous Version` editor-menu action for a read-only, side-by-side Ace comparison with synchronized scrolling.
+* Enhances Ace lifecycle handling so activation, deactivation, browser focus, visibility, saves, reloads and destruction update or clean up monitor and position state consistently.
+
+#### Resource and module reliability
+
+* Changes `src/devtools/Resources-ddh.js` so every OS drop or file-picker operation creates an isolated generation with stable metadata and deterministic names such as `scenario (2)` or `test (2).js`.
+* Preserves earlier `dropped://` generations independently, preventing removed files or newer contents from leaking into previously opened resources.
+* Fixes `src/cavalion-blocks/Alphaview.js` cold and lazy loading by preloading every module it requires synchronously.
+
+#### Tests, documentation and development artifacts
+
+* Adds `src/devtools/tests/markdown-render-performance.test.cjs` and `src/devtools/tests/markdown-link-location.test.cjs` for render scheduling, section fallbacks, large-document planning and line/column navigation.
+* Adds `src/devtools/tests/remote-resource-monitor.test.cjs`, `src/devtools/tests/editor-remote-monitor-integration.test.cjs` and `src/devtools/tests/previous-version.test.cjs` for polling, lifecycle, confirmation, snapshot and diff behavior.
+* Adds `src/devtools/tests/resources-ddh-redrop.test.cjs` and `src/devtools/tests/alphaview-dependencies.test.cjs`, and extends `src/devtools/tests/ace-lifecycle.test.cjs` for isolated drops, deterministic preloads and editor cleanup.
+* Updates `README.md`, `.md`, `PROMPTS.md` and `src/vcl-comps/Editor$/.md` with the implemented contracts, syntax, performance results and verification notes.
+* Adds `cavalion-devtools.code-workspace` for the related Cavalion repositories, retains `package_monitor.log` as a package-size snapshot and adds `test.md` as a Markdown resource-link fixture.
+
+### `2026/10/16` — Editor navigation, resource palettes and persistent pasteboard
+
+#### Editor and Markdown navigation
+
+* Extends the shared top-level navigation in `src/vcl-comps/Editor.js` with persisted depth, link visibility and left/right/dynamic placement settings, continuous tick hit zones and synchronized tick, caret and links-view highlighting.
+* Adds component-class and specializer navigation, state-overlay controls, Markdown dialect selection and editor download actions to the editor menu.
+* Refactors Markdown rendering and interaction into `src/devtools/cavalion-md.js`, while `src/vcl-comps/Editor$/md.js` becomes a compact editor integration layer.
+* Adds persistent Markdown folder collapsing through dedicated chevrons and improves preview/source synchronization, selection bands, outline navigation and cleanup of editor event listeners.
+* Hardens Ace lifecycle and storage handling in `src/vcl-comps/Editor.js` and `src/vcl-comps/Editor$/js.js`; `src/devtools/tests/ace-lifecycle.test.cjs` covers listener cleanup, destruction order and container attachment.
+
+#### Resource discovery and clipboard workflows
+
+* Adds `src/vcl-comps/QuickOpen.js` with fuzzy resource search on `Cmd+P`, command search on `Shift+Cmd+P` and current/all-workspace scope switching.
+* Adds `src/devtools/ResourceIndex.js` to combine favorites, configured roots, server-side indexes and bounded provider crawling while excluding backup names ending in `-`.
+* Adds the read-only `gitrepo://` provider in `src/devtools/Resources-gitrepo.js` for browsing GitHub repositories, reading files and linking to their web locations.
+* Adds `src/devtools/Resources-picker.js` for selectively loading resource providers and extends `src/devtools/Resources.js` with `targetUri` dereferencing, alias metadata, `gitrepo://` registration and binary-read preservation.
+* Reworks `src/cavalion-blocks/Pasteboard.js` into persistent PouchDB-backed history for pasted images and resource groups, including tabs, multi-selection, keyboard control, drag reordering, grouping and cross-instance merges.
+* Extends `src/devtools/Resources-ddh.js` and `src/devtools/Resources-dropped.js` so Pasteboard resource groups appear as navigable `dropped://` trees and delegate list/get/create/update/delete/link operations to their original targets.
+* Improves `src/devtools/Resources-node.js`, `src/devtools/NavigatorNode.js` and `src/cavalion-blocks/Revisions.js` with richer resource metadata, safer binary/file exposure and direct revision loading for the active resource.
+
+#### Workspace and data navigation
+
+* Persists recent resources and resource-palette settings in `src/vcl-comps/Workspace.js`, reveals nested selected editor tabs and forwards editor menu/link actions to the deepest active editor.
+* Improves `src/vcl-comps/Navigator.js` URI canonicalization and prefix walking so nested folders, packages and scheme-backed resources can be revealed reliably.
+* Refactors `src/cavalion-blocks/Alphaview.js` drill-downs into independent list/source instances that retain filters, selections, scroll state and column state when navigating back.
+* Adds compact presentation of string arrays and configurable object values, persistent manual column visibility, clickable empty-column toggling, preset refreshes and Alt/Option cell drill-downs to `src/cavalion-blocks/Alphaview.js`.
+* Registers Quick Open and the command palette in `src/vcl-comps/Main.js`, documents their shortcuts in `src/vcl-comps/Main.shortcuts.md` and adds the local BXV preset in `src/vcl-comps/Main$/bxv.localhost.js`.
+
+#### Documentation and development artifacts
+
+* Updates `.md`, `README.md`, `src/vcl-comps/Editor$/.md` and `PROMPTS.md` with the current component map, editor notes and prompt history; adds `src/.md` and `test.md` as index/link fixtures.
+* Adds `cavalion-devtools.code-workspace` for the related Cavalion repositories and retains `package_monitor.log` as a package-size monitoring snapshot.
+* Adds `src/vcl-comps/Editor$/xsd-HEAD.js`, `src/vcl-comps/Editor$/xsd-c454b87.js` and `src/vcl-comps/Editor$/xsd-fe98630.js` as XSD-editor comparison snapshots.
 
 ### `2026/07/02` — Editor navigation and outline overhaul
 
@@ -284,12 +352,12 @@ Makes `Alphaview` navigation more stateful and predictable, adds column-scoped f
 * Adds hotkey for focussing #q (filter dataset)
 * Adjusts background styling
 
-### `2023/03/30` - 1.0.82
+### `2023/03/30` 1.0.82
 
 * Adds Renderer<>/Util module;
 * Refactores Editor<gds> and Renderer<gds> in order to support so called "settlement"- and "triaxial" test type automatically
 
-### `2023/03/26` - 1.0.81
+### `2023/03/26` 1.0.81
 
 * 1291ab7 - develops VA-20230130-1
 * ef04825 - first commit - starting development reporting triaxial tests from GDS-files
@@ -298,23 +366,23 @@ Makes `Alphaview` navigation more stateful and predictable, adds column-scoped f
 * 9a1dacc - fixes linking to :// fixes using the startsWithProtocol function adds some more padding
 * dce4c7d - fixes the polluting the global namespace
 
-### `2022/11/15` - 1.0.80
+### `2022/11/15` 1.0.80
 
 * Fixes a bug where null, 0 and false where treated as undefined
 * Fixes a bug where not characters would be available to type in a search field
 * Improves/updates editor-switch-favorite
 * Iframe: Develops glassiness and animations Keys: fixes some bug where toasts would not disappear (correctly)
 
-### `2022/10/30` - 1.0.79
+### `2022/10/30` 1.0.79
 
 * #VA-20221029-1 - Improves the use of backticks
 * 87b9b4f - detects whether to automagically show the workspace console even better
 
-### `2022/10/19` - 1.0.77
+### `2022/10/19` 1.0.77
 
 * #VA-20221010-1 - Restores adjustment "haakje terug Jaap" (Editor/Renderer<gds>)
 
-### `2022/10/18` - 1.0.76
+### `2022/10/18` 1.0.76
 
 * #VA-20221010-1 - Restores the series with the verschoven zetting - which were accidently committed away
 * 2fba8a5 - adds Ctrl+S => #editor-switch-favorite
@@ -322,7 +390,7 @@ Makes `Alphaview` navigation more stateful and predictable, adds column-scoped f
 * 114a745 - adds an extra usage hint
 * a947dc2 - updates css for inline images
 
-### `2022/07/28` - 1.0.75
+### `2022/07/28` 1.0.75
 
 * 9a40b7d - fixes a crashing issue when a form could not be closed
 * aae9402 - adds the double ShiftRight keyboard shortcut for CtrlCtrl-pane
@@ -334,7 +402,7 @@ Makes `Alphaview` navigation more stateful and predictable, adds column-scoped f
 * 03b52ce - #q.placeholder reflects location in tree (more or less
 * daf0f45 - enhances CSV generation, now conserving column headers and order
 
-### `2022/06/27` - 1.0.74
+### `2022/06/27` 1.0.74
 
 * 0ceb90d - refactoring Cmd+.
 * 60aae38 - enhancing Shift+Ctrl+S behaviour - toasting status and cycling through all .md files upon fastmultipress
@@ -342,35 +410,35 @@ Makes `Alphaview` navigation more stateful and predictable, adds column-scoped f
 * 7d8eb3f - #editor-switch-favorite now cycles through all .md-files in workspace and remembers last selected entry
 * 2c3a070 - fixes a bug where activating workspace Console while #left-sidebar is not shown yet, would show the Navigator underneath
  
-### `2022/06/27` - 1.0.73
+### `2022/06/27` 1.0.73
 
 * d75591f - now also activating CtrlCtrl<>> by double fastpress of right Alt-key
 * 6ae1aef - cosmetic / developing (finally!) - currently rendering a list of all within #editors-tabs nested vcl/ui/Tab
 
-### `2022/05/15` - 1.0.72
+### `2022/05/15` 1.0.72
 
 * Adding devtools/Editor<yml>
 
-### `2022/05/15` - 1.0.71
+### `2022/05/15` 1.0.71
 
 * a6e918e - developing support for styling images and scaling shortcuts (@Fx)
 * a60eefd - cosmetic, ui improvements
 * 4f6fda7 - refactoring Veldoffice workspace (session-bar is gone?) - refactoring vo/VO => veldoffice/VO
 * 24be0e9 - style and cosmetic - more transparent - less code
 
-### `2022/05/02` - 1.0.70
+### `2022/05/02` 1.0.70
 
 * 4f6fda7 - Veldoffice-workspace: #session-bar is gone (?) 
 * 4f6fda7 - Refactoring vo/VO => veldoffice/VO
 * 24be0e9 - Style and cosmetic changes, mainly more transparency and less code
 
-### `2022/04/27` - 1.0.69
+### `2022/04/27` 1.0.69
 
 `#VA-20220427-1`
 
 * Editor<xsd>: Incredible, but still true, fixed a bug concerning "sequence.sequence.element" definitions
 
-### `2022/04/24` - 1.0.67-68
+### `2022/04/24` 1.0.67-68
 
 `#CVLN-20210102-2`
 
@@ -378,31 +446,31 @@ Makes `Alphaview` navigation more stateful and predictable, adds column-scoped f
 * Editor<html>: cleaning up Framework7 and pages/Controller references
 * Editor<md>: advancing "link-features", dynamic titles and hrefs with backticks
 
-### `2022/04/25` - 1.0.67
+### `2022/04/25` 1.0.67
 
 * Workspace<>#editor-switch-favorite: `vars(["#navigator favorites"])` can be inherited now
 
-### `2022/04/22` - 1.0.66
+### `2022/04/22` 1.0.66
 
 `#CVLN-20210102-2`
 
 * Editor<md>: Adding support for document-relative links ([for example](#2020-07-08)) _history-navigation-time!_
 * 9f67437 - (origin/master, origin/HEAD) 1.0.66
 
-### `2022/04/18` - 1.0.65
+### `2022/04/18` 1.0.65
 
 * eaeca9f - making background transparent where possible - preparing for embedding in Docs-like environment
 * 5606ae4 - adding support for glassy iframes
 * e648b3b - 1st commit - adding support for .markdown-extensioned files
 * 50e1f1a - adding support for .markdown-extensioned files - chaning behaviour of rendered images
 
-### `2022/04/15` - 1.0.64
+### `2022/04/15` 1.0.64
 
 * 8bc8d3e - (HEAD -> master, origin/master, origin/HEAD) adding support for a zoomC-orrection var 
 * 1e37f63 - just refactoring a little 
 * 4c79f00 - support for defining formVars as string
 
-### `2022/04/06` - 1.0.63
+### `2022/04/06` 1.0.63
 
 * 46fe995 - 1st commit
 * 8416504 - adding Ctrl+Shift+E alias for ...+S, macbook doesn't support the S it seems
@@ -411,7 +479,7 @@ Makes `Alphaview` navigation more stateful and predictable, adds column-scoped f
 * 338fba4 - commiting progress / developing / updating
 * 38b7fa9 - updating essential workspaces
 
-### `2022/04/03` - 1.0.62
+### `2022/04/03` 1.0.62
 
 `#CVLN-20210102-2`
 
@@ -419,7 +487,7 @@ Makes `Alphaview` navigation more stateful and predictable, adds column-scoped f
 * Fixes issues with linking to cavalion-blocks source (devtools/Editor<md>)
 * Cleaning up some obsolete print-statements
 
-### `2022/03/31` - 1.0.60
+### `2022/03/31` 1.0.60
 
 * Improved linking and inlining iframe and cavalion-blocks
 
@@ -427,13 +495,13 @@ Makes `Alphaview` navigation more stateful and predictable, adds column-scoped f
 
 * Improved Ctrl+F11 handling, ie. toggling workspace tabs
 
-### `2022/03/29` - 1.0.59
+### `2022/03/29` 1.0.59
 
 `#CVLN-20210102-2`
 
 * **Editor<md>**: Fix for linking to urls with a specific protocol (eg. pouchdb://) and for linking to current `va_objects` database (via `://`)
 
-### `2022/03/28` - 1.0.57
+### `2022/03/28` 1.0.57
 
 `#CVLN-20210102-2`
 
@@ -450,7 +518,7 @@ Makes `Alphaview` navigation more stateful and predictable, adds column-scoped f
 
 * Fix for `devtools/Editor<md>`, clicking on [pouchdb://]()-links now works as expected/wanted/desired, ie. a _Local Storage_-document
 
-### `2022/01/25` - 1.0.56
+### `2022/01/25` 1.0.56
 
 * Fix for `devtools/Editor<tsv>` delimiter detection
 * Now sorting numeric folders in reverse
@@ -458,12 +526,12 @@ Makes `Alphaview` navigation more stateful and predictable, adds column-scoped f
 >> ![image](https://user-images.githubusercontent.com/686773/150946933-030a45ad-40b9-4764-ae1b-00727512257b.png?2x)
 
 
-### `2022/01/03` - 1.0.55
+### `2022/01/03` 1.0.55
 
 * Developing [Alphaview.preview](./src/cavalion-blocks/:.js)
 * Introducing var "eval-context" for [Console](./src/vcl-comps/:.js)
 
-### `2021/09/13` - 1.0.53
+### `2021/09/13` 1.0.53
 
 - Shared components have been refactored, adjustments have been made
 - Alphaview/Graph-am: Updating and developing features
@@ -472,49 +540,49 @@ Makes `Alphaview` navigation more stateful and predictable, adds column-scoped f
 - Editor<csv>: Adjustment for handling VAERS datasets
 - Editor: Not opening files with extensions like zip.7z, Shapefiles
 
-### `2021/09/13` - 1.0.52
+### `2021/09/13` 1.0.52
 
 * Updating
 
-### `2021/08/16` - 1.0.50
+### `2021/08/16` 1.0.50
 
 * Developing Renderer<gds> in favor of `#VA-20201218-3`
 * `#VA-20210816-1` Deduce/copy Axial Stress from Stress Target
 
-### `2021/06/13` - 1.0.49
+### `2021/06/13` 1.0.49
 
 * Developing Renderer<gds> in favor of `#VA-20201218-3`
 
-### `2021/06/09` - 1.0.48
+### `2021/06/09` 1.0.48
 
 * Publishing current version in favor af veldoffice.nl (`#VA-20201218-3`)
 
-### `2021/05/26` - 1.0.47
+### `2021/05/26` 1.0.47
 * Introducing `devtools/Revisions` - hooking the Navigator
 * Introducing **⌘.** (Cmd+<dot>)
 
-### `2021/05/23` - 1.0.44
+### `2021/05/23` 1.0.44
 
 * Navigator: Adding `cascade-refresh` feature
 * Allow for workspaces-tabs to have no tab selected (longpress/click)
 * Updating YAML editor & some cosmetic changes were commmited
 * NavigatorNode: Defining/centralizing folder and file icon
 
-### `2021/05/14` - 1.0.43
+### `2021/05/14` 1.0.43
 
 * Better and more intuitive link handling (Editor<md>)
 * Cleaning up, refactoring, SPN-feedback integrations `#VA-20201218-3`
 * Even more lazy rendering (Renderer<gds>)
 
-### `2021/04/17` - 1.0.42
+### `2021/04/17` 1.0.42
 
 * Developing Renderer<gds> in favor of `#VA-20201218-3`
 
-### `2021/04/05` - 1.0.41
+### `2021/04/05` 1.0.41
 
 * Developing Renderer<gds> in favor of `#VA-20201218-3`
 
-### `2021/03/18` - 1.0.40
+### `2021/03/18` 1.0.40
 
 * Persisting serialized SVG and calculated parameters as JSON document
 * Finetuning chart generation
@@ -527,47 +595,47 @@ Makes `Alphaview` navigation more stateful and predictable, adds column-scoped f
 * Corrected/updated Isotachen graph
 * Serializing SVG to JSON
 
-### `2021/03/11` - 1.0.39
+### `2021/03/11` 1.0.39
 
 `#VA-20201218-3`
 
 * Fixes Taylor to work with a non-30-second interval data stream
 * Finetuning some guidelines 
 
-### `2021/03/10` - 1.0.38
+### `2021/03/10` 1.0.38
 - Developing `#VA-20201218-3`
 - veldoffice-rapportage-vcl@v147
 
-### `2021/03/07` - @1.0.37
+### `2021/03/07` 1.0.37
 - Developing `#VA-20201218-3`
 
-### `2021/02/18` - @1.0.34
+### `2021/02/18` 1.0.34
 - Introducing `devtools/Renderer` and `devtools/Renderer<gds>` - `#VA-20201218-3`
 
 ### `2021/02/02`
 - Fixes the un(listen)-crash of `devtools/Workspace` upon destroy
 
-### `2021/01/26` - @1.0.33
+### `2021/01/26` 1.0.33
 - Fix for case-sensitivity of extensions
 
-### `2021/01/25` - @1.0.32
+### `2021/01/25` 1.0.32
 - Housekeeping
 - Removing obsolete sub-workspaces, 
 - Improving `ace`-variable in consoles
 
-### `2021/01/23` - @1.0.31
+### `2021/01/23` 1.0.31
 - Minor tweaks
 - Publishing in favor of veldoffice-geografie-vcl
 
-### `2021/01/12` - @1.0.30
+### `2021/01/12` 1.0.30
 - Alphaview: Routing navigation-keystrokes from filter-input to grid
 - Keys: The logging of keystrokes has been enhanced significantly ;-)
 
-### `2021/01/09` - @1.0.29
+### `2021/01/09` 1.0.29
 - Changes need to be committed still
 - Updating veldapps.com
 
-### `2021/01/06` - @1.0.28
+### `2021/01/06` 1.0.28
 `#CLVN-20210102-2`
 
 * Adds anchor handling (in Markdown documents)
@@ -577,42 +645,42 @@ Makes `Alphaview` navigation more stateful and predictable, adds column-scoped f
 * Fixes a bug in [devtools/Editor<>](code:) where loading files without extension would potentially crash
 * BUG devtools/Editor-tab-text: if no name and folder => use folder name
 
-### `2021/01/02` - @1.0.26
+### `2021/01/02` 1.0.26
 `#TOFR-20210102-0`
 
 - Improves the **Keys**-tool displaying human-readable names for keys and utilizing new App-toast features
 - Adds CSV-export to the **AlphaView**-tool
 
 
-### `2020-12-08` - @1.0.25
+### `2020-12-08` 1.0.25
 `#VA-20201207-1`
 
 - Beautifying more XML-formats (although the formatter seems broken)
 
-### `2020-12-04` - @1.0.24
+### `2020-12-04` 1.0.24
 - **Alphaview**: Improving/extending map_xy
 
-### `2020-12-27` - @1.0.23
+### `2020-12-27` 1.0.23
 - ?
 
-### `2020-11-22` - @1.0.22
+### `2020-11-22` 1.0.22
 - Introducing **devtools/OpenLayers<Documents>**
 - tools/pouchdb/Sync: Pulling and pushing seems to be working now :-D
 
-### `2020-11-?? `- @1.0.21
+### `2020-11-??` 1.0.21
 - ?
 
-### `2020-11-16` - @1.0.20
+### `2020-11-16` 1.0.20
 - Developing Alphaview
 	- Introducing print (MetaCtrl+Enter)
 	- Adding support for single object selection(s)
 	- Improving status info
 
-### `2020-11-11` - @1.0.19
+### `2020-11-11` 1.0.19
 - Enhances/fixes rendering of the hashcode in editors-tabs - it will now always be visible
 - Fixes a bug where images would not render in devtools/Editor<image>
 
-### `2020-11-09` - @1.0.18
+### `2020-11-09` 1.0.18
 - Introducing: **Alphaview.js** 
 - DragDropHandler: Finetuning after actually using it while dropping loads of images
 - Editor<image>: Now playing nice with dropped images
@@ -623,12 +691,14 @@ Makes `Alphaview` navigation more stateful and predictable, adds column-scoped f
 ### `2020-10-24`
 - Integrating (Arcadis-driven) new Editor<xml>-features (DetailViews)
 
-### `2020-10-19` - @1.0.17
+### `2020-10-19` 1.0.17
+- Cosmetic changes
 - Preparing for ElliTrack-specifics
+- Improved Resources.prototype.index()
 - Updating devtools/Resources.prototype.index()
 	- allowing single string as argument
 
-### `2020-10-09` - @1.0.16
+### `2020-10-09` 1.0.16
 - **Workspace<VO>**: Developing VO object/workspace/namespace, seems the place to be hanging out lately
 - **DragDropHandler**: Anticipating image/ content to be parsed as DataURL always
 - **Editor<image>**:
@@ -636,24 +706,17 @@ Makes `Alphaview` navigation more stateful and predictable, adds column-scoped f
 	- Changed implementation from css-background-image to `<img>`-element, for scrolling features and the likes _while we're at it_
 - **Main**: Adding (opioniated) classes/colors for the title-element (eae, gx, veldapps, cavalion, etc)
 
-### `2020-10-19` - @1.0.17
-- Cosmetic changes
-- Preparing for ElliTrack-specifics
-- Improved Resources.prototype.index()
 
-### `2020-10-?? `- @1.0.16
-- ?
-
-### `2020-10-08` - @1.0.15
+### `2020-10-08` 1.0.15
 
 - ImageParser: Now no more snag-gy-specific
 - Introducing DragDropHandler-features (nodes) in Navigator
 - advancing and fixing features for devtools/Editor<folder> <xml> and <blocks>
 
-### `2020-10-02` - @1.0.14
+### `2020-10-02` 1.0.14
 * Updating NPM
 
-### `2020-10-01` - @1.0.13
+### `2020-10-01` 1.0.13
 * Reducing jquery-dependencies
 * Preparing the Outline for features where one can jump to the source
 * Developing `devtools/Resources-dropped`
@@ -661,50 +724,50 @@ Makes `Alphaview` navigation more stateful and predictable, adds column-scoped f
 * Integrating pouchdb://-resources into Arcadis-workspace
 * devtools/Editor<blocks>: Exposing root (exporting?)
 
-### `2020-09-20` - @1.0.12
+### `2020-09-20` 1.0.12
 - Developing more Resources-dropbox features/implementation
 
 ### `2020-09-19`
 - Adding Resources-dropbox implementation (works pretty neat nowadays :-))
 - Round-tweaking styles of tabs
 
-### `2020-09-18` - @1.0.11
+### `2020-09-18` 1.0.11
 - **Main**<>: Generalizing the title area
 
-### `2020-09-14` - @1.0.10
+### `2020-09-14` 1.0.10
 - Enhanced Console, still feel the need to "centralize" often-used-code, in IPFS for example? Make snippets better and easily accessible
 
-### `2020-09-11` - @1.0.9
+### `2020-09-11` 1.0.9
 - **Editor**<>: Adding more general information to alternate `#evaluate` output
 
-### `2020-09-07` - @1.0.8
+### `2020-09-07` 1.0.8
 - **Editor<md>**: `#evaluate` now outs information about the parsed Markdown-document
 - **Editor**<>: Working on `#evaluate`
 
 ### `2020-08-29`
 * More improvements to editors-tabs features: show newly focused editors-tabs on hotkey navigation (up/down) 
 
-### `2020-08-21` - @1.0.7
+### `2020-08-21` 1.0.7
 - Improved toggling the visibility of editor tabs and other  workspace tabs. When its hot key (Ctrl+F11 by default) is being pressed rapidly twice (ie. within 250 ms), the current editors-tabs will remain visible, while the others are hidden
 - Using block-syntax in vcl-comps
 
 >> ![](https://user-images.githubusercontent.com/686773/91371009-8a25ba00-e7d5-11ea-9a54-78eecce43f8e.png?2x)
 
-### `2020-08-21` - @1.0.6
+### `2020-08-21` 1.0.6
 - Fixed the rendering of Navigator search-results
 - Fixing behaviour of Cmd+Enter in several devtools/Editor<>-classes - the idea being that the content of the current appears "evaluated" in the console(s)
 
-### `2020-08-15` - @1.0.5
+### `2020-08-15` 1.0.5
 - Advancing devtools/Editor making more use of the workspaces' console
 - Cmd+[Alt+]Enter is "thabomb"
 
 ### `2020-08-03`
 * **Editor**: Now persisting font-size over sessions
 
-### `2020-08-02` - @1.0.4
+### `2020-08-02` 1.0.4
 * Fixing reload^H^H^H^Hfresh bug
 
-### `2020-07-28` - @1.0.2
+### `2020-07-28` 1.0.2
 * Refactored class `opaque` to `opaque-50` to avoid a name/class-clash with `opaque`, which really means invisible (and seems to be defined all the "sudden" ;-))
 
 ### `2020-07-08`

@@ -58,12 +58,12 @@ const setMarkdownDialect = (control, dialect) => {
 		onLoad() {
 			Md.bindMarkdownEditor(this);
 		},
-		onChange() {
+		onChange(change) {
 			if(!this._vars) {
 				render(this);
 				this.vars();
 			} else {
-				this.setTimeout("render", () => render(this), 750);
+				Md.scheduleMarkdownRender(this, change);
 			}
 		}
 	}],

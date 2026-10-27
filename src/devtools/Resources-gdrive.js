@@ -79,6 +79,15 @@ define(function(require) {
                 }));
         },
 
+		getRevision: function(fileId) {
+			return getGoogleDrive()
+				.then(drive => drive.files.get({
+					fileId: fileId,
+					fields: "version,md5Checksum,modifiedTime,size"
+				}))
+				.then(res => res.result || res);
+		},
+
         create: function(path, resource) {
             return getGoogleDrive()
                 .then(drive => drive.files.create({
@@ -107,8 +116,13 @@ define(function(require) {
                         mimeType: resource.contentType || "application/json",
                         body: resource.text
                     },
-                    fields: 'id'
-                }));
+                    fields: "id,version,md5Checksum,modifiedTime,size"
+                }))
+				.then(res => res.result || res)
+				.then(metadata => {
+					resource.revision = metadata.version;
+					return js.mi({ revision: metadata.version }, metadata);
+				});
         },
 
         link: function(fileId) {

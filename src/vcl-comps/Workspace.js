@@ -1,8 +1,9 @@
-"use vcl/ui/Ace, vcl/ui/FormContainer, vcl/ui/Tab, devtools/Resources, locale";
+"use vcl/ui/Ace, vcl/ui/FormContainer, vcl/ui/Tab, devtools/Resources, devtools/EditorPosition, locale";
 
 const Control = require("vcl/Control");
 const Ace = require("vcl/ui/Ace");
 const Resources = require("devtools/Resources");
+const EditorPosition = require("devtools/EditorPosition");
 
 const Tab = {
 	_content:
@@ -623,6 +624,7 @@ const navigateWorkspaceHistory = (workspace, direction) => {
 
 	            tab = scope['editor-factory'].execute(evt, this);
 	            tab.setVar("resource", evt.resource);
+	            tab.vars(EditorPosition.READY_VAR, false);
 	            tab.nodeNeeded();
 	
     		} else {
@@ -657,6 +659,9 @@ const navigateWorkspaceHistory = (workspace, direction) => {
         	if(tab.down("#ace")) {
     			tab.setTimeout("available", () => tab.emit("editor-available", []), 0);
         	}
+			if(evt.position) {
+				EditorPosition.queue(tab, evt.position);
+			}
         	
 
     		return tab;

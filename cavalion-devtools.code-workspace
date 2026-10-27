@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../cavalion-js"
+		},
+		{
+			"path": "../cavalion-vcl"
+		},
+		{
+			"path": "../cavalion-blocks"
+		}
+	],
+	"settings": {}
+}

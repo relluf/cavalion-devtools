@@ -102,6 +102,36 @@ function(FS, Pouch, Dropbox, GDrive, Dropped, Ddh, GitRepo, Component, nameOf) {
 			});
         },
 
+		revisionOf(resource) {
+			if(!resource || typeof resource !== "object") return undefined;
+			const fields = ["revision", "rev", "etag", "ETag", "uid", "sha", "contentHash", "contenthash", "version", "md5Checksum"];
+			for(let i = 0; i < fields.length; ++i) {
+				const field = fields[i];
+				if(resource[field] !== undefined && resource[field] !== null) {
+					return field + ":" + String(resource[field]);
+				}
+			}
+			const modified = resource.lastModified !== undefined ? resource.lastModified : resource.modified;
+			if(modified !== undefined && modified !== null) {
+				return "modified:" + String(modified) + ":size:" + String(resource.size === undefined ? "" : resource.size);
+			}
+			if(typeof resource.text === "string") return "text:" + resource.text;
+		},
+
+		getRevision(uri) {
+			const requested = uri && typeof uri === "object" ? this.dereference(uri) : null;
+			if(requested) uri = requested.uri;
+			uri = resolve(uri);
+			const provider = ResourceRegistry.getProvider(uri);
+			const scheme = uri.split("://")[0];
+			const providerUri = provider ? uri.substring(`${scheme}://`.length) : uri;
+			const result = provider && provider.getRevision ?
+				provider.getRevision(providerUri) :
+				this.get(uri);
+			return Promise.resolve(result).then(value =>
+				typeof value === "string" ? value : this.revisionOf(value));
+		},
+
         create(uri, resource) {
             uri = resolve(uri);
             const provider = ResourceRegistry.getProvider(uri);

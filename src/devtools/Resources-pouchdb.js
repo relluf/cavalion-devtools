@@ -76,6 +76,12 @@ define(function(require) {
 				// throw new Error("404 " + uri.join("/"));
 			});
 		},
+		getRevision: function(uri) {
+			var parts = uri.split("/");
+			return getDb(parts.shift()).get(parts.join("/")).then(function(doc) {
+				return "revision:" + doc._rev;
+			});
+		},
 		create: function(uri, resource) {
 			uri = uri.split("/");
 			if(!resource.created) {

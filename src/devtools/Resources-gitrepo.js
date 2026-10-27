@@ -65,6 +65,7 @@ define(function(require) {
 		type: "Package",
 		contentType: "application/vnd.github.repository+json",
 		repository: repo,
+		version: repo.pushed_at || repo.updated_at,
 		text: JSON.stringify({
 			type: "gitrepo",
 			repository: repo
@@ -96,6 +97,7 @@ define(function(require) {
 						type: "File",
 						contentType: "text/markdown",
 						size: buffer.byteLength,
+						sha: readme.sha,
 						text: textDecoder().decode(buffer)
 					}));
 				});
@@ -118,10 +120,18 @@ define(function(require) {
 					type: "File",
 					contentType: contentTypeFor(content.name, content.type),
 					size: buffer.byteLength,
+					sha: content.sha,
 					text: textDecoder().decode(buffer),
 					content: content
 				}));
 			});
+		},
+		getRevision(uri) {
+			const info = parseUri(uri);
+			return requestJson(info.path ? contentUrl(info, info.path) : info.apiUrl)
+				.then(resource => resource.sha ? "sha:" + resource.sha : {
+					version: resource.pushed_at || resource.updated_at
+				});
 		},
 		link(uri) {
 			const info = parseUri(uri);

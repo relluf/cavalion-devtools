@@ -24,12 +24,13 @@ define(function(require) {
 	    }
 	
 	    // Set defaults and destructure options
-	    const { method = 'GET', data = null, headers = {} } = options;
+	    const { method = 'GET', data = null, headers = {}, cache } = options;
 	
 		    return fetch(url, {
 		        method,
 		        headers: js.mi({ 'Content-Type': 'application/json' }, headers),
-		        body: data ? JSON.stringify(data) : null
+		        body: data ? JSON.stringify(data) : null,
+		        cache: cache
 		    }).then(response => {
 	    	if(method === "DELETE") return response;
 		    	
@@ -84,23 +85,36 @@ define(function(require) {
 					return dirs;
 				});
 		},
-		list: function(uri) {
+		list: function(uri, opts) {
 			if(typeof uri === "string" && uri !== "/" && uri.charAt(uri.length - 1) !== "/") {
 				uri += "/";
 			}
-			return (request(adjust(uri))).then(function(res) {
+			return (request(adjust(uri), opts)).then(function(res) {
 					var arr = [];
 					for(var k in res) {
 						var resource = res[k];
 						arr.push({
 							uri: uri.substring(uri.charAt(0) === "/" ? 1 : 0) + k, modified: resource.mtime,
 							created: resource.ctime, added: resource.atime,
-							link: resource.link, size: resource.size, name: k, 
+							link: resource.link, size: resource.size, name: k, revision: resource.rev,
 							type: resource.type
 						});
 					}
 					return arr;
 				});
+		},
+		getRevision: function(uri) {
+			var path = uri.split("/");
+			var name = path.pop();
+			return this.list(path.join("/") || "/", { cache: "no-store" }).then(function(resources) {
+				var resource = resources.filter(function(resource) { return resource.name === name; })[0];
+				if(!resource) {
+					var error = new Error("Resource not found: " + uri);
+					error.status = 404;
+					throw error;
+				}
+				return resource.revision ? "revision:" + resource.revision : resource;
+			});
 		},
 		get: function(uri, opts) {
 			if(opts && opts.arrayBuffer) {

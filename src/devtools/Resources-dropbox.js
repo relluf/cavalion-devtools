@@ -79,6 +79,13 @@ define(function(require) {
 			// 	};
 			// });
 		},
+		getRevision: function(path) {
+			var name = path.split("/").shift();
+			path = path.substring(name.length);
+			return getDropbox(name).filesGetMetadata({ path: path })
+				.then(res => res.result || res)
+				.then(metadata => "revision:" + metadata.rev);
+		},
 		create: function(path, resource) {
 			var name = path.split("/").shift(); 
 			path = path.substring(name.length);
@@ -119,6 +126,11 @@ define(function(require) {
 						resource.name,
 						{ type: resource.contentType || "application/json" }
 					),
+				})
+				.then(res => res.result || res)
+				.then(metadata => {
+					resource.revision = metadata.rev;
+					return js.mi({ revision: metadata.rev }, metadata);
 				});
 		},
 		link: function(path) {

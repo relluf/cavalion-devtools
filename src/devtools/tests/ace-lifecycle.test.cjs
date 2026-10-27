@@ -7,20 +7,30 @@ const read = file => fs.readFileSync(path.resolve(repo, file), 'utf8');
 const editorSource = read('src/vcl-comps/Editor.js');
 const start = editorSource.indexOf('    ["vcl/ui/Ace", ("ace"), {');
 const load = editorSource.slice(editorSource.indexOf('onLoad() {', start), editorSource.indexOf('\n\toverrides:', start));
-const onLoad = vm.runInNewContext('({' + load + '}).onLoad', {require});
+const onLoad = vm.runInNewContext('({' + load + '}).onLoad', {
+ require,
+ EditorPosition: {
+  INITIALIZED_VAR: "editor-position-initialized",
+  READY_VAR: "editor-position-ready",
+  revealPending() {}
+ },
+ Resources: {revisionOf() {}}
+});
 function setup() {
  const root = new EventEmitter(), tab = new EventEmitter(), ace = new EventEmitter();
  const selection = new EventEmitter(), session = new EventEmitter();
  const eventOnce = tab.once.bind(tab), eventOff = tab.off.bind(tab);
  tab.once = (event, callback) => {eventOnce(event, callback); return {event, callback};};
- tab.off = handle => eventOff(handle.event, handle.callback);
+ tab.off = (handle, callback) => callback ? eventOff(handle, callback) : eventOff(handle.event, handle.callback);
+ tab.vars = () => {};
+ tab.isSelected = () => true;
  let reads = 0, writes = [], callback, destroyed = false;
  Object.assign(selection, {getCursor: () => ({row: 3, column: 2}), toJSON: () => ({})});
  Object.assign(session, {getOptions: () => ({}), getAllFolds: () => {++reads; return [];}, getScrollTop: () => 20, getScrollLeft: () => 0});
  const editor = {selection, session, getFontSize: () => '12px'};
  Object.assign(root, {vars: () => ({}), readStorage: (_, cb) => callback = cb, writeStorage: (_, value) => writes.push(value)});
  const timers = new Map();
- Object.assign(ace, {_editor: editor, up: selector => selector ? tab : root, vars: () => {}, getEditor: () => {assert.equal(destroyed, false); return editor;}, setTimeout: (key, cb) => timers.set(key, cb), clearTimeout: key => timers.delete(key)});
+ Object.assign(ace, {_editor: editor, up: selector => selector ? tab : root, vars: () => {}, isShowing: () => true, getEditor: () => {assert.equal(destroyed, false); return editor;}, setTimeout: (key, cb) => timers.set(key, cb), clearTimeout: key => timers.delete(key)});
  onLoad.call(ace);
  return {root, tab, ace, selection, session, timers, callback: () => callback, ready: () => {tab.emit('resource-loaded');callback();}, reads: () => reads, writes, dispose: () => {ace.emit('destroy'); destroyed = true; ace._editor = null;}};
 }

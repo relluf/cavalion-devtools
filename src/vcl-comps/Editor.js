@@ -1,4 +1,9 @@
-"devtools/Resources, util/Xml, vcl/ui/Tab, util/Event, ace/ext-modelist, vcl/ui/Popup, vcl/ui/Element, vcl/Component";
+"devtools/Resources, devtools/EditorPosition, devtools/RemoteResourceMonitor, devtools/PreviousVersion, blocks/Blocks, util/Xml, vcl/ui/Tab, util/Event, ace/ext-modelist, vcl/ui/Popup, vcl/ui/Element, vcl/Component";
+
+const EditorPosition = require("devtools/EditorPosition");
+const RemoteResourceMonitor = require("devtools/RemoteResourceMonitor");
+const PreviousVersion = require("devtools/PreviousVersion");
+const Blocks = require("blocks/Blocks");
 
 /*- 
 	#evaluate.vars
@@ -238,6 +243,106 @@ var editorRootFor = (control) =>
 		control.up("devtools/Editor<>:root") ||
 		control.up("devtools/Editor<>")
 	) || control;
+var openPreviousVersionDiff = (tab, ace) => {
+	var monitor = ace.vars("remoteResourceMonitor");
+	var view = PreviousVersion.view(tab, ace.getValue(), monitor && monitor.getRevision());
+	if(!view) return;
+	return Blocks.i(["Hover<>", {
+		vars: {
+			uri: "devtools/PreviousVersionDiff",
+			previous: view.previous,
+			current: view.current,
+			mode: ace.getEditor().session.$modeId
+		}
+	}]);
+};
+var installRemoteResourceMonitor = (root, ace, tab) => {
+	if(!root || !ace || !tab) return null;
+	var existing = ace.vars("remoteResourceMonitor");
+	if(existing) return existing;
+
+	var disposed = false;
+	var browserForeground = () => typeof document === "undefined" || (
+		document.visibilityState !== "hidden" &&
+		(typeof document.hasFocus !== "function" || document.hasFocus())
+	);
+	var monitor = new RemoteResourceMonitor({
+		interval: 5000,
+		getRevision: () => browserForeground() ?
+			Resources.getRevision(tab.vars(["resource"])) : undefined,
+		isDirty: () => !!tab.getVar("modified"),
+		confirm: isDirty => new Promise(resolve => {
+			var resource = tab.vars(["resource"]);
+			var message = isDirty ?
+				String.format("%s has changed on the server, and this editor also has unsaved local changes.\n\nReloading will discard the local changes. Reload from the server?", resource.uri) :
+				String.format("%s has changed on the server. Reload the editor?", resource.uri);
+			tab.app().confirm(message, answer => resolve(answer === true));
+		}),
+		reload: remoteRevision => {
+			var snapshot = PreviousVersion.capture(
+				ace.getValue(),
+				monitor.getRevision() || Resources.revisionOf(tab.vars(["resource"])),
+				new Date().toISOString(),
+				remoteRevision
+			);
+			return Promise.resolve(ace.scope().refresh.execute({ remoteChangeReload: true }))
+				.then(() => !disposed && PreviousVersion.remember(tab, snapshot));
+		},
+		onError: error => console.warn("Unable to check active editor resource revision", error)
+	});
+	var foregrounding = false;
+	var activate = () => {
+		if(!disposed && browserForeground() && root.isShowing() && tab.isSelected()) return monitor.start();
+	};
+	var deactivate = () => monitor.stop();
+	var foreground = () => {
+		if(foregrounding) return;
+		foregrounding = true;
+		activate();
+		Promise.resolve().then(() => { foregrounding = false; });
+	};
+	var visibilityChanged = () => browserForeground() ? foreground() : deactivate();
+	var loaded = resource => {
+		var revision = Resources.revisionOf(resource);
+		if(revision !== undefined) monitor.remember(revision);
+		activate();
+	};
+	var destroy = () => {
+		disposed = true;
+		monitor.destroy();
+		PreviousVersion.clear(tab);
+		tab.off("resource-loaded", loaded);
+		root.off("hide", deactivate);
+		root.off("show", activate);
+		if(typeof window !== "undefined" && window.removeEventListener) {
+			window.removeEventListener("focus", foreground);
+			window.removeEventListener("blur", deactivate);
+		}
+		if(typeof document !== "undefined" && document.removeEventListener) {
+			document.removeEventListener("visibilitychange", visibilityChanged);
+		}
+		root.removeVar("remoteResourceMonitorLifecycle");
+	};
+
+	ace.vars("remoteResourceMonitor", monitor);
+	root.vars("remoteResourceMonitorLifecycle", {
+		activate: activate,
+		deactivate: deactivate
+	});
+	tab.on("resource-loaded", loaded);
+	root.on("hide", deactivate);
+	root.on("show", activate);
+	if(typeof window !== "undefined" && window.addEventListener) {
+		window.addEventListener("focus", foreground);
+		window.addEventListener("blur", deactivate);
+	}
+	if(typeof document !== "undefined" && document.addEventListener) {
+		document.addEventListener("visibilitychange", visibilityChanged);
+	}
+	ace.once("destroy", destroy);
+	activate();
+	return monitor;
+};
 var stateStorageResource = (control) => {
 	var root = editorRootFor(control);
 	var dbName = js.get("storageDB.name", Component);
@@ -1379,11 +1484,20 @@ var runTopLevelNavigationThrottled = (root, key, callback, interval) => {
     onActivate() {
     	this.scope().loading.update();
     	this.scope().ace.setFocus();
+		var activateMonitor = this.vars(["remoteResourceMonitorLifecycle.activate"]);
+		activateMonitor && activateMonitor();
     	return this.inherited(arguments);	
     },
+	onDeactivate() {
+		var deactivateMonitor = this.vars(["remoteResourceMonitorLifecycle.deactivate"]);
+		deactivateMonitor && deactivateMonitor();
+		return this.inherited(arguments);
+	},
     onLoad() {
         var tab = this.up("vcl/ui/Tab");
         var scope = this.getScope();
+
+		installRemoteResourceMonitor(this, scope.ace, tab);
         
 /*- refactor this somehow into the specific Editors */
 
@@ -1560,11 +1674,23 @@ var runTopLevelNavigationThrottled = (root, key, callback, interval) => {
 				save.setEnabled(modified);
 				save.render();
 			}
+			var previousVersionDiff = scope["menu-previous-version-diff"];
+			var previousVersionSeparator = scope["menu-previous-version-separator"];
+			var hasPreviousVersion = PreviousVersion.has(tab);
+			previousVersionDiff && previousVersionDiff.setVisible(hasPreviousVersion);
+			previousVersionSeparator && previousVersionSeparator.setVisible(hasPreviousVersion);
 			popup.popup({ origin: "bottom-left", dx: 0, dy: 4 }, anchor, function() {});
 			evt && evt.preventDefault && evt.preventDefault();
 			evt && evt.stopPropagation && evt.stopPropagation();
         }
     }],
+	["vcl/Action", ("previous-version-diff"), {
+		on() {
+			var tab = this.up("vcl/ui/Tab");
+			var ace = this.scope().ace;
+			return openPreviousVersionDiff(tab, ace);
+		}
+	}],
     ["vcl/Action", ("ace-settings"), {
         on(evt) {
 	// TODO: evt.args?
@@ -1638,10 +1764,11 @@ var runTopLevelNavigationThrottled = (root, key, callback, interval) => {
             var resource = this.vars(["resource"]);//tab.getVar("resource");
             var editor = scope.ace.getEditor();
             if (resource) {
+				tab.vars(EditorPosition.READY_VAR, false);
                 scope.loading.show();
                 editor.setReadOnly(true);
                 editor.blur();
-                Resources.get(resource.uri).
+                return Resources.get(resource.uri).
                     then(function (res) {
                         if(res.text !== undefined && res.text !== editor.session.getValue()) {
                             tab.setVar("modified", "resetundo,gototop");
@@ -1653,7 +1780,11 @@ var runTopLevelNavigationThrottled = (root, key, callback, interval) => {
                         editor.setReadOnly(false);
                         editor.focus();
                         scope.loading.hide();
-                        tab.emit("resource-loaded");
+						tab.emit("resource-loaded", [res]);
+						if(tab.vars([EditorPosition.INITIALIZED_VAR]) === true) {
+							tab.vars(EditorPosition.READY_VAR, true);
+							EditorPosition.revealPending(tab);
+						}
 // STATE READ
 // state_read(scope.ace.up());
 						// tab.setState("invalidated", true);
@@ -1675,9 +1806,14 @@ var runTopLevelNavigationThrottled = (root, key, callback, interval) => {
 	                        }
 
                         scope.loading.hide();
-                        tab.emit("resource-loaded");
+						tab.emit("resource-loaded");
+						if(tab.vars([EditorPosition.INITIALIZED_VAR]) === true) {
+							tab.vars(EditorPosition.READY_VAR, true);
+							EditorPosition.revealPending(tab);
+						}
 // STATE READ
 // state_read(scope.ace.up());
+						if(evt && evt.remoteChangeReload) throw res;
                     });
             }
         }
@@ -1741,6 +1877,8 @@ var runTopLevelNavigationThrottled = (root, key, callback, interval) => {
 	                        resource.revision = res.revision;
 	                    }
 	                    tab.emit("resource-saved");
+	                    var monitor = scope.ace.vars("remoteResourceMonitor");
+	                    monitor && monitor.refreshRevision();
 	                }).
 	                catch(function(res) {
 	                    var msg;
@@ -2011,6 +2149,9 @@ var runTopLevelNavigationThrottled = (root, key, callback, interval) => {
 					    ed.session.setScrollLeft(state.scrollLeft);
 						ed.setFontSize(state.fontSize || "12px");
 				}
+				tab.vars(EditorPosition.INITIALIZED_VAR, true);
+				tab.vars(EditorPosition.READY_VAR, true);
+				EditorPosition.revealPending(tab);
 			        bind(ed.selection, "changeCursor");
 			        bind(ed.selection, "changeSelection");
 			        bind(ed.session, "changeFold");
@@ -2185,6 +2326,15 @@ var runTopLevelNavigationThrottled = (root, key, callback, interval) => {
 		["vcl/ui/Element", {
 			content: "Save Locally",
 			vars: { action: "save-local" }
+		}],
+		["vcl/ui/Element", ("menu-previous-version-separator"), {
+			classes: "separator",
+			visible: false
+		}],
+		["vcl/ui/Element", ("menu-previous-version-diff"), {
+			content: "Diff with Previous Version",
+			visible: false,
+			vars: { action: "previous-version-diff" }
 		}],
 		["vcl/ui/Element", {
 			content: "Format <span class='menu-shortcut'>Shift+Cmd+F</span>",

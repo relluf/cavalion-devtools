@@ -5,6 +5,9 @@ define(function(require) {
 	const markdown = require("markdown");
 	const Component = require("vcl/Component");
 	const HE = require("util/HtmlElement");
+	const LinkLocation = require("devtools/MarkdownLinkLocation");
+	const MarkdownRenderScheduler = require("devtools/MarkdownRenderScheduler");
+	const MarkdownRenderSections = require("devtools/MarkdownRenderSections");
 	const resolveUri_blocks = require("blocks/Factory").resolveUri;
 	const resolveUri_comps = require("vcl/Factory").resolveUri;
 
@@ -13,6 +16,9 @@ define(function(require) {
 	const PREVIEW_SCROLL_STORAGE_KEY = "md-preview-scroll-state";
 	const CHECKBOX_STATE_STORAGE_KEY = "md-checkbox-state";
 	const SECTION_STATE_STORAGE_KEY = "md-section-state";
+	const RENDER_QUIET_PERIOD = 750;
+	const RENDER_MAX_DELAY = 2500;
+	const now = () => window.performance && window.performance.now ? window.performance.now() : Date.now();
 
 	if(!js.dt) {
 		js.dt = (a) => a === undefined ? new Date() : new Date(a);
@@ -1168,10 +1174,10 @@ define(function(require) {
 		return href;
 	};
 	const resolveLinkHintHref = (anchor, control) => {
-		let href = window.unescape(js.get("attributes.href.value", anchor) || "");
+		let href = LinkLocation.decodeHref(js.get("attributes.href.value", anchor) || "", window.unescape);
 		let blocks, blocks_vars, comps, comps_vars;
 		let backticks = false;
-		let swp, uri;
+		let swp, uri, position;
 		const base = control.vars(["resource.uri"]);
 
 		if(href.startsWith("javascript:")) {
@@ -1229,14 +1235,20 @@ define(function(require) {
 
 		if(href === "{}") href = "{:}";
 
-		if(href.startsWith(":") && !href.startsWith("://")) {
-			href = anchor.textContent + href.substring(1);
-		} else if(href.startsWith("blocks:")) {
+		if(href.startsWith("blocks:")) {
 			href = expandProjectMarkdownHref(href.substring("blocks:".length), "blocks");
 			blocks = true;
 		} else if(href.startsWith("comps:")) {
 			href = expandProjectMarkdownHref(href.substring("comps:".length), "comps");
 			comps = true;
+		}
+		if(!backticks) {
+			const parsed = LinkLocation.parse(href);
+			href = parsed.href;
+			position = parsed.position;
+		}
+		if(href.startsWith(":") && !href.startsWith("://")) {
+			href = anchor.textContent + href.substring(1);
 		}
 
 		swp = startsWithProtocol(href);
@@ -1257,6 +1269,7 @@ define(function(require) {
 		if(backticks) {
 			return js.sf("[dynamic] %s", href);
 		}
+		href = LinkLocation.restoreLiteralColons(href);
 
 		if(href.startsWith("https://") ||
 			href.startsWith("http://") ||
@@ -1287,7 +1300,7 @@ define(function(require) {
 			} else {
 				uri = href;
 			}
-			return resolveUri_blocks(uri).substring("cavalion-blocks/".length) + ".js";
+			return LinkLocation.format(resolveUri_blocks(uri).substring("cavalion-blocks/".length) + ".js", position);
 		} else if(comps) {
 			if(href.charAt(0) === "!") href = href.substring(1);
 			if(href.startsWith("./")) {
@@ -1299,7 +1312,7 @@ define(function(require) {
 			} else {
 				uri = href;
 			}
-			return resolveUri_comps(uri).substring("vcl-comps/".length) + ".js";
+			return LinkLocation.format(resolveUri_comps(uri).substring("vcl-comps/".length) + ".js", position);
 		}
 
 		swp = startsWithProtocol(href);
@@ -1316,7 +1329,7 @@ define(function(require) {
 			uri = href;
 		}
 
-		return uri.endsWith("/") ? uri.substring(0, uri.length - 1) : uri;
+		return LinkLocation.format(uri.endsWith("/") ? uri.substring(0, uri.length - 1) : uri, position);
 	};
 	const decorateLinks = (node, control) => {
 		node.qsa("a").forEach(a => {
@@ -1513,6 +1526,121 @@ define(function(require) {
 			"i: (img, app, ws, ed, v, l, p, r) => { %s } " +
 		"})", s, s));
 	};
+	const addMarkdownHeadingAnchors = node => {
+		const insert = heading => {
+			if(heading.querySelector(":scope > .md-heading-anchor")) return;
+
+			const anchor = document.createElement("A");
+			anchor.className = "md-heading-anchor";
+			anchor.id = slugifyHeading(heading.textContent);
+			anchor.href = "#" + anchor.id;
+			heading.appendChild(anchor);
+		};
+
+		"h1,h2,h3,h4,h5".split(",").forEach(selector => node.qsa(selector).forEach(insert));
+	};
+	const prepareMarkdownNode = (node, control, resource) => {
+		const output = getOutputControl(control);
+		const me = output || control;
+
+		node.qsa("a").forEach(anchor => {
+			if(anchor.title && anchor.title.startsWith("`") && anchor.title.endsWith("`")) {
+				const params = [
+					me.app(),
+					me.up("devtools/Workspace<>:root"),
+					me.up("devtools/Editor<>:root"),
+					(a, b, c, d) => me.vars.apply(me, [a, b, c, d].filter(a => a !== undefined)),
+					window.locale,
+					(a, b, c, d) => me.print.apply(me, [a, b, c, d].filter(a => a !== undefined))];
+
+				anchor.title = e_v_a_l1(anchor.title.substring(1, anchor.title.length - 1))
+					.f.apply(me, params);
+			}
+		});
+
+		node.qsa("img").forEach(img => {
+			const src = js.get("attributes.src.value", img) || "";
+			if(src.indexOf(":") === -1 && resource.uri) {
+				img.src = "/home/" + js.up(resource.uri) + "/" + src;
+			}
+		});
+
+		on(node.qsa("img"), "load", function() {
+			let ratio = window.devicePixelRatio || 1;
+			if(this.style.maxWidth === "") {
+				ratio = this["@?x"] || ratio;
+				this.style.maxWidth = js.sf("%dpx", (this.naturalWidth / ratio));
+			}
+		});
+
+		node.qsa("img").forEach(img => {
+			const ratio = window.devicePixelRatio > 1 ? 2 : 2;
+			let instructions;
+			if(img.naturalWidth && img.src.indexOf("?2x") !== -1) {
+				img.style.widthWhenHovered = img.naturalWidth / ratio + "px";
+			}
+			if(img.title.match(/^@([0-9]*[.])?[0-9]+/)) {
+				instructions = img.title.split(" ");
+				img["@?x"] = parseFloat(instructions.shift().substring(1));
+
+				while(instructions.length && !instructions[0].startsWith("`")) {
+					HE.addClass(img, instructions.shift());
+				}
+
+				img.title = instructions.join(" ");
+			}
+
+			if(img.title.startsWith("`") && img.title.endsWith("`")) {
+				const params = [
+					img,
+					me.app(),
+					me.up("devtools/Workspace<>:root"),
+					me.up("devtools/Editor<>:root"),
+					(i, a, b, c, d) => me.vars.apply(me, [i, a, b, c, d].filter(a => a !== undefined)),
+					window.locale,
+					(i, a, b, c, d) => me.print.apply(me, [i, a, b, c, d].filter(a => a !== undefined))];
+
+				instructions = img.title.split("`");
+				img.title = instructions.pop();
+				instructions = e_v_a_l1(instructions[1]).i.apply(me, params).split(";");
+
+				if(instructions.length === 1) {
+					HE.addClasses(instructions.pop());
+				}
+
+				if(instructions.length) {
+					js.mixIn(img.style, js.str2obj(instructions.join(";")));
+				}
+			}
+		});
+
+		addMarkdownHeadingAnchors(node);
+		decorateLinks(node, control);
+	};
+	const finishMarkdownPreview = (node, control) => {
+		decorateTopLevelNavigation(node, control);
+		restorePreviewScrollState(control, node);
+		applyEditorFoldStateToPreview(control);
+		const editor = getAceEditor(control);
+		schedulePreviewSync(control, editor ? editor.getCursorPosition().row : 0);
+	};
+	const recordRenderMetrics = (control, metrics) => {
+		const root = getEditorRoot(control) || control.up();
+		const output = getOutputControl(control);
+		const history = root && root.vars(["md-render-metrics"]) || [];
+
+		metrics.totalMs = now() - metrics.startedAt;
+		delete metrics.startedAt;
+		history.push(metrics);
+		while(history.length > 20) history.shift();
+		root && root.vars("md-render-metrics", history);
+		if(output && output._node) {
+			output._node.setAttribute("data-md-render-metrics", JSON.stringify(metrics));
+		}
+		if(root && root.vars(["md-render-profile"]) === true && control.print) {
+			control.print("Markdown render", metrics);
+		}
+	};
 	const editorNeeded = (control, evt) => {
 		const workspace = control.up("devtools/Workspace<>:root");
 		if(evt.metaKey === true && workspace) {
@@ -1527,6 +1655,9 @@ define(function(require) {
 	const isUpperCase = (s) => s.toUpperCase() === s;
 	const renderMarkdown = (control, opts) => {
 		opts = opts || {};
+		const pending_scheduler = control.vars(["md-render-scheduler"]);
+		if(opts.fromScheduler !== true && pending_scheduler) pending_scheduler.cancel();
+		const metrics = { startedAt: now(), mode: "full" };
 		let value = opts.value !== undefined ? opts.value : control.getValue();
 		let impl;
 
@@ -1542,8 +1673,10 @@ define(function(require) {
 		const root_control = opts.root || control.up();
 		const output = opts.output || getOutputControl(control);
 		const render_value = dialect === "marked" ? escapeMarkdownLinkDescriptions(value) : value;
-		let content;
-		let root;
+		const previous_value = root_control && root_control.vars(["md-render-source"]);
+		const previous_headings = root_control && root_control.vars(["md-heading-index"]);
+		const previous_dialect = root_control && root_control.vars(["md-render-dialect"]);
+		let content, dom_replace_started, headings, plan, root, started;
 
 		if(root_control && dialect !== undefined && root_control.vars("dialect-persisted") !== dialect &&
 				root_control.writeStorage instanceof Function) {
@@ -1551,6 +1684,7 @@ define(function(require) {
 			root_control.writeStorage("dialect", dialect);
 		}
 
+		started = now();
 		if(!dialect || dialect === "markdown") {
 			root = markdown.toHTMLTree(encodeMdLinks(render_value),
 				control.vars(["markdown.dialect"]),
@@ -1559,111 +1693,74 @@ define(function(require) {
 		} else if(dialect === "marked") {
 			content = marked(render_value);
 		}
+		metrics.parseMs = now() - started;
 
-		root_control && root_control.vars("md-heading-index", buildMarkdownHeadingIndex(value));
+		started = now();
+		headings = buildMarkdownHeadingIndex(value);
+		metrics.indexMs = now() - started;
+		plan = previous_dialect === dialect ? MarkdownRenderSections.plan(
+			previous_value, value, previous_headings, headings) : { mode: "full", reason: "dialect" };
+		metrics.mode = plan.mode === "section" ? "section" : "full";
+		metrics.reason = plan.reason;
+
+		root_control && root_control.vars("md-heading-index", headings);
 		root_control && root_control.vars("root", root);
+		root_control && root_control.vars("md-render-source", value);
+		root_control && root_control.vars("md-render-dialect", dialect);
 
 		if(!output) {
+			recordRenderMetrics(control, metrics);
 			return content;
 		}
 
 		capturePreviewScrollState(control, output.nodeNeeded ? output.nodeNeeded() : null);
+		if(plan.mode === "section") {
+			const previous_section = getPreviewSectionByKey(control, plan.key);
+			const staging = document.createElement("DIV");
+			started = now();
+			staging.innerHTML = content;
+			decorateSections(staging, control);
+			const next_section = Array.from(staging.querySelectorAll(".md-section"))
+				.find(section => section.getAttribute("data-section-key") === plan.key);
+			metrics.domBuildMs = now() - started;
+
+			if(previous_section && next_section) {
+				started = now();
+				prepareMarkdownNode(next_section, control, resource);
+				decorateFolders(next_section, control);
+				if(dialect === "marked") decorateCheckboxes(next_section, control);
+				metrics.postprocessMs = now() - started;
+				started = now();
+				previous_section.parentNode.replaceChild(next_section, previous_section);
+				next_section.offsetHeight;
+				metrics.domReplaceMs = now() - started;
+				output.update(function() {
+					const finish_started = now();
+					finishMarkdownPreview(this.nodeNeeded(), control);
+					metrics.postprocessMs += now() - finish_started;
+					recordRenderMetrics(control, metrics);
+				});
+				return content;
+			}
+
+			metrics.mode = "full";
+			metrics.reason = "section-node-missing";
+		}
+
+		dom_replace_started = now();
 		output.setContent(content);
 		output.update(function() {
 			const node = this.nodeNeeded();
-			const me = this;
-
-			node.qsa("a").forEach(a => {
-				if(a.title && a.title.startsWith("`") && a.title.endsWith("`")) {
-					const params = [
-						this.app(),
-						this.up("devtools/Workspace<>:root"),
-						this.up("devtools/Editor<>:root"),
-						(a, b, c, d) => this.vars.apply(this, [a, b, c, d].filter(a => a !== undefined)),
-						window.locale,
-						(a, b, c, d) => this.print.apply(this, [a, b, c, d].filter(a => a !== undefined))];
-
-					a.title = e_v_a_l1(a.title.substring(1, a.title.length - 1))
-						.f.apply(this, params);
-				}
-			});
-
-			node.qsa("img").forEach(img => {
-				const src = js.get("attributes.src.value", img) || "";
-				if(src.indexOf(":") === -1 && resource.uri) {
-					img.src = "/home/" + js.up(resource.uri) + "/" + src;
-				}
-			});
-
-			on(node.qsa("img"), "load", function() {
-				let r = window.devicePixelRatio || 1;
-				if(this.style.maxWidth === "") {
-					r = this["@?x"] || r;
-					this.style.maxWidth = js.sf("%dpx", (this.naturalWidth / r));
-				}
-			});
-
-			node.qsa("img").forEach(function(img) {
-				let r = window.devicePixelRatio > 1 ? 2 : 2, imgs;
-				if(img.naturalWidth && img.src.indexOf("?2x") !== -1) {
-					img.style.widthWhenHovered = img.naturalWidth / r + "px";
-				}
-				if(img.title.match(/^@([0-9]*[.])?[0-9]+/)) {
-					imgs = img.title.split(" ");
-					img["@?x"] = parseFloat(imgs.shift().substring(1));
-
-					while(imgs.length && !imgs[0].startsWith("`")) {
-						HE.addClass(img, imgs.shift());
-					}
-
-					img.title = imgs.join(" ");
-				}
-
-				if(img.title.startsWith("`") && img.title.endsWith("`")) {
-					const backtick_params = [
-						img,
-						me.app(),
-						me.up("devtools/Workspace<>:root"),
-						me.up("devtools/Editor<>:root"),
-						(i, a, b, c, d) => me.vars.apply(me, [i, a, b, c, d].filter(a => a !== undefined)),
-						window.locale,
-						(i, a, b, c, d) => me.print.apply(me, [i, a, b, c, d].filter(a => a !== undefined))];
-
-					imgs = img.title.split("`");
-					img.title = imgs.pop();
-					imgs = e_v_a_l1(imgs[1]).i.apply(me, backtick_params).split(";");
-
-					if(imgs.length === 1) {
-						HE.addClasses(imgs.pop());
-					}
-
-					if(imgs.length) {
-						js.mixIn(img.style, js.str2obj(imgs.join(";")));
-					}
-				}
-			});
-
-			const insertA = (H) => {
-				const a = document.createElement("A");
-				a.className = "md-heading-anchor";
-				a.id = slugifyHeading(H.textContent);
-				a.href = "#" + a.id;
-				H.appendChild(a);
-				return a.href;
-			};
-
-			"h1,h2,h3,h4,h5".split(",").forEach(H => node.qsa(H).map(insertA));
-			decorateLinks(node, control);
+			node.offsetHeight;
+			metrics.domReplaceMs = now() - dom_replace_started;
+			started = now();
 			decorateSections(node, control);
+			prepareMarkdownNode(node, control, resource);
 			decorateFolders(node, control);
-			decorateTopLevelNavigation(node, control);
-			if(dialect === "marked") {
-				decorateCheckboxes(node, control);
-			}
-			restorePreviewScrollState(control, node);
-			applyEditorFoldStateToPreview(control);
-			const editor = getAceEditor(control);
-			schedulePreviewSync(control, editor ? editor.getCursorPosition().row : 0);
+			if(dialect === "marked") decorateCheckboxes(node, control);
+			finishMarkdownPreview(node, control);
+			metrics.postprocessMs = now() - started;
+			recordRenderMetrics(control, metrics);
 		}.bind(output));
 
 		return content;
@@ -1672,6 +1769,28 @@ define(function(require) {
 		return !!(control && (control.up("devtools/Editor<md>") || control.up("Tabs<Document.md>") ||
 			(control.vars && control.vars(["document.facet"]) === "md")));
 	};
+	const getMarkdownRenderScheduler = control => {
+		let scheduler = control.vars(["md-render-scheduler"]);
+		if(!scheduler) {
+			scheduler = new MarkdownRenderScheduler({
+				quietPeriod: RENDER_QUIET_PERIOD,
+				maxDelay: RENDER_MAX_DELAY,
+				render: () => renderMarkdown(control, { fromScheduler: true })
+			});
+			control.vars("md-render-scheduler", scheduler);
+		}
+		return scheduler;
+	};
+	const scheduleMarkdownRender = (control, change) =>
+		getMarkdownRenderScheduler(control).dirty(change);
+	const noteMarkdownInteraction = control => {
+		const editor = control && control.getEditor ? control.getEditor() : null;
+		if(!editor || !editor.isFocused || editor.isFocused()) {
+			getMarkdownRenderScheduler(control).activity();
+		}
+	};
+	const flushMarkdownRender = (control, reason) =>
+		getMarkdownRenderScheduler(control).flush(reason || "explicit");
 	const installDocumentClickHandler = () => {
 		if(installDocumentClickHandler.installed) {
 			return;
@@ -1686,9 +1805,9 @@ define(function(require) {
 				return;
 			}
 
-			let href = window.unescape(js.get("attributes.href.value", anchor) || "");
+			let href = LinkLocation.decodeHref(js.get("attributes.href.value", anchor) || "", window.unescape);
 			let blocks, blocks_vars, comps, comps_vars;
-			let backticks = false;
+			let backticks = false, position;
 
 			if(href.startsWith("javascript:")) {
 				return;
@@ -1745,14 +1864,20 @@ define(function(require) {
 
 			if(href === "{}") href = "{:}";
 
-			if(href.startsWith(":") && !href.startsWith("://")) {
-				href = anchor.textContent + href.substring(1);
-			} else if(href.startsWith("blocks:")) {
+			if(href.startsWith("blocks:")) {
 				href = expandProjectMarkdownHref(href.substring("blocks:".length), "blocks");
 				blocks = true;
 			} else if(href.startsWith("comps:")) {
 				href = expandProjectMarkdownHref(href.substring("comps:".length), "comps");
 				comps = true;
+			}
+			if(!backticks) {
+				const parsed = LinkLocation.parse(href);
+				href = parsed.href;
+				position = parsed.position;
+			}
+			if(href.startsWith(":") && !href.startsWith("://")) {
+				href = anchor.textContent + href.substring(1);
 			}
 
 			let swp = startsWithProtocol(href);
@@ -1781,10 +1906,15 @@ define(function(require) {
 				(a, b, c, d) => control.print.apply(control, [a, b, c, d].filter(a => a !== undefined))];
 
 			if(backticks) {
+				href = LinkLocation.restoreLiteralColons(href);
 				href = e_v_a_l1(href).f.apply(control, backtick_params);
 				blocks_vars = e_v_a_l1(blocks_vars).f.apply(control, backtick_params);
 				comps_vars = e_v_a_l1(comps_vars).f.apply(control, backtick_params);
+				const parsed = LinkLocation.parse(href);
+				href = parsed.href;
+				position = parsed.position;
 			}
+			href = LinkLocation.restoreLiteralColons(href);
 
 			if(silent) {
 				return;
@@ -1877,6 +2007,7 @@ define(function(require) {
 						formParams: { run: run },
 						formVars: blocks_vars,
 						resource: { uri: sourceUri },
+						position: position,
 						selected: true
 					});
 				}
@@ -1902,6 +2033,7 @@ define(function(require) {
 						uri: resolveUri_comps(uri).substring("vcl-comps/".length) + ".js",
 						title: title === "" ? "" : title || anchor.textContent
 					},
+					position: position,
 					selected: true
 				});
 			} else {
@@ -1939,6 +2071,7 @@ define(function(require) {
 						title: title === "" ? "" : title || anchor.textContent
 					},
 					fromResourceUri: base,
+					position: position,
 					bringToFront: evt.shiftKey === true,
 					selected: true
 				});
@@ -1955,21 +2088,36 @@ define(function(require) {
 		const editor = ace.getEditor();
 		const selection = editor.selection, session = editor.session;
 		let disposed = false, loadedListener;
+		const scheduler = getMarkdownRenderScheduler(ace);
+		const interaction_node = editor.container;
+		const note_interaction = () => noteMarkdownInteraction(ace);
+		const flush_on_blur = () => scheduler.flush("blur");
 		const tab = ace.up("vcl/ui/Tab");
 		ace.once("destroy", () => {
 			disposed = true;
+			scheduler.cancel();
 			if(loadedListener) tab.off(loadedListener);
 			selection.off("changeCursor", sync_cursor);
 			selection.off("changeSelection", sync_selection);
 			session.off("changeScrollTop", sync_scroll);
 			session.off("changeFold", sync_folds);
+			if(interaction_node) {
+				interaction_node.removeEventListener("keydown", note_interaction);
+				interaction_node.removeEventListener("keyup", note_interaction);
+				interaction_node.removeEventListener("compositionupdate", note_interaction);
+			}
+			editor.off("blur", flush_on_blur);
 		});
 		const bindResize = root && root.vars(["bindTopLevelNavigationResize"]);
 		const sync_cursor = () => {
+			noteMarkdownInteraction(ace);
 			syncTopLevelNavActiveToSourcePosition(ace);
 			schedulePreviewSync(ace, editor.getCursorPosition().row);
 		};
-		const sync_selection = () => schedulePreviewSync(ace, editor.getCursorPosition().row);
+		const sync_selection = () => {
+			noteMarkdownInteraction(ace);
+			schedulePreviewSync(ace, editor.getCursorPosition().row);
+		};
 		const sync_scroll = () => {
 			syncTopLevelNavToSourcePositionThrottled(ace, 50);
 			schedulePreviewSync(ace,
@@ -1981,6 +2129,12 @@ define(function(require) {
 		editor.selection.on("changeSelection", sync_selection);
 		editor.session.on("changeScrollTop", sync_scroll);
 		editor.session.on("changeFold", sync_folds);
+		if(interaction_node) {
+			interaction_node.addEventListener("keydown", note_interaction);
+			interaction_node.addEventListener("keyup", note_interaction);
+			interaction_node.addEventListener("compositionupdate", note_interaction);
+		}
+		editor.on("blur", flush_on_blur);
 		bindResize && bindResize(root, "md-toplevel-nav-window-resize",
 			() => scheduleTopLevelNavigationResize(ace), 120);
 
@@ -2163,6 +2317,8 @@ define(function(require) {
 		PREVIEW_SCROLL_STORAGE_KEY,
 		CHECKBOX_STATE_STORAGE_KEY,
 		SECTION_STATE_STORAGE_KEY,
+		RENDER_QUIET_PERIOD,
+		RENDER_MAX_DELAY,
 		Css,
 		Css_content,
 		Handlers,
@@ -2198,6 +2354,9 @@ define(function(require) {
 		decorateCheckboxes,
 		render: renderMarkdown,
 		renderMarkdown,
+		scheduleMarkdownRender,
+		noteMarkdownInteraction,
+		flushMarkdownRender,
 		renderDocumentMarkdown,
 		parse: parseMarkdownDocument,
 		bindMarkdownEditor,

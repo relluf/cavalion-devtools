@@ -1,4 +1,4 @@
-"use vcl/ui/Console, vcl/ui/ListColumn, util/Event";
+"use vcl/ui/Console, vcl/ui/List, vcl/ui/ListColumn, vcl/data/Array, vcl/Control, util/Event";
 
 /*- ### 2025/04/04 See .md */
 /*- ### 2023/07/20 #focus-q stabilized */
