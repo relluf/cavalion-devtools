@@ -43,6 +43,9 @@ const setMarkdownDialect = (control, dialect) => {
 		},
 		topLevelNavigation: {
 			side: "left"
+		},
+		imagesMenu: {
+			enabled: true
 		}
 	}
 }, [
@@ -142,6 +145,48 @@ const setMarkdownDialect = (control, dialect) => {
 			return H("vcl-comps:devtools/Outline<md>", {
 				ace: this.ud("#ace"),
 				outline: this.ud("#outline-proxy-generate").execute()
+			});
+		}
+	}],
+	["vcl/Action", "toggle-images", {
+		hotkey: "Shift+Ctrl+Meta+I",
+		on() {
+			const root = this.up();
+			const current = root.vars("markdown-images-view");
+			if(current) {
+				root.removeVar("markdown-images-view");
+				if(current.hover) current.hover.destroy();
+				return;
+			}
+			const state = {};
+			root.vars("markdown-images-view", state);
+			Promise.resolve(H("devtools/MarkdownImages", { ace: root.ud("#ace") })).then(hover => {
+				if(root.vars("markdown-images-view") !== state) {
+					hover.destroy();
+					return;
+				}
+				state.hover = hover;
+				const destroyHover = () => hover.destroy();
+				root.once("destroy", destroyHover);
+				hover.once("destroy", () => {
+					root.off("destroy", destroyHover);
+					if(root.vars("markdown-images-view") === state) root.removeVar("markdown-images-view");
+				});
+				hover.nextTick(() => {
+					hover.nodeNeeded();
+					hover.readStorage("bounds", bounds => {
+						if(bounds || root.vars("markdown-images-view") !== state) return;
+						hover.setTimeout("images-default-bounds", () => {
+							if(root.vars("markdown-images-view") !== state) return;
+							const rect = hover.app().qs("#window").getAbsoluteRect();
+							hover.setBounds(rect.width * 0.05, rect.height * 0.10, undefined, undefined,
+								rect.width * 0.10, rect.height * 0.60);
+						}, 250);
+					});
+				});
+			}).catch(error => {
+				if(root.vars("markdown-images-view") === state) root.removeVar("markdown-images-view");
+				console.error("Unable to open Markdown images", error);
 			});
 		}
 	}],

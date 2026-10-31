@@ -1642,6 +1642,8 @@ var runTopLevelNavigationThrottled = (root, key, callback, interval) => {
 			var stateSeparator = scope["menu-state-separator"];
 			var dialectMenu = dialectMenuEntries(editorRootFor(this));
 			var dialectItem = scope["menu-dialect"];
+			var imagesItem = scope["menu-images"];
+			var editorRoot = editorRootFor(this);
 			var anchor = tab && tab.nodeNeeded ? tab.nodeNeeded() : tab || this.up();
 
 			if(componentItem && componentSeparator) {
@@ -1669,6 +1671,11 @@ var runTopLevelNavigationThrottled = (root, key, callback, interval) => {
 					dialectItem.setContent(js.sf("%H <span class='menu-shortcut'>Shift+Cmd+D</span> <span class='menu-caret'>›</span>",
 						dialectMenu.label));
 				}
+			}
+			if(imagesItem) {
+				imagesItem.setVisible(editorRoot.vars(["imagesMenu.enabled"]) === true);
+				imagesItem.setContent((editorRoot.vars("markdown-images-view") ? "<b>Afbeeldingen</b>" : "Afbeeldingen") +
+					" <span class='menu-shortcut'>Shift+Ctrl+Cmd+I</span>");
 			}
 			if(save) {
 				save.setEnabled(modified);
@@ -2355,6 +2362,11 @@ var runTopLevelNavigationThrottled = (root, key, callback, interval) => {
 			content: "",
 			visible: false,
 			vars: { action: "dialect-menu-open" }
+		}],
+		["vcl/ui/Element", ("menu-images"), {
+			content: "Afbeeldingen",
+			visible: false,
+			vars: { action: "toggle-images" }
 		}],
 		["vcl/ui/Element", {
 			classes: "separator"

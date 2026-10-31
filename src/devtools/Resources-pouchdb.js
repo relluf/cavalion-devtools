@@ -23,12 +23,53 @@ define(function(require) {
 		}
 		return dbs[name];
 	}
+	function attachmentUri(uri, name) {
+		if(typeof uri !== "string" || !uri.startsWith("pouchdb://")) {
+			throw new Error("Expected a PouchDB document URI");
+		}
+		var path = uri.substring("pouchdb://".length);
+		var separator = path.indexOf("/");
+		if(separator < 1 || !path.substring(separator + 1) || !name) {
+			throw new Error("PouchDB document and attachment names are required");
+		}
+		return "pouchdb-attachment://" + encodeURIComponent(path.substring(0, separator)) + "/" +
+			encodeURIComponent(path.substring(separator + 1)) + "/" + encodeURIComponent(name);
+	}
+	function getAttachment(uri, opts) {
+		var parts = uri.split("/");
+		if(parts.length !== 3 || parts.some(part => !part)) {
+			return Promise.reject(new Error("Invalid PouchDB attachment URI"));
+		}
+		var dbName, docId, name;
+		try {
+			dbName = decodeURIComponent(parts[0]);
+			docId = decodeURIComponent(parts[1]);
+			name = decodeURIComponent(parts[2]);
+		} catch(error) {
+			return Promise.reject(error);
+		}
+		var db = getDb(dbName);
+		return db.get(docId).then(function(doc) {
+			var metadata = doc._attachments && doc._attachments[name];
+			if(!metadata) throw new Error("PouchDB attachment not found: " + name);
+			return db.getAttachment(docId, name).then(function(blob) {
+				if(opts && opts.arrayBuffer) return blob.arrayBuffer();
+				return {
+					uri: uri, name: name, type: "File", contentType: metadata.content_type || blob.type,
+					revision: doc._rev, size: metadata.length,
+					arrayBuffer: function() { return blob.arrayBuffer(); }
+				};
+			});
+		});
+	}
 	function now() {
 		return (new Date()).toISOString();
 	}
 
 	return {
 		dbs: dbs,
+		attachmentUri: attachmentUri,
+		getAttachment: getAttachment,
 		index: function(uris) {
 			return Promise.resolve([]);
 		},

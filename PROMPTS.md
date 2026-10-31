@@ -1,3 +1,71 @@
+## `2026/10/31` Afbeeldingen zichtbaar in Markdown-overzicht
+
+Toon voor [CVLN-20261030-1 - Editor-md afbeeldingenoverzicht](/Dropbox-cavalion/Issues/CVLN-20261030-1%20-%20Editor-md%20afbeeldingenoverzicht/) de afbeeldingen zelf in de bestaande Hover, met labels en behoud van bronnavigatie. Relatieve afbeeldingspaden volgen de bestaande Markdown-preview. Bij een keuze schuift de preview naar de juiste afbeelding, ook bij herhaalde bronnen of ingeklapte secties; de broncursor beweegt mee zonder een verborgen editor te openen.
+
+Verificatie: `node src/devtools/tests/markdown-images.test.cjs` en `node --check src/cavalion-blocks/MarkdownImages.js` slagen; de test dekt bovendien zichtbare en verborgen bron en herhaalde afbeeldingen; browseracceptatie is niet uitgevoerd. De meegeleverde screenshot is nog niet extern gearchiveerd.
+
+## `2026/10/31-1308` DevTools release notes and commit message
+
+Summarize the complete current Git diff and every non-backup untracked file in a new subject-grouped `CHANGELOG.md` entry, add a user-facing `-devtools` release post to `/Users/ralph/Dropbox/Docs/cavalion.org/RELEASENOTES.md`, and return a matching grouped Git commit message with a lowercase `(categorized): summary` subject and verb-led bullets. The release aggregates the already documented Alphaview interaction fixes, PouchDB attachment resources, Markdown image overview, regression tests and workspace update; it introduces no additional runtime implementation.
+
+<details>
+<summary>Implementation details</summary>
+
+- [CHANGELOG.md]() — adds the technical `2026/10/31` entry and explicitly covers all current untracked source and test files.
+- [PROMPTS.md]() — records this release-documentation request once for repository-local provenance.
+- `/Dropbox/Docs/cavalion.org/RELEASENOTES.md` — adds the user-facing DevTools release entry in the central document's established format.
+
+Verification: scoped diff checks validate the edited documentation, and the release content is reconciled with `git status --short`, `git diff --stat`, the complete non-backup untracked-file list, implementation sources, tests and existing repository notes. Per the release routine, no runtime tests, build, staging, commit, push, tag, publication or deployment are performed.
+
+</details>
+
+## `2026/10/30` Afbeeldingenoverzicht voor Markdown
+
+Implementeer voor [CVLN-20261030-1 - Editor-md afbeeldingenoverzicht](/Dropbox-cavalion/Issues/CVLN-20261030-1%20-%20Editor-md%20afbeeldingenoverzicht/) een inschakelbare `Hover<>` met afbeeldingen uit de actieve Markdown-editor, bronpositienavigatie, contextmenu en Shift+Ctrl+Cmd+I. De view volgt wijzigingen en gebruikt de gevraagde standaardafmetingen ten opzichte van `#window`.
+
+Verificatie: `markdown-images.test.cjs`, `markdown-render-performance.test.cjs`, `markdown-link-location.test.cjs`, `ace-lifecycle.test.cjs`, syntaxcontroles en gerichte diffcontrole slagen; daarnaast zijn inline, referentie-, HTML- en fenced-codevoorbeelden met de beschikbare Marked-lexer gecontroleerd. Een live proef bevestigt menu, actieve opmaak, beginpositie, navigatie en sluiten via de sneltoets. Permanente archivering van de contextmenuscreenshot staat open. `cavalion-pouch` is alleen als referentie onderzocht en niet inhoudelijk gewijzigd.
+
+## `2026/10/29` — PouchDB-bijlagen als resources
+
+Voor [VA-20261029-2-VO-Geografie-alle-meetpunten/](/Dropbox-veldapps/Issues/:/)[.md](/Dropbox-veldapps/Issues/VA-20261029-2-VO-Geografie-alle-meetpunten/:) registreert DevTools een aparte attachment-resource-URI en leest daarmee bijlagemetadata en bytes uit PouchDB. De gerichte providertest en syntaxcontrole slagen, evenals een bijlageophaling uit tijdelijke PouchDB met gesimuleerde IndexedDB; live browseracceptatie staat open. De twee screenshots zijn met toestemming permanent gearchiveerd en met HTTP 200 en identieke SHA-256-hash gecontroleerd.
+
+## `2026/10/27-1055` Focusgestuurde Alpha View-filterbalk en compacte status
+
+Corrigeer de actuele Alpha View-omgeving waarin Command-/ alleen het zoekveld focust en de balk nog niet correct verbergt of toont. Gewone embedded weergaven zoals GT Lab, waar `this.up("Hover<>:root")` vanaf Alpha View `null` oplevert, starten met verborgen filter-/navigatiebalk en een compacte live status rechtsonder in de zichtbare List. Command-/ toont en focust een verborgen balk, focust eerst een zichtbare maar nog niet gefocuste filterinvoer, en verbergt de balk pas wanneer die invoer al focus heeft; daarbij keert focus veilig terug naar de lijst. De eerste tab met uitsluitend het totaalaantal volgt dezelfde zichtbaarheid als de balk, terwijl de bestaande lettergrootte van dat aantal behouden blijft. Een developer-`Hover<>:root` start met zichtbare balk en filterfocus. Een live regressie waarbij List en ListBody verdwenen bleek veroorzaakt door `position:relative` op de interne VCL-Form, waardoor Form, List en ListBody 0×0 werden, plus een statuspil die als losse Form-sibling aan de tabhoek hing. Governing issue: [CVLN-20211007-1 - Alphaview](/Dropbox-cavalion/Issues/CVLN-20211007-1%20-%20Alphaview/).
+
+<details>
+<summary>Implementation details</summary>
+
+- [src/cavalion-blocks/Alphaview.js]() bepaalt de begincontext tijdens load, laat de bestaande `focus-q`-actie focusgestuurd schakelen en koppelt de concrete `#bar`, `#compact-status` en gemarkeerde totaaltab aan één zichtbaarheidstoestand. De pil heeft `align: "none"`, wordt door de navigatieroutine aan de actieve List geparent en blijft daar absoluut rechtsonder; de VCL-root behoudt zijn oorspronkelijke absolute layout. Beide statuspresentaties delen één berekening, click-handler en updatepad.
+- [src/devtools/tests/alphaview-filter-bar.test.cjs]() dekt de embedded `Hover<>:root === null`-context, developer-Hover, alle drie focus-/zichtbaarheidstoestanden, de meeschakelende totaaltab met ongewijzigde `<small>`-markup, zichtbare List en ListBody na iedere toggle, List-parenting, niet-deelnemen aan client alignment en live statusupdates.
+- Syntaxcontrole, alle tests onder `src/devtools/tests/*.test.cjs` — inclusief `ace-lifecycle.test.cjs` via de aanwezige sibling `cavalion-vcl` — en repositorybrede diffcontrole slagen. Read-only inspectie van de open GT Lab-pagina bevestigde zowel de ontbrekende Hover/glassy-voorouder als de foutieve 0×0-afmetingen van Form, List en ListBody in de oude instantie. De source-served ontwikkelpagina vereist alleen een volledige Chrome hard reload (`Command-Shift-R`) om de gecachete blockfactory en bestaande Alpha View-instantie te vervangen; `app.js`/`lib.js` hoeven niet te worden gebouwd.
+
+</details>
+
+## `2026/10/26-2129` Escape mag Alphaview niet vernietigen
+
+Herstel de gedeelde Alphaview-keyboardafhandeling zodat Escape de actieve filterinvoer nog mag wissen, maar nooit de Alphaview zelf vernietigt. Eén fysieke toetsdruk levert een `keydown` en `keyup`; behandel de filterreset daarom precies eenmaal en dek de volledige eventcyclus uitvoerbaar af.
+
+<details>
+<summary>Implementation details</summary>
+
+- [src/cavalion-blocks/Alphaview.js]() verwijdert het verborgen dubbele-Escape-`destroy()`-pad en verwerkt de reset alleen tijdens `keydown`.
+- [src/devtools/tests/alphaview-escape.test.cjs]() controleert filterreset, eventaantal en afwezigheid van lifecyclevernietiging.
+- Syntaxcontrole, alle devtools-tests, legacy `js/minify` en diffcontrole slagen; live browseracceptatie blijft open.
+
+</details>
+
+<details>
+<summary>Request and attachment</summary>
+
+#### `2026/10/26-2129`
+
+> In Tabs&lt;Document&gt; (meen ik) bestaat de bug dat wanneer er op Escape wordt gedrukt, de hele Alphaview verdwijnt. Fix dat ajb
+
+![De Data-tab waarvan Alphaview na Escape zichtbaar moet blijven](/Dropbox-cavalion/Issues/CVLN-20211007-1%20-%20Alphaview/screenshots/codex-clipboard-72f6da2f-52d4-4ceb-be1a-1b2508e02be5.png)
+
+</details>
+
 ## `2026/10/26-1916` Release notes and commit message for the current repository state
 
 Summarize the complete current Git diff and every non-backup untracked file in a new, subject-grouped `CHANGELOG.md` entry that follows the repository's established file-reference style, then provide a matching grouped Git commit message whose lowercase subject uses `(categorized): summary` and whose bullets begin with active verbs. This is release aggregation across the already documented editor, Markdown, resource-provider, dropped-resource and Alphaview work; it introduces no additional runtime implementation or governing issue.

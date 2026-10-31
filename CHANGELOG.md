@@ -1,4 +1,42 @@
 
+### `2026/10/31` — Alphaview controls, PouchDB attachments and Markdown images
+
+Improves embedded data exploration and Markdown workflows while exposing PouchDB attachments through the shared resource API.
+
+#### Alphaview interaction
+
+* Removes the double-Escape destruction path from `src/cavalion-blocks/Alphaview.js`, so Escape clears the filter once on `keydown` without closing embedded views.
+* Changes embedded Alphaviews to start with the filter/navigation bar hidden, while developer `Hover<>` instances keep the bar visible and focus the filter.
+* Enhances `Cmd+/` so it reveals and focuses a hidden filter, focuses an already visible filter and hides it only when it already owns focus.
+* Adds a compact bottom-right status overlay that preserves item, selection, filtering and hidden-column feedback while the full bar is hidden.
+* Keeps the aggregate total tab synchronized with filter-bar visibility without changing its existing `<small>` typography or hiding the active List.
+
+#### PouchDB attachments
+
+* Adds `pouchdb-attachment://` URI construction and attachment reads in `src/devtools/Resources-pouchdb.js`, including encoded database, document and attachment identifiers.
+* Registers the attachment provider and exposes `Resources.pouchdbAttachmentUri(...)` through `src/devtools/Resources.js`.
+* Returns attachment metadata and bytes through both resource and `arrayBuffer` paths while propagating missing-document and missing-attachment errors.
+
+#### Markdown image overview
+
+* Adds `src/devtools/MarkdownImages.js` to discover inline, reference-style and HTML images with source positions while excluding fenced-code examples.
+* Adds `src/cavalion-blocks/MarkdownImages.js` as a live `Hover<>` list that follows editor changes and navigates Ace to the selected image source.
+* Adds the `Afbeeldingen` editor-menu action and `Shift+Ctrl+Cmd+I` toggle in `src/vcl-comps/Editor$/md.js` and `src/vcl-comps/Editor.js`, including persisted Hover bounds and lifecycle cleanup.
+
+#### Tests, documentation and workspace setup
+
+* Adds `src/devtools/tests/alphaview-escape.test.cjs` and `src/devtools/tests/alphaview-filter-bar.test.cjs` for Escape handling, focus-driven toggling, status updates and layout preservation.
+* Adds `src/devtools/tests/pouch-attachment.test.cjs` and `src/devtools/tests/markdown-images.test.cjs` for encoded attachment access, byte reads, error handling and image source positions.
+* Updates `.md` and `PROMPTS.md` with implementation contracts, issue links and verification notes.
+* Extends `cavalion-devtools.code-workspace` with the sibling `cavalion-resources` repository.
+
+### `2026/10/26` — Escape preserves embedded Alphaviews
+
+* Removes Alphaview's hidden double-Escape destruction timer, which interpreted one physical key press as two presses because both `keydown` and `keyup` entered the same handler.
+* Keeps Escape's useful filter reset, but performs it only on `keydown` so the corresponding `keyup` has no duplicate mutation.
+* Adds an executable key-cycle regression that requires the embedded view to survive and forbids lifecycle destruction from the keyboard path.
+* Verifies the fix with syntax checks, all `src/devtools/tests/*.test.cjs` tests, legacy `js/minify` and scoped diff validation.
+
 ### `2026/10/26` — Editor synchronization, Markdown responsiveness and source navigation
 
 Improves editor reliability for large Markdown documents, remote resource changes and repeated local drops, while extending source-aware navigation and automated regression coverage.

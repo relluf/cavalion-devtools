@@ -11,6 +11,9 @@
 		},
 		{
 			"path": "../cavalion-blocks"
+		},
+		{
+			"path": "../cavalion-resources"
 		}
 	],
 	"settings": {}

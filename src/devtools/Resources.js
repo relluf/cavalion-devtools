@@ -37,6 +37,8 @@ function(FS, Pouch, Dropbox, GDrive, Dropped, Ddh, GitRepo, Component, nameOf) {
 
     // Pluggable Resources system
     const Resources = {
+        pouchdbAttachmentUri: Pouch.attachmentUri,
+
         getDefaultURIBase(uri) {
             return "pouchdb://Resources/";
         },
@@ -189,6 +191,7 @@ function(FS, Pouch, Dropbox, GDrive, Dropped, Ddh, GitRepo, Component, nameOf) {
 
     // Register default providers
     ResourceRegistry.register("pouchdb", Pouch);
+    ResourceRegistry.register("pouchdb-attachment", { get: Pouch.getAttachment });
     ResourceRegistry.register("dropbox", Dropbox);
     ResourceRegistry.register("gdrive", GDrive);
     ResourceRegistry.register("dropped", Ddh);
