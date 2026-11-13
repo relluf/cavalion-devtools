@@ -1,4 +1,4 @@
-"use vcl/ui/Console, vcl/ui/List, vcl/ui/ListColumn, vcl/data/Array, vcl/Control, util/Event";
+"use vcl/ui/Console, vcl/ui/List, vcl/ui/ListColumn, vcl/data/Array, vcl/Control, util/Event, locale";
 
 /*- ### 2025/04/04 See .md */
 /*- ### 2023/07/20 #focus-q stabilized */
@@ -17,6 +17,50 @@ var ArraySource = require("vcl/data/Array");
 var Event = require("util/Event");
 var Console = require("vcl/ui/Console");
 var Control = require("vcl/Control");
+var locale = require("locale").prefixed("Alphaview", {
+	en: {
+		".selection": "selection %d",
+		".status.selected": "%s (%d%%) selected",
+		".status.filtered": "%d (%d%%) filtered",
+		".status.hiddenColumns": "%d %s hidden",
+		".status.column": "column",
+		".status.columns": "columns",
+		".status.toggleColumns": "Show or hide empty columns",
+		".status.total": "%d total",
+		".status.items": "%d items",
+		".noSelection": "No selection available",
+		".waiting": "waiting for promises...",
+		".viewAs": "View As...",
+		".filter": "Filter (⌘/)",
+		".back": "Back",
+		".refresh": "Refresh",
+		".exportAs": "Export as...",
+		".and": "AND",
+		".or": "OR",
+		".exactCase": "Exact case"
+	},
+	nl: {
+		".selection": "selectie %d",
+		".status.selected": "%s (%d%%) geselecteerd",
+		".status.filtered": "%d (%d%%) gefilterd",
+		".status.hiddenColumns": "%d %s verborgen",
+		".status.column": "kolom",
+		".status.columns": "kolommen",
+		".status.toggleColumns": "Lege kolommen tonen of verbergen",
+		".status.total": "%d in totaal",
+		".status.items": "%d items",
+		".noSelection": "Geen selectie beschikbaar",
+		".waiting": "wachten op resultaten...",
+		".viewAs": "Weergeven als...",
+		".filter": "Filter (⌘/)",
+		".back": "Terug",
+		".refresh": "Vernieuwen",
+		".exportAs": "Exporteren als...",
+		".and": "EN",
+		".or": "OF",
+		".exactCase": "Hoofdlettergevoelig"
+	}
+});
 
 var LOGGING = 0;
 var AUTO_HIDE_EMPTY_COLUMNS_MAX_ROWS = 10000;
@@ -49,14 +93,13 @@ function nameOf(ft) {
 }
 function uniqueSelectionKeys(keys) {
 	var counts = {}, seen = {};
-	
+
+	keys = keys.map((key, index) => key || js.sf(locale(".selection"), index + 1));
 	keys.forEach(key => {
-		key = key || "";
 		counts[key] = (counts[key] || 0) + 1;
 	});
 	
-	return keys.map((key, index) => {
-		key = key || js.sf("selection %d", index + 1);
+	return keys.map(key => {
 		if(counts[key] <= 1) {
 			return key;
 		}
@@ -77,7 +120,12 @@ var css = {
 	'#status': "direction: ltr;",
 	"#status .alphaview-column-visibility-toggle": "cursor:pointer;text-decoration:underline;",
 	"#compact-status": "position:absolute;right:8px;bottom:8px;z-index:5;box-sizing:border-box;max-width:calc(100% - 16px);padding:3px 8px;border:1px solid rgba(0,0,0,0.12);border-radius:9px;background:rgba(255,255,255,0.82);box-shadow:0 1px 4px rgba(0,0,0,0.12);backdrop-filter:blur(3px);color:rgba(0,0,0,0.62);font-size:10px;line-height:16px;direction:ltr;white-space:nowrap;",
-	"#compact-status .alphaview-column-visibility-toggle": "cursor:pointer;text-decoration:underline;"
+	"#compact-status .alphaview-column-visibility-toggle": "cursor:pointer;text-decoration:underline;",
+	"#tabs small": "font-size:70%;",
+	"#tabs > .alphaview-tabs-navigation": "display:inline-block;vertical-align:text-bottom;margin:0 4px 0 2px;padding:1px 7px;border:0;border-radius:4px;background:transparent;font:inherit;cursor:pointer;",
+	"#tabs > .alphaview-tabs-navigation:hover:not(:disabled)": "background:rgba(0,0,0,0.06);",
+	"#tabs > .alphaview-tabs-navigation:disabled": "color:silver;cursor:default;",
+	"#tabs > .alphaview-tabs-navigation[hidden]": "display:none;"
 	// "#bar #right > .{Button}": "float:right;"
 };
 
@@ -99,10 +147,10 @@ const toggleFilterBar = function(root) {
 	}
 };
 const initializeFilterBar = function(root) {
-	var hover = root.up("Hover<>:root");
+	var host = root.up("Hover<>:root") || root.up("devtools/Workspace<>:root");
 
-	setFilterBarVisible(root, !!hover);
-	if(hover) {
+	setFilterBarVisible(root, !!host);
+	if(host) {
 		root.ud("#q").setFocus();
 	}
 };
@@ -400,12 +448,15 @@ const statusHtml = function(root) {
 		var columns = getListColumns(list);
 		var hiddenColumns = columns.filter(function(column) { return !column.isVisible(); }).length;
 
-		selected && status.push(js.sf("%s (%d%%) selected", selected, selected/total*100));
-		filtered && status.push(js.sf("%d (%d%%) filtered", filtered, filtered/total*100));
+		selected && status.push(js.sf(locale(".status.selected"), selected, selected/total*100));
+		filtered && status.push(js.sf(locale(".status.filtered"), filtered, filtered/total*100));
 		if(hiddenColumns || list.vars("autoColumns.showingAll")) {
-			status.push(js.sf("<span class=\"alphaview-column-visibility-toggle\" title=\"Show or hide empty columns\">%d %s hidden</span>", hiddenColumns, hiddenColumns === 1 ? "column" : "columns"));
+			status.push(js.sf("<span class=\"alphaview-column-visibility-toggle\" title=\"%s\">%s</span>",
+				locale(".status.toggleColumns"),
+				js.sf(locale(".status.hiddenColumns"), hiddenColumns,
+					locale(hiddenColumns === 1 ? ".status.column" : ".status.columns"))));
 		}
-		status.push(js.sf("%d %s", total, status.length ? "total" : "items"));
+		status.push(js.sf(locale(status.length ? ".status.total" : ".status.items"), total));
 	}
 
 	return status.join(" / ");
@@ -438,10 +489,45 @@ const setTotalTabVisible = function(root, visible) {
 
 	totalTab && totalTab.setVisible(visible);
 };
+const syncTabsNavigationButtons = function(root) {
+	var tabs = root.qs("#tabs");
+	var node = tabs.nodeNeeded();
+	var back = root.qs("#back");
+	var refresh = root.qs("#refresh");
+	var refreshInBar = root.qs("#button-refresh");
+	var backButton = node.querySelector(".alphaview-tabs-back");
+	var refreshButton = node.querySelector(".alphaview-tabs-refresh");
+
+	if(!backButton) {
+		backButton = document.createElement("button");
+		backButton.type = "button";
+		backButton.className = "alphaview-tabs-navigation alphaview-tabs-back";
+		backButton.innerHTML = "<i class='fa fa-chevron-left' aria-hidden='true'></i>";
+		backButton.addEventListener("click", function() { back.go(); });
+	}
+	if(!refreshButton) {
+		refreshButton = document.createElement("button");
+		refreshButton.type = "button";
+		refreshButton.className = "alphaview-tabs-navigation alphaview-tabs-refresh";
+		refreshButton.innerHTML = "<i class='fa fa-refresh' aria-hidden='true'></i>";
+		refreshButton.addEventListener("click", function() { refresh.go(); });
+	}
+	if(backButton !== node.firstChild) node.insertBefore(backButton, node.firstChild);
+	if(refreshButton !== backButton.nextSibling) node.insertBefore(refreshButton, backButton.nextSibling);
+	backButton.title = locale(".back");
+	backButton.setAttribute("aria-label", backButton.title);
+	refreshButton.title = locale(".refresh");
+	refreshButton.setAttribute("aria-label", refreshButton.title);
+	backButton.disabled = !back.isEnabled();
+	refreshButton.disabled = !refresh.isEnabled();
+	backButton.hidden = root.ud("#bar").isVisible();
+	refreshButton.hidden = backButton.hidden || refreshInBar.getVisible() === false;
+};
 const setFilterBarVisible = function(root, visible) {
 	root.ud("#bar")[visible ? "show" : "hide"]();
 	root.ud("#compact-status")[visible ? "hide" : "show"]();
 	setTotalTabVisible(root, visible);
+	syncTabsNavigationButtons(root);
 	renderAlphaviewStatus(root);
 };
 const applyDefaultColumnVisibility = function(list) {
@@ -507,6 +593,37 @@ const syncNavigationButtons = function(root, canGoBack) {
 		}
 	});
 	if(forward) forward.setVisible(false);
+	syncTabsNavigationButtons(root);
+};
+const resetNavigationForTabChange = function(root) {
+	var history = root.vars(["history"]);
+	if(history.length === 0) return;
+
+	var original = history[0].list;
+	var current = getActiveList(root);
+	var obsolete = history.slice(1).map(entry => entry.list).concat(current);
+	var index = current.getIndex();
+
+	current.setVisible(false);
+	current.setName(js.sf("list-reset-%d", root.vars("navigation.nextListId", 0)));
+	original.setName("list");
+	original.setIndex(index);
+	moveNavigationBar(root, original);
+	original.setEnabled(true);
+	original.setVisible(true);
+	root.vars("navigation.activeList", original);
+	history.length = 0;
+	clearFilter(root);
+	syncNavigationButtons(root, false);
+	obsolete.forEach(list => {
+		var source = list.getSource();
+		list.destroy();
+		source.destroy();
+	});
+};
+const revealNavigation = function(root) {
+	root.qs("#back").setEnabled(true);
+	syncTabsNavigationButtons(root);
 };
 const installListColumnVisibilitySync = function(root, list) {
 	list.override("notifyEvent", (event, data) => {
@@ -583,6 +700,13 @@ const listCellContext = (list, evt) => {
 		column: column
 	} : null;
 };
+const getAlphaviewCellValue = function(list, context, attributeOnly) {
+	var value = list._source.getAttributeValue(attributeOnly ? context.column._attribute : ".", context.row._rowIndex, true);
+	if(value && value.value && value.key && Object.values(value).length === 2) {
+		value = value.value;
+	}
+	return value;
+};
 const updateAltCellHover = (list, evt) => {
 	const context = evt && evt.altKey === true && listCellContext(list, evt);
 	const previous = list.vars(["alphaview.altCellHover"]);
@@ -600,10 +724,7 @@ const activateAlphaviewCell = (list, evt, attributeOnly) => {
 	const context = listCellContext(list, evt);
 
 	if(!context) return false;
-	let value = list._source.getAttributeValue(attributeOnly ? context.column._attribute : ".", context.row._rowIndex, true);
-	if(value && value.value && value.key && Object.values(value).length === 2) {
-		value = value.value;
-	}
+	let value = getAlphaviewCellValue(list, context, attributeOnly);
 
 	const type = typeof value;
 	const isobj = type === "object";
@@ -630,7 +751,7 @@ const activateAlphaviewCell = (list, evt, attributeOnly) => {
 			column: context.column && context.column._attribute,
 			count: value instanceof Array ? value.length : Object.keys(value).length
 		});
-		list._owner.qs("#back").setEnabled(true); setFilterBarVisible(list._owner, true);
+		revealNavigation(list._owner);
 	} else {
 		LOGGING && list.print("logging alphaview.scalar.prompt", {
 			column: context.column && context.column._attribute,
@@ -733,7 +854,7 @@ const renderPresets = function(control) {
 				}
 				
 				if (!selection || selection.length === 0) {
-					throw new Error("No selection available");
+					throw new Error(locale(".noSelection"));
 				}
 				
 				return selection;				
@@ -742,7 +863,7 @@ const renderPresets = function(control) {
 				var selection = this.selection;
 
 				if (!selection || selection.length === 0) {
-					throw new Error("No selection available");
+					throw new Error(locale(".noSelection"));
 				}
 				
 				return selection;				
@@ -770,6 +891,7 @@ const renderPresets = function(control) {
 			});
 			
 			this.ud("#button-refresh").set("visible", cons instanceof Console);
+			syncTabsNavigationButtons(this._owner);
 			
 			const keys = cons ? cons.getNode().qsa(".node.selected").map(node => {
 				const key = node.qs(".key"), content = key && key.textContent;
@@ -802,7 +924,7 @@ const renderPresets = function(control) {
 				
 				const wait = () => this.setTimeout("waiting", () => {
 					if(now === this.vars("now")) {
-						this.ud("#q").set("placeholder", "waiting for promises...");
+						this.ud("#q").set("placeholder", locale(".waiting"));
 					}
 					wait();
 				} , 500);
@@ -810,7 +932,7 @@ const renderPresets = function(control) {
 				sel = [
 					Promise.allSettled(cons.sel.map(o => Promise.resolve(o)))
 						.then(values => values.reduce((t, o, i) => { 
-							t[selectionKeys[i] || js.sf("selection %d", i + 1)] = o.value instanceof Array ? o.value : [o.value]; return t; }, {}))
+							t[selectionKeys[i] || js.sf(locale(".selection"), i + 1)] = o.value instanceof Array ? o.value : [o.value]; return t; }, {}))
 						.then(_ => {
 							this.setTimeout("waiting", () => {}, 0);
 							this.ud("#q").set("placeholder", "");
@@ -908,6 +1030,7 @@ const renderPresets = function(control) {
 								}
 
 							setTotalTabVisible(root, root.ud("#bar").isVisible());
+							syncTabsNavigationButtons(root);
 								tabs.show();
 							});
 						} else {
@@ -951,9 +1074,18 @@ const renderPresets = function(control) {
 			return delegate.execute(evt);
 		}
 	}],
+	["Executable", ("export-as"), {
+		hotkey: "Shift+MetaCtrl+Alt+S",
+		enabled: false,
+		on() {
+			var root = this._owner;
+			var anchor = root.ud("#bar").isVisible() ? root.qs("#button-export") :
+				root.qs("#tabs").isVisible() ? root.qs("#tabs") : getActiveList(root);
+			root.qs("#popup-export").popup({ origin: "bottom-right", dy: 4 }, anchor, function() {});
+		}
+	}],
 	["Executable", ("view-source"), {
-		// content: locale(""), // TODO like $p introduce some locale feature, just like require is rewired all the time
-		content: "View As... <i class='fa fa-caret-down'></i>", 
+		content: locale(".viewAs") + " <i class='fa fa-caret-down'></i>",
 		on() {
 			
 		}
@@ -976,6 +1108,7 @@ const renderPresets = function(control) {
 				LOGGING && this.print("logging alphaview.back.restored", entry);
 			}
 			this.setEnabled(history.length > 0);
+			syncTabsNavigationButtons(this._owner);
 		}
 	}],
 	["Executable", ("do-forward"), {
@@ -1006,8 +1139,7 @@ const renderPresets = function(control) {
 					
 					clearFilter(this);
 
-						this._owner.qs("#back").setEnabled(true); 
-						setFilterBarVisible(this._owner, true);
+						revealNavigation(this._owner);
 						LOGGING && this.print("logging alphaview.forward.resolved", {
 							nextSelectionCount: nsel.length,
 							drilldownType: nsel.length === 1 && nsel[0] && typeof nsel[0] === "object" ? "object" : "selection"
@@ -1038,7 +1170,7 @@ const renderPresets = function(control) {
 	}],
 	["Executable", ("focus-q"), {
 		hotkey: "MetaCtrl+191",
-		on() { toggleFilterBar(this.up("Hover<>:root") || this.up()); }
+		on() { toggleFilterBar(this._owner); }
 	}],
 	
 	["Executable", ("toggle-empty-columns"), {
@@ -1233,7 +1365,7 @@ const renderPresets = function(control) {
 			onLoad() { renderPresets(this); }
 		}],
 		["Input", ("q"), { 
-			placeholder: "Filter (⌘/)", 
+			placeholder: locale(".filter"),
 			onChange() {
 				var list = getActiveList(this._owner);
 				var array = list.getSource();
@@ -1281,7 +1413,13 @@ const renderPresets = function(control) {
 		["Group", ("right"), [
 			// ["Button", { action: "view-source" }],
 			["Group", ("export"), [
-				
+				["Button.popup", ("button-export"), {
+					content: "<i class='fa fa-download'></i><i class='fa fa-caret-down'></i>",
+					popup: "popup-export",
+					origin: "bottom-right",
+					visible: false,
+					attributes: { title: locale(".exportAs") }
+				}]
 			]],
 			["Element", ("status"), {
 				content: "-",
@@ -1292,16 +1430,16 @@ const renderPresets = function(control) {
 		
 		["Radiobutton", ("opt-and"), {
 			visible: false, // not=working=yet
-			label: "AND", groupIndex: 1
+			label: locale(".and"), groupIndex: 1
 		}],
 		["Radiobutton", ("opt-or"), {
 			visible: false, // not=working=yet
 			checked: true, groupIndex: 1,
-			label: "OR"
+			label: locale(".or")
 		}],
 		["Checkbox", ("check-exact-case"), {
 			visible: false, // not=working=yet
-			label: "Exact case",
+			label: locale(".exactCase"),
 			checked: false
 		}]
 
@@ -1366,9 +1504,16 @@ const renderPresets = function(control) {
 				updateAltCellHover(this, null);
 			} else if(name === "click" && evt.altKey === true && listCellContext(this, evt)) {
 				this.clearTimeout("clicked");
+				this.clearTimeout("alt-cell-click");
 				evt.preventDefault && evt.preventDefault();
 				evt.stopPropagation && evt.stopPropagation();
-				activateAlphaviewCell(this, evt, true);
+				if(evt.detail <= 1 || evt.detail === undefined) {
+					this.setTimeout("alt-cell-click", () => {
+						if(getActiveList(this._owner) === this) {
+							activateAlphaviewCell(this, evt, true);
+						}
+					}, 750);
+				}
 				return false;
 			}
 			if(name === "dblclick" && component instanceof ListColumn) {
@@ -1388,7 +1533,7 @@ const renderPresets = function(control) {
 						count: arr.filter(_ => _ !== undefined).length
 					});
 
-					this._owner.qs("#back").setEnabled(true); setFilterBarVisible(this._owner, true);
+					revealNavigation(this._owner);
 				
 			});
 		} else if(name === "click") {
@@ -1408,7 +1553,15 @@ const renderPresets = function(control) {
 		},
 			onDblClick(evt) { 
 				this.clearTimeout("click");
+				this.clearTimeout("alt-cell-click");
 				if(evt.altKey === true) {
+					const context = listCellContext(this, evt);
+					if(context) {
+						const value = getAlphaviewCellValue(this, context, true);
+						if(value !== null && typeof value === "object" && !(value instanceof Date)) {
+							H.i(value);
+						}
+					}
 					window.getSelection().removeAllRanges();
 					return false;
 				}
@@ -1431,12 +1584,22 @@ const renderPresets = function(control) {
 			this.ud("#list")._nodes.body.scrollTop = scrollTop;
 		}
 	}],
-		["Element", ("compact-status"), {
-			align: "none",
-			content: "-",
-			onClick(evt) { handleStatusClick(this, evt); },
-			onRender() { renderStatusContent(this); }
-		}],
+	["Element", ("compact-status"), {
+		align: "none",
+		content: "-",
+		onClick(evt) { handleStatusClick(this, evt); },
+		onRender() { renderStatusContent(this); }
+	}],
+
+	["Popup", ("popup-export"), {
+		css: {
+			".{Element}.header": "padding:8px 12px 10px 12px;",
+			".{Button}": "display:block;width:100%;border:none;text-align:left;padding:6px 12px;"
+		}
+	}, [
+		["Element", { classes: "header", content: "<b>" + locale(".exportAs") + "</b>" }]
+	]],
+
 	["Tabs", ("tabs"), {
 		visible: false,
 		onChange(newTab, oldTab, opts) {
@@ -1445,6 +1608,10 @@ const renderPresets = function(control) {
 				oldTab: oldTab && oldTab.vars("key"),
 				opts: opts
 			});
+			if(newTab !== null && oldTab !== null && newTab !== oldTab) {
+				getActiveList(this._owner).clearTimeout("alt-cell-click");
+				resetNavigationForTabChange(this._owner);
+			}
 			var list = this.scope().list;
 			var n = list.nodeNeeded();
 			

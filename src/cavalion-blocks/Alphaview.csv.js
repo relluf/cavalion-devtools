@@ -1,6 +1,6 @@
+"use js";
 
-
-["", {}, [
+["./Alphaview.json", {}, [
 	
 	["Executable", ("csv"), {
 		on(evt) {
@@ -64,14 +64,10 @@
 			}
 		}
 	}],
+	[("#export-as"), { enabled: true }],
+	[("#button-export"), { visible: true }],
+	[("#popup-export"), [
+		[("Button"), "button-csv", { action: "csv" }]
+	]]
 
-	[("#export"), [
-		[("Button"), "button-csv",{ action: "csv" }]
-	]]	
-
-	// [("#bar"), [
-	// 	[("#right"), [
-	// 	]]
-	// ]]
-	
 ]];

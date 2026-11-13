@@ -129,7 +129,7 @@ define(function(require) {
 	    },
 	};
 	const PackageUtils = {
-	    knownExtensions: ['zip', 'tar', 'gz', 'dbf', 'kmz', '7z', 'rar', 'iso', 'shp', 'qgz', 'db', 'gpkg', 'ti', 'xlsm', 'xlsx', 'pptx', 'epub'], // Add more extensions here if needed
+	    knownExtensions: ['zip', 'tar', 'gz', 'kmz', '7z', 'rar', 'iso', 'shp', 'qgz', 'db', 'gpkg', 'ti', 'xlsm', 'xlsx', 'pptx', 'epub'], // Add more extensions here if needed
 		isPackageFile: async (file) => {
 		    const ext = FileUtils.getFileExtension(file.name);
 		
@@ -488,18 +488,17 @@ define(function(require) {
 		return results;
 	};
 
-	const getRelatedFiles = async (baseUri, extensions, getFileFn) => {
+	const getRelatedFiles = async (baseUri, extensions, getFileFn, listFilesFn) => {
 	    const relatedFiles = {};
-	    await Promise.all(
-	        extensions.map(async (ext) => {
-	            try {
-	                const file = await getFileFn(`${baseUri}.${ext}`, { arrayBuffer: true });
-	                if (file && !file.error) relatedFiles[ext] = file;
-	            } catch (err) {
-	                console.warn(`Related file .${ext} not found for base ${baseUri}`);
-	            }
-	        })
-	    );
+	    const slash = baseUri.lastIndexOf('/');
+	    const parent = slash === -1 ? '' : baseUri.slice(0, slash);
+	    const stem = baseUri.slice(slash + 1).toLowerCase();
+	    const siblings = await listFilesFn(parent);
+	    await Promise.all(extensions.map(async ext => {
+	        const sibling = siblings.find(file => file.type === 'File' &&
+	            file.name.toLowerCase() === `${stem}.${ext}`);
+	        if(sibling) relatedFiles[ext] = await getFileFn(sibling.uri, { arrayBuffer: true });
+	    }));
 	    return relatedFiles;
 	};
     const getFileFromEntry = (entry) => new Promise((resolve, reject) => entry.file(resolve, reject));
@@ -741,39 +740,39 @@ define(function(require) {
 	PackageHandlerRegistry.registerHandler('shp', async (file, uri, { getFile }) => {
 	    return new Promise((resolve, reject) => {
 	        require(['shapefile'], (shapefile) => {
-	            const baseUri = uri.replace(/\.shp$/, '');
-	            getRelatedFiles(baseUri, ['dbf'/*, 'shx', 'prj'*/], getFile)
-	                .then((relatedFiles) => {
-	                    const { dbf } = relatedFiles;
-	                    return Promise.all([file.getContent(), dbf]);
+	            const baseUri = uri.replace(/\.shp$/i, '');
+	            getRelatedFiles(baseUri, ['dbf', 'prj'], getFile, list)
+	                .then(async ({ dbf, prj }) => {
+	                    const shp = await file.getContent();
+	                    const source = await shapefile.open(new Uint8Array(shp), dbf ? new Uint8Array(dbf) : null);
+	                    return { source, prj };
 	                })
-	                .then(([shp, dbf]) => 
-	                    shapefile.open(new Uint8Array(shp), dbf ? new Uint8Array(dbf) : null)
-	                )
-	                .then((source) => {
+	                .then(async ({ source, prj }) => {
 	                    const features = [];
-	                    const readNextFeature = () => {
-	                        return source.read().then((result) => {
-	                            if (!result.done) {
-	                                features.push(result.value);
-	                                return readNextFeature();
-	                            }
-	                            return features;
-	                        });
-	                    };
-	                    return readNextFeature();
-	                })
-	                .then((features) => {
-	                	features = { name: file.name, features };
-	                    resolve([
-	                        {
-	                            uri: `${uri}/features.geojson`,
-	                            name: 'features.geojson',
-	                            type: 'File',
-	                            contentType: 'application/json',
-	                            getContent: () => Promise.resolve(new TextEncoder().encode(JSON.stringify(features))),
+	                    for(let result = await source.read(); !result.done; result = await source.read()) {
+	                        features.push(result.value);
+	                    }
+	                    const collection = { type: 'FeatureCollection', name: file.name, bbox: source.bbox, features };
+	                    if(prj) {
+	                        const wkt = new TextDecoder().decode(prj);
+	                        const authority = Array.from(wkt.matchAll(/(?:AUTHORITY|ID)\s*\[\s*[\"']EPSG[\"']\s*,\s*[\"']?(\d+)[\"']?\s*\]/gi));
+	                        if(authority.length) {
+	                            collection.crs = { type: 'name', properties: { name: 'EPSG:' + authority[authority.length - 1][1] } };
 	                        }
-	                    ]);
+	                    }
+	                    return collection;
+	                })
+	                .then(collection => {
+	                    const content = new TextEncoder().encode(JSON.stringify(collection));
+	                    resolve([{
+	                        uri: `${uri}/features.geojson`,
+	                        name: 'features.geojson',
+	                        type: 'File',
+	                        isFile: true,
+	                        size: content.byteLength,
+	                        contentType: 'application/geo+json',
+	                        getContent: () => Promise.resolve(content)
+	                    }]);
 	                })
 	                .catch(reject);
 	        }, reject);
@@ -886,7 +885,6 @@ define(function(require) {
 		return await sqlite(file, uri);
 	}, { sqlite: PackageHandlerRegistry.getHandler('sqlite').handler });
 	PackageHandlerRegistry.registerHandler('gpkg', 'sqlite');
-	PackageHandlerRegistry.registerHandler('dbf', 'db');
 	PackageHandlerRegistry.registerHandler('kmz', 'zip');
 	PackageHandlerRegistry.registerHandler('xlsm', 'zip');
 	PackageHandlerRegistry.registerHandler('xlsx', 'zip');

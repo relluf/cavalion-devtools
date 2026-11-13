@@ -1,8 +1,64 @@
+## `2026/11/13-1200` DevTools release notes and commit message
+
+Summarize the complete current Git diff and every non-backup untracked file in a new subject-grouped `CHANGELOG.md` entry, add a user-facing DevTools release post to `/Users/ralph/Dropbox/Docs/cavalion.org/RELEASENOTES.md`, and return a matching grouped Git commit message with a lowercase `(categorized): summary` subject and verb-led bullets. This release aggregates the already documented Alphaview navigation, localization, cell inspection and export work, dropped shapefile handling and Markdown image navigation refinements; it introduces no additional runtime implementation.
+
+<details>
+<summary>Implementation details</summary>
+
+- [CHANGELOG.md]() — adds the technical `2026/11/13` entry and explicitly covers every current untracked source and test file.
+- [PROMPTS.md]() — records this release-documentation request once for repository-local provenance.
+- `/Dropbox/Docs/cavalion.org/RELEASENOTES.md` — adds the user-facing DevTools release entry in the central document's established format.
+
+Verification: scoped diff checks validate the edited repository documentation, and the release content is reconciled with `git status --short`, `git diff --stat`, the complete non-backup untracked-file list, implementation sources, tests and existing issue-backed repository notes. Per the release routine, no runtime tests, build, staging, commit, push, tag, publication or deployment are performed.
+
+</details>
+
+## `2026/11/13` — JSON-export gescheiden van CSV en gecombineerd menu
+
+Voor [CVLN-20211007-1 - Alphaview](/Dropbox-cavalion/Issues/CVLN-20211007-1%20-%20Alphaview/) is de al aanwezige ongecommitte JSON-export uit `Alphaview.csv.js` verplaatst naar de zelfstandige `Alphaview.json.js`. CSV en JSON dragen elk één actie en menukeuze bij aan de gedeelde exportpopup; `Alphaview.csv.json.js` registreert de gecombineerde URI `devtools/Alphaview.csv.json`. De basis gebruikt de werkelijke VCL-popupklassen en verbergt zijn knop zonder keuzes; beide exportspecialisaties activeren de bestaande Shift+Option+Cmd+S-actie. De gerichte regressie dekt gescheiden modules, gecombineerde keuzes, CSV-download en JSON-editor en -download. De Blocks-parser bevestigt de beide URI-klassen; syntax-, filterbalk-, dependency- en diffcontrole slagen. Live browseracceptatie en build zijn niet uitgevoerd. Root-namespace-alias en applicatiespecifieke subclassregistratie blijven buiten scope; bestaande `.csv`-aanroepen krijgen pas beide keuzes als hun aanroeper bewust `.csv.json` kiest. Overige ongecommitte wijzigingen blijven behouden.
+
+## `2026/11/12` — Gedeelde Alphaview-navigatie en CSV-exportmenu
+
+Voor [CVLN-20211007-1 - Alphaview](/Dropbox-cavalion/Issues/CVLN-20211007-1%20-%20Alphaview/) toont de basis-Alphaview bij een verborgen filterbalk zonder opt-in Terug en Vernieuwen vóór de eerste gegevenstab, ook in Hover. Terug blijft zilverkleurig en disabled zonder geschiedenis; Vernieuwen volgt de bestaande actie en de zichtbaarheid van de barknop. Bij zichtbare balk verdwijnen beide tabknoppen. De basis heeft een gelokaliseerd exportmenu met Shift+Option+Cmd+S dat zonder keuzes verborgen en uitgeschakeld blijft; `Alphaview.csv.js` voegt één CSV-keuze toe en behoudt de bestaande exportlogica. De gerichte filterbalk-, export-, cel-, dependency- en Escapetests, syntax- en diffcontrole slagen. Browseracceptatie en build zijn niet uitgevoerd; de drie referentiebeelden zijn eenmaal openbaar gearchiveerd en na terugdownload byte-identiek gecontroleerd. De eerdere documentgebonden terugknop is verwante context in [VA-20261110-1-VO-Tabs-Document/](/Dropbox-veldapps/Issues/:/)[.md](/Dropbox-veldapps/Issues/VA-20261110-1-VO-Tabs-Document/:).
+
+## `2026/11/12` — Alt/Option-dubbelklik inspecteert Alphaview-object
+
+Voor [VA-20261110-1-VO-Tabs-Document/](/Dropbox-veldapps/Issues/:/)[.md](/Dropbox-veldapps/Issues/VA-20261110-1-VO-Tabs-Document/:) wacht de bestaande Alt/Option-celnavigatie 750 ms zodat een tweede klik haar kan annuleren. Alt/Option-dubbelklik op een objectcel inspecteert dezelfde uitgepakte waarde met `H.i` en navigeert niet; tabwissel annuleert een wachtende celklik. `alphaview-alt-cell.test.cjs` controleert enkelklik, dubbelklik, celwaarde en gewone dubbelklik; de bestaande filterbalktest, syntax- en diffcontrole slagen. Een herladen browserproef en build zijn niet uitgevoerd.
+
+## `2026/11/12` — Terugknop bij verborgen Alphaview-filterbalk
+
+Voor [VA-20261110-1-VO-Tabs-Document/](/Dropbox-veldapps/Issues/:/)[.md](/Dropbox-veldapps/Issues/VA-20261110-1-VO-Tabs-Document/:) gebruikt de gedeelde Alphaview bij opt-in een Terug-knop vóór de gegevenstabs wanneer de Filteren-bar verborgen is. De drie inzoomroutes behouden de barstand; de knop gebruikt de bestaande actie en blijft bij herbouw van de tabs beschikbaar. Zonder geschiedenis blijft de knop zichtbaar maar disabled en zilverkleurig, zodat de tabregel niet verspringt; bij een geopende bar verdwijnt hij. De actieve chevron erft ook bij hover de standaardkleur, de uitlijning blijft `text-bottom` en de tabaantallen tussen haakjes renderen op 70% van de tabtekstgrootte. Een wissel naar een andere gegevenstab herstelt altijd de toplijst, wist de drillgeschiedenis en geeft tijdelijke drilllijsten en hun databronnen vrij; de gebruiker verkoos dit boven geschiedenis per tab. De gerichte `alphaview-filter-bar.test.cjs`, bronsyntax en gerichte diffcontrole slagen; de gebruiker beoordeelde de CSS-uitlijning in de live weergave als goed, maar de definitieve bron is daarna niet afzonderlijk herladen en er is geen build uitgevoerd. Alle zeven beelden zijn met afzonderlijke toestemming eenmaal permanent gearchiveerd en na terugdownload byte-identiek geverifieerd.
+
+## `2026/11/10` — Gedropte shapefiles met DBF en PRJ
+
+Voor [VA-20261110-2-VO-GEO-shapefile/](/Dropbox-veldapps/Issues/:/)[.md](/Dropbox-veldapps/Issues/VA-20261110-2-VO-GEO-shapefile/:) behandelt DevTools een DBF-bestand als ruwe shapefile-bijlage in plaats van een SQLite-pakket. De SHP-route zoekt gelijknamige DBF- en PRJ-bestanden hoofdletterongevoelig, ook in een ZIP, en levert een geldige GeoJSON `FeatureCollection` met attributen en waar beschikbaar een EPSG-projectie. De gerichte drop-/ZIP-test, de bestaande redrop-test, bronsyntax en diffcontrole slagen. Een live proef met het bestand van de gebruiker staat open; geen build of serveruitrol voor dit onderwerp.
+
+## `2026/11/02` Alphaview-teksten via locales
+
+Controleer voor [CVLN-20211007-1 - Alphaview](/Dropbox-cavalion/Issues/CVLN-20211007-1%20-%20Alphaview/) de volledige `src/cavalion-blocks/Alphaview.js` op vaste gebruikersgerichte teksten en laat zichtbare labels en statusformaten via Engelse en Nederlandse locales lopen. De bestaande codewijziging is nagezien; een aanvullende correctie normaliseert naamloze selecties vóór het tellen van dubbele namen. De gerichte test dekt Nederlandse statusregels, vertaalde selectienamen en naamconflicten. Alle twaalf devtools-tests, syntaxcontrole en gerichte diffcontrole slagen. Live browsercontrole staat nog open; op verzoek is geen build, commit, push of uitrol uitgevoerd.
+
+## `2026/11/02` — Screenshotverwijzingen archiveren
+
+Voor [CVLN-20211007-1 - Alphaview](/Dropbox-cavalion/Issues/CVLN-20211007-1%20-%20Alphaview/) en [VA-20250316-1-Avallo-BRO-leveringen](/Dropbox-veldapps/Issues/VA-20250316-1-Avallo-BRO-leveringen/) verwijzen de bestaande schermafbeeldingen naar hun permanente GitHub-archiefkopie. De afbeeldingen zijn na upload op bereikbaarheid en identieke inhoud gecontroleerd; overige wijzigingen in deze repository blijven behouden.
+
+## `2026/11/02-1010` Command-/ in door Markdown geopende Hover-Alphaview
+
+Herstel voor [VA-20250316-1-Avallo-BRO-leveringen/](/Dropbox-veldapps/Issues/:/)[.md](/Dropbox-veldapps/Issues/VA-20250316-1-Avallo-BRO-leveringen/:) de Alphaview die vanuit Markdown via `Opdrachten.js` in een `Hover<>` wordt geïnstantieerd: Command-/ moet de filter-/navigatie-UI van de interne Alphaview tonen en focussen, niet proberen de host-Hover als Alphaview-root te muteren. De beginstand blijft contextafhankelijk: zichtbaar binnen `Hover<>` of `devtools/Workspace<>`, uitsluitend initieel verborgen buiten beide contexten.
+
+<details>
+<summary>Implementation details</summary>
+
+- [src/cavalion-blocks/Alphaview.js]() laat `focus-q` altijd `this._owner` schakelen; `initializeFilterBar` gebruikt Hover of Workspace alleen om de initiële zichtbaarheid en focus te bepalen.
+- [src/devtools/tests/alphaview-filter-bar.test.cjs]() verbiedt de Hover als mutatiedoel en dekt losse, Hover- en Workspace-hosting plus de bestaande focusgestuurde togglestanden.
+- Syntaxcontrole, de gerichte regressietest, de volledige devtools-testsuite en diffcontrole slagen. Read-only inspectie van de open Avallo-issuepagina bevestigt de Markdown-geopende Alphaview met zichtbare lijst en ontbrekende balk in de oude instantie; de actieve tab is niet herladen. De screenshot is wegens ontbrekende toestemming voor externe openbaarmaking alleen lokaal in het governing issue bewaard.
+
+</details>
+
 ## `2026/10/31` Afbeeldingen zichtbaar in Markdown-overzicht
 
-Toon voor [CVLN-20261030-1 - Editor-md afbeeldingenoverzicht](/Dropbox-cavalion/Issues/CVLN-20261030-1%20-%20Editor-md%20afbeeldingenoverzicht/) de afbeeldingen zelf in de bestaande Hover, met labels en behoud van bronnavigatie. Relatieve afbeeldingspaden volgen de bestaande Markdown-preview. Bij een keuze schuift de preview naar de juiste afbeelding, ook bij herhaalde bronnen of ingeklapte secties; de broncursor beweegt mee zonder een verborgen editor te openen.
+Toon voor [CVLN-20261030-1 - Editor-md afbeeldingenoverzicht](/Dropbox-cavalion/Issues/CVLN-20261030-1%20-%20Editor-md%20afbeeldingenoverzicht/) de afbeeldingen zelf in de bestaande Hover, met labels en behoud van bronnavigatie. Relatieve afbeeldingspaden volgen de bestaande Markdown-preview. Bij een keuze schuift een zichtbare preview naar de juiste afbeelding, ook bij herhaalde bronnen; alle ingeklapte bovenliggende sectie- en mapniveaus worden daarbij van buiten naar binnen geopend. De broncursor beweegt mee zonder een verborgen editor te openen.
 
-Verificatie: `node src/devtools/tests/markdown-images.test.cjs` en `node --check src/cavalion-blocks/MarkdownImages.js` slagen; de test dekt bovendien zichtbare en verborgen bron en herhaalde afbeeldingen; browseracceptatie is niet uitgevoerd. De meegeleverde screenshot is nog niet extern gearchiveerd.
+Verificatie: `node src/devtools/tests/markdown-images.test.cjs` en `node --check src/cavalion-blocks/MarkdownImages.js` slagen; de test dekt bovendien zichtbare en verborgen bron, zichtbare en verborgen preview, herhaalde afbeeldingen en meerdere ingeklapte bovenliggende niveaus; browseracceptatie is niet uitgevoerd. De meegeleverde screenshot is nog niet extern gearchiveerd.
 
 ## `2026/10/31-1308` DevTools release notes and commit message
 
@@ -62,7 +118,7 @@ Herstel de gedeelde Alphaview-keyboardafhandeling zodat Escape de actieve filter
 
 > In Tabs&lt;Document&gt; (meen ik) bestaat de bug dat wanneer er op Escape wordt gedrukt, de hele Alphaview verdwijnt. Fix dat ajb
 
-![De Data-tab waarvan Alphaview na Escape zichtbaar moet blijven](/Dropbox-cavalion/Issues/CVLN-20211007-1%20-%20Alphaview/screenshots/codex-clipboard-72f6da2f-52d4-4ceb-be1a-1b2508e02be5.png)
+![De Data-tab waarvan Alphaview na Escape zichtbaar moet blijven](https://raw.githubusercontent.com/relluf/screenshots/master/telegram/202611/20261102-task-CVLN-20211007-1_-_Alphaview-27d3f058ee68-codex-clipboard-72f6da2f-52d4-4ceb-be1a-1b2508e02be5.png)
 
 </details>
 

@@ -34,23 +34,36 @@ const createElement = tag => {
 };
 const componentSource = fs.readFileSync("src/cavalion-blocks/MarkdownImages.js", "utf8");
 let visible = false;
+let previewVisible = true;
 const editor = { session: { on() {}, off() {} }, gotoLine(...args) { this.destination = args; } };
 const sections = [];
-const collapsed = { parentElement: null, classList: { contains: name => ["md-section", "collapsed"].includes(name) } };
+const folders = [];
+const collapsible = (type, parentElement) => {
+	const classes = new Set([type, "collapsed"]);
+	return { parentElement, classList: {
+		contains: name => classes.has(name),
+		remove: name => classes.delete(name)
+	} };
+};
+const outer = collapsible("md-section", null);
+const folder = collapsible("md-folder", outer);
+const inner = collapsible("md-section", folder);
 const targets = [
-	{ src: "/home/Docs/folder/a.png", parentElement: collapsed, getBoundingClientRect: () => ({ top: 500, height: 100 }) },
+	{ src: "/home/Docs/folder/a.png", parentElement: inner, getBoundingClientRect: () => ({ top: 500, height: 100 }) },
 	{ src: "/home/Docs/folder/b.png", parentElement: null, getBoundingClientRect: () => ({ top: 700, height: 100 }) },
 	{ src: "/home/Docs/folder/b.png", parentElement: null, getBoundingClientRect: () => ({ top: 900, height: 100 }) }
 ];
 const preview = { scrollTop: 0, clientHeight: 400, querySelectorAll: () => targets,
 	getBoundingClientRect: () => ({ top: 100 }) };
-collapsed.parentElement = preview;
-const root = { vars: () => visible, ud: selector => selector === "#output" ? { nodeNeeded: () => preview } : null };
+outer.parentElement = preview;
+const output = { nodeNeeded: () => preview, isVisible: () => previewVisible };
+const root = { vars: () => visible, ud: selector => selector === "#output" ? output : null };
 const ace = { getEditor: () => editor, getValue: () => source, vars: () => ({ uri: "Docs/folder/file.md" }),
 	up: () => root, setFocus() { this.focused = true; }, setTimeout(key, fn) { this.timer = key; fn(); } };
 const node = { textContent: "", children: [], appendChild(child) { this.children.push(child); } };
 const md = { flushMarkdownRender() { this.flushed = true; },
-	setSectionCollapsed(control, section, state) { sections.push([section, state]); }, setFolderCollapsed() {} };
+	setSectionCollapsed(control, section, state) { sections.push([section, state]); section.classList.remove("collapsed"); },
+	setFolderCollapsed(control, folder, state) { folders.push([folder, state]); folder.classList.remove("collapsed"); } };
 const context = {
 	require: name => name === "devtools/cavalion-md" ? md : api,
 	document: { createElement }, js: { up: uri => uri.slice(0, uri.lastIndexOf("/")) }
@@ -65,7 +78,10 @@ node.children[0].click();
 assert.deepEqual(editor.destination, [1, 0, true]);
 assert.equal(ace.focused, undefined, "hidden source stays unfocused");
 assert.equal(preview.scrollTop, 250, "preview reveals the selected image");
-assert.equal(sections.length, 1, "collapsed section opens");
+assert.deepEqual(Array.from(sections, ([section, state]) => [section === outer ? "outer" : "inner", state]),
+	[["outer", false], ["inner", false]], "all collapsed section parents open outside-in");
+assert.deepEqual(Array.from(folders, ([item, state]) => [item === folder, state]),
+	[[true, false]], "collapsed folder parent opens");
 assert.equal(md.flushed, true, "pending preview render is flushed");
 assert.equal(ace.timer, "sync-preview-to-editor", "preview sync cannot overwrite image navigation");
 visible = true;
@@ -74,4 +90,8 @@ node.children[2].click();
 assert.deepEqual(editor.destination, [9, 0, true]);
 assert.equal(ace.focused, true, "visible source is focused");
 assert.equal(preview.scrollTop, 650, "duplicate images navigate to the matching occurrence");
+previewVisible = false;
+preview.scrollTop = 0;
+node.children[1].click();
+assert.equal(preview.scrollTop, 0, "hidden preview is not scrolled");
 console.log("Markdown image thumbnails, preview navigation and source visibility: OK");

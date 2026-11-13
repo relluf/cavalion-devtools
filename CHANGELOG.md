@@ -1,4 +1,37 @@
 
+### `2026/11/13` — Alphaview navigation, composable exports and shapefile handling
+
+Improves data exploration, export and dropped geodata workflows while refining Markdown image navigation.
+
+#### Alphaview navigation and inspection
+
+* Adds English and Dutch locale-backed labels, status text, selection names and filter controls to `src/cavalion-blocks/Alphaview.js`.
+* Fixes `Cmd+/` for Alphaviews hosted in `Hover<>` or `Workspace<>` by toggling the owned filter bar instead of mutating the host.
+* Adds localized Back and Refresh controls before the data tabs whenever the full toolbar is hidden, while preserving their existing action state.
+* Resets drill-down history and releases temporary lists and sources when switching data tabs, so every tab reopens at its top-level dataset.
+* Delays Alt/Option single-click navigation long enough to distinguish Alt/Option-double-click, which now inspects object-valued cells through `H.i(...)`.
+
+#### CSV and JSON export
+
+* Adds a shared localized export popup and `Shift+Option+Cmd+S` action to `src/cavalion-blocks/Alphaview.js`, hidden until a specialization contributes an export choice.
+* Refactors `src/cavalion-blocks/Alphaview.csv.js` to expose its existing CSV generation through the shared menu.
+* Adds `src/cavalion-blocks/Alphaview.json.js` for pretty-printed JSON export to a new editor resource or direct download.
+* Adds `src/cavalion-blocks/Alphaview.csv.json.js` as the combined CSV/JSON specialization.
+
+#### Dropped shapefiles
+
+* Changes `src/devtools/Resources-ddh.js` to treat `.dbf` as a shapefile companion instead of a SQLite-style package.
+* Resolves matching `.dbf` and `.prj` siblings case-insensitively for loose and ZIP-contained shapefiles.
+* Produces `application/geo+json` FeatureCollections with attributes, bounding boxes and EPSG CRS metadata when available.
+
+#### Markdown images, tests and documentation
+
+* Improves `src/cavalion-blocks/MarkdownImages.js` navigation by expanding all collapsed section and folder ancestors outside-in before centering the selected image.
+* Keeps hidden Markdown sources unfocused and avoids scrolling a hidden preview.
+* Adds `src/devtools/tests/alphaview-alt-cell.test.cjs`, `src/devtools/tests/alphaview-export-menu.test.cjs` and `src/devtools/tests/resources-ddh-shapefile.test.cjs` for cell inspection, composable exports and SHP/DBF/PRJ handling.
+* Extends `src/devtools/tests/alphaview-filter-bar.test.cjs` and `src/devtools/tests/markdown-images.test.cjs` for hosted navigation, localized controls, tab resets and nested preview expansion.
+* Updates `.md` and `PROMPTS.md` with the related issue context, user-visible contracts and recorded verification.
+
 ### `2026/10/31` — Alphaview controls, PouchDB attachments and Markdown images
 
 Improves embedded data exploration and Markdown workflows while exposing PouchDB attachments through the shared resource API.

@@ -41,21 +41,25 @@ const Md = require("devtools/cavalion-md");
 					ace.setTimeout("sync-preview-to-editor", () => {
 						const output = root.ud("#output") || root.ud("#preview");
 						const preview = output && output.nodeNeeded();
-						if(!preview) return;
+						if(!preview || typeof output.isVisible === "function" && output.isVisible() === false) return;
 						const occurrence = entries.slice(0, index).filter(entry => entry.href === item.href).length;
 						const matches = Array.from(preview.querySelectorAll("img"))
 							.filter(candidate => candidate.src === image.src);
 						const target = matches[occurrence];
 						if(!target) return;
+						const parents = [];
 						let parent = target.parentElement;
 						while(parent && parent !== preview) {
+							parents.push(parent);
+							parent = parent.parentElement;
+						}
+						parents.reverse().forEach(parent => {
 							if(parent.classList.contains("md-section") && parent.classList.contains("collapsed")) {
 								Md.setSectionCollapsed(ace, parent, false);
 							} else if(parent.classList.contains("md-folder") && parent.classList.contains("collapsed")) {
 								Md.setFolderCollapsed(ace, parent, false);
 							}
-							parent = parent.parentElement;
-						}
+						});
 						const imageRect = target.getBoundingClientRect();
 						const previewRect = preview.getBoundingClientRect();
 						preview.scrollTop += imageRect.top - previewRect.top - (preview.clientHeight - imageRect.height) / 2;
