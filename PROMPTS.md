@@ -1,3 +1,15 @@
+## `2026/11/15-1200` — DevTools release notes and commit message
+
+Summarize the complete current Git diff and every non-backup untracked file in a new subject-grouped `CHANGELOG.md` entry, add a user-facing DevTools release post to `/Users/ralph/Dropbox/Docs/cavalion.org/RELEASENOTES.md`, and return a matching grouped Git commit message with a lowercase `(categorized): summary` subject and verb-led bullets. This release combines the already documented lightweight Markdown Source toggle and focus-stable Alphaview tab styling; it introduces no additional runtime implementation.
+
+## `2026/11/15` — Markdown-bronzichtbaarheid zonder navigatieherbouw
+
+Voor [CVLN-20261025-1 - Editor-md render-performance](/Dropbox-cavalion/Issues/CVLN-20261025-1%20-%20Editor-md%20render-performance/) meldt de gebruiker dat het grote document `~/fs/Index/_star_/.md` traag is bij het tonen of verbergen van Source. De toggle verplaatst nu de bestaande top-level navigatie en ticks, zonder index- of menuherbouw; een blur door bronverberging forceert een pending previewrender niet langer onmiddellijk. De gewone inhoudsrender blijft de navigatie vernieuwen. De nieuwe toggletest, bestaande render-performancetest, overige devtools-tests, syntax- en diffcontroles slagen. De ongerelateerde Alphaview-exportmenutest faalt op de huidige werkboom (`Button.popup` tegenover `vcl/ui/PopupButton`); live acceptatie met het genoemde document is niet uitgevoerd.
+
+## `2026/11/13` — Alphaview-tab blijft licht bij focus
+
+Voor [CVLN-20211007-1 - Alphaview](/Dropbox-cavalion/Issues/CVLN-20211007-1%20-%20Alphaview/) vraagt de gebruiker de rechtermarge tussen Terug en de tabs te halveren en de vrijgekomen 2 px links van Terug te gebruiken. De geselecteerde tab moet altijd de lichte achtergrond uit het eerste referentiebeeld behouden, ook met focus op de parent `Tabs` of de tab zelf. `Alphaview.js` zet de marges op links 4 px en rechts 2 px en geeft de geselecteerde tab onafhankelijk van focus de bestaande glassy-kleur `rgba(255,255,255,0.65)`. Bronsyntax, de gerichte filterbalktest en diffcontrole slagen; live browseracceptatie en build zijn niet uitgevoerd. Beide beelden zijn na expliciete toestemming eenmaal openbaar gearchiveerd en byte-identiek teruggelezen.
+
 ## `2026/11/13-1200` DevTools release notes and commit message
 
 Summarize the complete current Git diff and every non-backup untracked file in a new subject-grouped `CHANGELOG.md` entry, add a user-facing DevTools release post to `/Users/ralph/Dropbox/Docs/cavalion.org/RELEASENOTES.md`, and return a matching grouped Git commit message with a lowercase `(categorized): summary` subject and verb-led bullets. This release aggregates the already documented Alphaview navigation, localization, cell inspection and export work, dropped shapefile handling and Markdown image navigation refinements; it introduces no additional runtime implementation.

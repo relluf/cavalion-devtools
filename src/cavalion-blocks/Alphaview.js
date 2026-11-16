@@ -122,7 +122,9 @@ var css = {
 	"#compact-status": "position:absolute;right:8px;bottom:8px;z-index:5;box-sizing:border-box;max-width:calc(100% - 16px);padding:3px 8px;border:1px solid rgba(0,0,0,0.12);border-radius:9px;background:rgba(255,255,255,0.82);box-shadow:0 1px 4px rgba(0,0,0,0.12);backdrop-filter:blur(3px);color:rgba(0,0,0,0.62);font-size:10px;line-height:16px;direction:ltr;white-space:nowrap;",
 	"#compact-status .alphaview-column-visibility-toggle": "cursor:pointer;text-decoration:underline;",
 	"#tabs small": "font-size:70%;",
+	"#tabs > .{Tab}.selected": "background-color:rgba(255,255,255,0.65);",
 	"#tabs > .alphaview-tabs-navigation": "display:inline-block;vertical-align:text-bottom;margin:0 4px 0 2px;padding:1px 7px;border:0;border-radius:4px;background:transparent;font:inherit;cursor:pointer;",
+	"#tabs > .alphaview-tabs-back": "margin-left:4px;margin-right:2px;",
 	"#tabs > .alphaview-tabs-navigation:hover:not(:disabled)": "background:rgba(0,0,0,0.06);",
 	"#tabs > .alphaview-tabs-navigation:disabled": "color:silver;cursor:default;",
 	"#tabs > .alphaview-tabs-navigation[hidden]": "display:none;"

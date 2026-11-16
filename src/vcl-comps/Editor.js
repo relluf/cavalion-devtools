@@ -534,6 +534,20 @@ var TopLevelNavigation = (() => {
 			menu.style.transform = "translateY(-50%)";
 		}
 	};
+	var setSide = (root, nav, fallback, side) => {
+		if(!nav || !nav._topLevelNav || !nav._topLevelNavOptions) return;
+
+		nav._topLevelNavOptions.side = side;
+		var resolved = getSide(root, nav._topLevelNavOptions);
+		var rail = nav.querySelector("." + nav._topLevelNavOptions.railClassName);
+		if(rail) rail.style.alignItems = resolved === "right" ? "flex-end" : "flex-start";
+		nav._topLevelNav.elements.forEach(item => {
+			if(!item._topLevelNavKeys || !item._topLevelNavVisual) return;
+			item._topLevelNavVisual.style.left = resolved === "left" ? "0" : "";
+			item._topLevelNavVisual.style.right = resolved === "right" ? "0" : "";
+		});
+		position(root, nav, fallback);
+	};
 	var open = (root, nav, fallback) => {
 		var state = nav && nav._topLevelNav;
 		var menu = state && state.menu;
@@ -1395,6 +1409,7 @@ var TopLevelNavigation = (() => {
 		resize: nav => nav && nav._topLevelNav && nav._topLevelNav.resize(),
 		syncActive: syncActive,
 		position: position,
+		setSide: setSide,
 		open: open,
 		toggle: toggle,
 		layout: clusterItems

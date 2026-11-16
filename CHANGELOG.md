@@ -1,3 +1,26 @@
+### `2026/11/15` — Markdown source toggling and Alphaview tab styling
+
+Improves Markdown editor responsiveness when showing or hiding source and keeps compact Alphaview navigation visually stable during focus changes.
+
+#### Markdown source visibility
+
+* Changes the Source toggle in `src/vcl-comps/Editor$/md.js` to publish its visibility state before updating the action and preview synchronization.
+* Adds a lightweight visibility update in `src/devtools/cavalion-md.js` that moves the existing top-level navigation without rebuilding the preview, heading index, menu or ticks.
+* Introduces `TopLevelNavigation.setSide(...)` in `src/vcl-comps/Editor.js` to reposition an existing navigation rail and realign its current tick visuals.
+* Preserves configured navigation-side fallback when Markdown source is hidden and places navigation on the right while source is visible.
+* Changes blur handling so hiding the Markdown source does not immediately flush an already scheduled preview render, while visible-source blur still flushes pending work.
+* Keeps the normal Markdown render path responsible for rebuilding navigation after actual content changes.
+
+#### Alphaview tabs
+
+* Keeps the selected data tab in `src/cavalion-blocks/Alphaview.js` on the light glassy background when either the tab or its parent tabs control receives focus.
+* Redistributes the compact Back button spacing to a 4-pixel left margin and 2-pixel right margin.
+
+#### Tests and documentation
+
+* Adds `src/devtools/tests/markdown-source-toggle.test.cjs` to verify side changes, tick reuse and Source toggling without Markdown rendering or navigation reconstruction.
+* Updates `.md` with the Markdown performance contract, Alphaview styling rationale, affected-file references and recorded verification state.
+* Updates `PROMPTS.md` with the governing issue context and the release-documentation request.
 
 ### `2026/11/13` — Alphaview navigation, composable exports and shapefile handling
 

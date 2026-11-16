@@ -100,14 +100,14 @@ const setMarkdownDialect = (control, dialect) => {
 		},
 		onExecute() {
 			const state = !this.getState();
-			this.setState(state);
 			this.up().vars("md-source-visible", state);
+			this.setState(state);
 			Md.schedulePreviewSync(this, this.ud("#ace").getEditor().getCursorPosition().row);
 			if(state === true) {
 				this.ud("#ace").setFocus();
 			}
 			Md.update_shrink(this, state);
-			this.setTimeout("md-nav-position", () => Md.updateTopLevelNavigationPosition(this), 0);
+			this.setTimeout("md-nav-position", () => Md.updateTopLevelNavigationVisibility(this), 0);
 			this.up().writeStorage("source-visible", this.getState());
 		}
 	}],

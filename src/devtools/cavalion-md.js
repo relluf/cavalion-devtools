@@ -1166,6 +1166,17 @@ define(function(require) {
 			decorateTopLevelNavigation(preview, control);
 		}
 	};
+	const updateTopLevelNavigationVisibility = (control) => {
+		const root = getEditorRoot(control);
+		const output = getOutputControl(control);
+		const preview = output && output._node;
+		const nav = preview && preview.querySelector(".md-toplevel-nav");
+		const helper = getTopLevelNavigation(control);
+
+		if(nav && helper && helper.setSide) {
+			helper.setSide(root, nav, preview, isSourceVisible(control) ? "right" : undefined);
+		}
+	};
 	const startsWithProtocol = (url) => url.match(/^[^\s]*:\/\//) !== null;
 	const expandProjectMarkdownHref = (href, kind) => {
 		const root = kind === "blocks" ? "./src/cavalion-blocks/" : "./src/vcl-comps/";
@@ -2091,7 +2102,9 @@ define(function(require) {
 		const scheduler = getMarkdownRenderScheduler(ace);
 		const interaction_node = editor.container;
 		const note_interaction = () => noteMarkdownInteraction(ace);
-		const flush_on_blur = () => scheduler.flush("blur");
+		const flush_on_blur = () => {
+			if(isSourceVisible(ace)) scheduler.flush("blur");
+		};
 		const tab = ace.up("vcl/ui/Tab");
 		ace.once("destroy", () => {
 			disposed = true;
@@ -2347,6 +2360,7 @@ define(function(require) {
 		syncPreviewToEditorFolds,
 		snapshotEditorFoldState,
 		updateTopLevelNavigationPosition,
+		updateTopLevelNavigationVisibility,
 		resolveLinkHintHref,
 		decorateLinks,
 		decorateSections,
