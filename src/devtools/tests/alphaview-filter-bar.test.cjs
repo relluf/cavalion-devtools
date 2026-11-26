@@ -8,17 +8,6 @@ const source = fs.readFileSync(
 	path.resolve(__dirname, "../../cavalion-blocks/Alphaview.js"),
 	"utf8"
 );
-const document = {
-	createElement(tagName) {
-		return {
-			tagName,
-			attributes: {},
-			listeners: {},
-			setAttribute(name, value) { this.attributes[name] = value; },
-			addEventListener(name, handler) { this.listeners[name] = handler; }
-		};
-	}
-};
 const localeStart = source.indexOf('var locale = require("locale").prefixed(');
 const localeEnd = source.indexOf('\n});', localeStart);
 assert(localeStart !== -1 && localeEnd !== -1, "Alphaview must register its locale texts");
@@ -44,21 +33,50 @@ const setTotalTabVisible = new Function(
 	extractHelper("setTotalTabVisible") + "\nreturn setTotalTabVisible;"
 )();
 const syncTabsNavigationButtons = new Function(
-	"document", "locale",
 	extractHelper("syncTabsNavigationButtons") + "\nreturn syncTabsNavigationButtons;"
-)(document, locale);
+)();
+const makeNavigationButton = (name, action) => {
+	const start = source.indexOf('["Button", ("' + name + '"), {');
+	const end = source.indexOf('\n\t}],', start);
+	assert(start !== -1 && end > start, "tab navigation uses the same VCL Button base as export");
+	const definition = new Function("locale", "return " + source.slice(start, end + 4) + ";")(locale);
+	const properties = definition[2];
+	assert.equal(properties.action, name === "tabs-back" ? "back" : "refresh");
+	const node = {
+		className: properties.classes,
+		innerHTML: properties.content,
+		attributes: properties.attributes,
+		listeners: { click() { if(action.isEnabled()) action.go(); } },
+		get disabled() { return !action.isEnabled(); }
+	};
+	return {
+		parentNode: null,
+		setParentNode(parent) { this.parentNode = parent; },
+		nodeNeeded() { return node; },
+		setVisible(visible) { node.hidden = !visible; }
+	};
+};
+const moveRightGroup = new Function(
+	extractHelper("moveRightGroup") + "\nreturn moveRightGroup;"
+)();
+const syncHoverCloseButton = new Function(
+	extractHelper("syncHoverCloseButton") + "\nreturn syncHoverCloseButton;"
+)();
+const syncCompactStatus = new Function(
+	extractHelper("syncCompactStatus") + "\nreturn syncCompactStatus;"
+)();
 const setFilterBarVisible = new Function(
-	"renderAlphaviewStatus", "setTotalTabVisible", "syncTabsNavigationButtons",
+	"renderAlphaviewStatus", "setTotalTabVisible", "syncTabsNavigationButtons", "moveRightGroup", "syncCompactStatus", "syncHoverCloseButton",
 	extractHelper("setFilterBarVisible") + "\nreturn setFilterBarVisible;"
-)(renderAlphaviewStatus, setTotalTabVisible, syncTabsNavigationButtons);
+)(renderAlphaviewStatus, setTotalTabVisible, syncTabsNavigationButtons, moveRightGroup, syncCompactStatus, syncHoverCloseButton);
 const toggleFilterBar = new Function(
 	"getActiveList", "setFilterBarVisible",
 	extractHelper("toggleFilterBar") + "\nreturn toggleFilterBar;"
 )(root => root.list, setFilterBarVisible);
 const initializeFilterBar = new Function(
-	"setFilterBarVisible",
+	"setFilterBarVisible", "getActiveList",
 	extractHelper("initializeFilterBar") + "\nreturn initializeFilterBar;"
-)(setFilterBarVisible);
+)(setFilterBarVisible, root => root.list);
 const statusHtml = new Function(
 	"getActiveList", "getListColumns", "js", "locale",
 	extractHelper("statusHtml") + "\nreturn statusHtml;"
@@ -98,8 +116,22 @@ assert.match(source, /\["Bar", \("bar"\) , \{\s*visible: false,/,
 	"the Alphaview filter and navigation bar must start hidden");
 assert.match(source, /#compact-status.*position:absolute;right:8px;bottom:8px;.*border-radius:9px/,
 	"the compact status must be a subtle bottom-right overlay");
-assert.match(source, /#tabs > \.alphaview-tabs-navigation:disabled.*color:silver/,
-	"the disabled tab-row back button keeps its silver appearance");
+assert.match(source, /#tabs > #right.*float:right;_?direction:rtl/, "compact actions align to the tab row's right edge");
+assert.match(source, /#tabs > #close-x ~ #right.*position:absolute;float:none/,
+	"the compact action group does not increase the tab-row height");
+assert.match(source, /#tabs > #close-x.*position:absolute;float:none/,
+	"the Hover-owned close control does not increase the tab-row height");
+const navigationStyle = source.match(/"#tabs > \.alphaview-tabs-navigation": "([^"]*)"/)[1];
+assert.match(navigationStyle, /padding:1px 7px;border:0;border-radius:4px;background:transparent;font:inherit;cursor:pointer/,
+	"compact navigation restores the supplied small, flat button style");
+assert.match(source, /alphaview-tabs-navigation:hover:not\(\.disabled\).*background:rgba\(0,0,0,0\.06\)/,
+	"only enabled navigation buttons show the subtle rounded hover background");
+assert.match(source, /alphaview-tabs-navigation:active.*margin-top:0;margin-bottom:0;padding:1px 7px;border:0;box-shadow:none/,
+	"pressing compact navigation preserves its reference size and position");
+assert.match(source, /alphaview-tabs-navigation\.disabled.*color:silver;cursor:default/,
+	"disabled VCL navigation stays silver and uses the normal cursor");
+assert.doesNotMatch(extractHelper("syncTabsNavigationButtons"), /createElement|addEventListener/,
+	"tab navigation uses VCL controls and action bindings instead of separate DOM button handlers");
 assert.doesNotMatch(source, /"": "position:relative;"/,
 	"the overlay must not replace the VCL root Form's absolute positioning context");
 assert.match(source, /\["Element", \("compact-status"\), \{[\s\S]*?onRender\(\) \{ renderStatusContent\(this\); \}/,
@@ -155,12 +187,16 @@ const navigationRefresh = {
 	isEnabled() { return refreshEnabled; },
 	go() { refreshCalls++; }
 };
+const tabBack = makeNavigationButton("tabs-back", navigationBack);
+const tabRefresh = makeNavigationButton("tabs-refresh", navigationRefresh);
 const navigationRoot = {
 	qs(name) {
 		if(name === "#tabs") return { nodeNeeded() { return tabNode; } };
 		if(name === "#back") return navigationBack;
 		if(name === "#refresh") return navigationRefresh;
 		if(name === "#button-refresh") return { getVisible() { return refreshVisible; } };
+		if(name === "#tabs-back") return tabBack;
+		if(name === "#tabs-refresh") return tabRefresh;
 	},
 	ud() { return { isVisible() { return navigationBarVisible; } }; }
 };
@@ -202,6 +238,7 @@ navigationBarVisible = false;
 tabNode.children = [];
 syncTabsNavigationButtons(navigationRoot);
 assert.equal(tabNode.children.length, 2, "both buttons return after data tabs are rebuilt");
+assert.equal(tabNode.firstChild, tabBack.nodeNeeded(), "tab rebuilds reuse the same VCL button instance");
 assert.equal(tabNode.firstChild.disabled, false, "the rebuilt button follows the existing back action state");
 assert.match(source, /revealNavigation\(list\._owner\)/,
 	"cell drilldown must use the shared navigation reveal policy");
@@ -293,10 +330,12 @@ tabHandler.call(tabsControl, { vars: () => finalRows }, nextTab);
 assert.deepEqual(displayed.rows, finalRows, "another tab switch loads the next top-level object");
 assert.equal(filterClears, 1, "switching without drill history does not reset navigation again");
 
-const createView = (hover, workspace) => {
+const createView = (hover, workspace, compactOnOpen) => {
 	const state = {
 		barVisible: false,
 		compactVisible: true,
+		statusVisible: true,
+		tabsVisible: false,
 		filterFocused: false,
 		filterFocusCount: 0,
 		listFocusCount: 0,
@@ -318,6 +357,7 @@ const createView = (hover, workspace) => {
 		hide() { state.barVisible = false; }
 	};
 	const compact = {
+		isVisible() { return state.compactVisible; },
 		show() { state.compactVisible = true; },
 		hide() { state.compactVisible = false; },
 		render() { state.compactStatusRenders++; }
@@ -343,6 +383,8 @@ const createView = (hover, workspace) => {
 		vars(name) { return name === "autoColumns.showingAll" && state.showingAll; }
 	};
 	const status = {
+		show() { state.statusVisible = true; },
+		hide() { state.statusVisible = false; },
 		render() { state.barStatusRenders++; }
 	};
 	const totalTab = {
@@ -356,16 +398,53 @@ const createView = (hover, workspace) => {
 			return this.children.find(child => child.className.split(" ").includes(selector.slice(1))) || null;
 		},
 		insertBefore(child, before) {
+			if(child.parentNode && child.parentNode !== this) {
+				child.parentNode.children = child.parentNode.children.filter(item => item !== child);
+			}
 			this.children = this.children.filter(item => item !== child);
 			this.children.splice(before ? this.children.indexOf(before) : this.children.length, 0, child);
 			this.children.forEach((item, index) => { item.nextSibling = this.children[index + 1] || null; });
 			child.parentNode = this;
 		}
 	};
-	const tabs = { _controls: [totalTab], nodeNeeded() { return tabsNode; } };
+	const tabs = {
+		_controls: [totalTab],
+		nodeNeeded() { return tabsNode; },
+		isVisible() { return state.tabsVisible; }
+	};
+	const right = {
+		setParent(parent) { state.rightParent = parent; },
+		setParentNode(node) {
+			state.rightParentNode = node;
+			if(node) node.insertBefore(rightNode, null);
+			else tabsNode.children = tabsNode.children.filter(child => child !== rightNode);
+		},
+		nodeNeeded() { return rightNode; }
+	};
+	const rightNode = { className: "right", parentNode: null };
+	const closeNode = { className: "close-x", parentNode: null };
+	const hoverNode = {
+		children: [],
+		insertBefore(child) {
+			if(child.parentNode && child.parentNode !== this) {
+				child.parentNode.children = child.parentNode.children.filter(item => item !== child);
+			}
+			this.children.push(child);
+			child.parentNode = this;
+		}
+	};
+	const close = {
+		setParentNode(node) { state.closeParentNode = node; },
+		getParentNode() { return state.closeParentNode || hoverNode; },
+		getInsertReference() { return null; },
+		nodeNeeded() { return closeNode; }
+	};
+	const hoverRoot = { qs(selector) { return selector === "#close-x" ? close : null; } };
 	const back = { isEnabled() { return false; } };
 	const refresh = { isEnabled() { return true; } };
 	const refreshButton = { getVisible() { return true; } };
+	const tabBack = makeNavigationButton("tabs-back", back);
+	const tabRefresh = makeNavigationButton("tabs-refresh", refresh);
 	const controls = {
 		"#bar": bar,
 		"#compact-status": compact,
@@ -375,20 +454,21 @@ const createView = (hover, workspace) => {
 	};
 	const root = {
 		list,
-		vars() { return false; },
+		vars(name) { return Array.isArray(name) && name[0] === "presentation.compact" && compactOnOpen === true; },
 		up(selector) {
-			if(selector === "Hover<>:root") return hover ? {} : null;
+			if(selector === "Hover<>:root") return hover ? hoverRoot : null;
 			if(selector === "devtools/Workspace<>:root") return workspace ? {} : null;
 			return null;
 		},
 		qs(selector) {
 			return { "#tabs": tabs, "#back": back, "#refresh": refresh,
-				"#button-refresh": refreshButton }[selector] || controls[selector];
+				"#button-refresh": refreshButton, "#right": right,
+				"#tabs-back": tabBack, "#tabs-refresh": tabRefresh }[selector] || controls[selector];
 		},
 		ud(selector) { return controls[selector]; }
 	};
 
-	return { root, state, tabsNode };
+	return { root, state, tabsNode, hoverNode, closeNode, rightNode };
 };
 
 const embedded = createView(false);
@@ -397,23 +477,30 @@ assert.equal(embedded.root.up("Hover<>:root"), null,
 	"the GT Lab-style embedded Alphaview resolves no Hover root");
 assert.equal(embedded.state.barVisible, false,
 	"an embedded user-facing Alphaview starts with the full bar hidden");
+assert.equal(embedded.state.rightParentNode, embedded.tabsNode,
+	"an embedded Alphaview places its action group in the tab row");
 assert.equal(embedded.state.compactVisible, true,
-	"an embedded user-facing Alphaview starts with compact status visible");
+	"the compact overlay remains available before data tabs are shown");
+assert.equal(embedded.state.statusVisible, false,
+	"the tab-row status stays hidden while the compact overlay is visible");
 assert.equal(embedded.state.totalTabVisible, false,
 	"an embedded user-facing Alphaview starts with its aggregate total tab hidden");
 
 toggleFilterBar(embedded.root);
 assert.equal(embedded.state.barVisible, true, "Command-/ shows a hidden filter bar");
 assert.equal(embedded.state.compactVisible, false, "showing the full bar hides compact status");
+assert.equal(embedded.state.statusVisible, true, "showing the full bar restores its status");
 assert.equal(embedded.state.totalTabVisible, true, "showing the full bar restores the aggregate total tab");
 assert.equal(embedded.state.filterFocused, true, "showing the filter bar focuses its input");
+assert.equal(embedded.state.rightParentNode, null, "showing the bar returns the action group to the bar");
 assert.equal(embedded.state.listVisible, true, "showing the bar leaves the List visible");
 assert.equal(embedded.state.listBodyVisible, true, "showing the bar leaves the ListBody visible");
 
 toggleFilterBar(embedded.root);
 assert.equal(embedded.state.barVisible, false,
 	"Command-/ hides the visible bar when the filter already has focus");
-assert.equal(embedded.state.compactVisible, true, "hiding the full bar restores compact status");
+assert.equal(embedded.state.rightParentNode, embedded.tabsNode, "hiding the bar returns the action group to the tab row");
+assert.equal(embedded.state.compactVisible, true, "the status overlay returns while tabs are hidden");
 assert.equal(embedded.state.totalTabVisible, false, "hiding the full bar also hides the aggregate total tab");
 assert.equal(embedded.state.listFocusCount, 1, "hiding the filter bar restores list focus");
 assert.equal(embedded.state.listVisible, true, "hiding the bar leaves the List visible");
@@ -436,6 +523,49 @@ toggleFilterBar(visibleWithoutFilterFocus.root);
 assert.equal(visibleWithoutFilterFocus.state.barVisible, false,
 	"a following Command-/ hides the now-focused filter bar");
 
+const compactHover = createView(true, false, true);
+compactHover.state.tabsVisible = true;
+initializeFilterBar(compactHover.root);
+assert.equal(compactHover.state.barVisible, false, "a map Hover opens in compact mode when requested");
+assert.equal(compactHover.state.rightParentNode, compactHover.tabsNode,
+	"the compact map Hover keeps its action group at the far end of the tab row");
+assert.equal(compactHover.state.listFocusCount, 1, "the compact Hover focuses its list");
+assert.equal(compactHover.state.compactVisible, true,
+	"compact mode keeps the status at bottom right even with data tabs");
+assert.equal(compactHover.state.statusVisible, false,
+	"compact mode removes the duplicate status from the tab row");
+assert.equal(compactHover.state.compactStatusRenders, 1,
+	"compact mode renders status content in the bottom-right overlay");
+assert.equal(compactHover.state.closeParentNode, compactHover.tabsNode,
+	"the compact tab row contains Hover's existing close control");
+assert(compactHover.tabsNode.children.indexOf(compactHover.closeNode) <
+	compactHover.tabsNode.children.indexOf(compactHover.rightNode),
+	"the floated close control sits to the right of Group#right");
+toggleFilterBar(compactHover.root);
+assert.equal(compactHover.state.barVisible, true, "Command-/ still reveals the full bar");
+assert.equal(compactHover.state.rightParentNode, null, "the full bar contains the action group again");
+assert.equal(compactHover.state.compactVisible, false, "the full bar hides the floating status");
+assert.equal(compactHover.state.statusVisible, true, "the full bar restores status next to the export action");
+assert.equal(compactHover.state.closeParentNode, null,
+	"opening the full bar returns Hover's close control to its original position");
+assert.equal(compactHover.closeNode.parentNode, compactHover.hoverNode,
+	"the existing close node is physically restored to Hover");
+
+const compactHoverWithoutTabs = createView(true, false, true);
+initializeFilterBar(compactHoverWithoutTabs.root);
+assert.equal(compactHoverWithoutTabs.state.closeParentNode, null,
+	"Hover keeps its original close control while the tab row is hidden");
+assert.equal(compactHoverWithoutTabs.closeNode.parentNode, compactHoverWithoutTabs.hoverNode,
+	"a hidden tab row leaves the close node in Hover's DOM");
+
+const ordinaryTabs = createView(false);
+ordinaryTabs.state.tabsVisible = true;
+initializeFilterBar(ordinaryTabs.root);
+assert.equal(ordinaryTabs.state.compactVisible, true,
+	"a hidden filter bar keeps status over the list even when tabs are visible");
+assert.equal(ordinaryTabs.state.statusVisible, false,
+	"a compact tab row does not duplicate status beside the export action");
+
 const hover = createView(true);
 initializeFilterBar(hover.root);
 assert.equal(hover.state.barVisible, true,
@@ -449,7 +579,8 @@ assert.equal(hover.state.filterFocused, true,
 toggleFilterBar(hover.root);
 assert.equal(hover.state.barVisible, false,
 	"Command-/ hides an initially visible Hover bar when its filter is focused");
-assert.equal(hover.tabsNode.children.length, 2,
+assert.equal(hover.tabsNode.children.filter(child =>
+	child.className.includes("alphaview-tabs-navigation")).length, 2,
 	"the Hover Alphaview has both navigation buttons without an opt-in");
 assert.equal(hover.tabsNode.children[0].hidden, false,
 	"the Hover's back button appears when the bar is hidden");
@@ -469,6 +600,11 @@ assert.equal(workspace.state.filterFocused, true,
 toggleFilterBar(workspace.root);
 assert.equal(workspace.state.barVisible, false,
 	"Command-/ toggles the owning Alphaview even when a Workspace hosts it");
+
+const compactWorkspace = createView(false, true, true);
+initializeFilterBar(compactWorkspace.root);
+assert.equal(compactWorkspace.state.barVisible, false,
+	"a Workspace-hosted map Alphaview also respects the compact startup flag");
 
 const statusView = createView(false);
 initializeFilterBar(statusView.root);

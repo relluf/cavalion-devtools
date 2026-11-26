@@ -114,7 +114,8 @@ var css = {
 	"#bar > *": "margin-right:5px;",
 	"#bar input": "font-size:12pt;width:50%; border-radius: 5px; border-width: 1px; padding: 2px 4px; border-color: #f0f0f0;",
 	"#bar #left": "float:left;", 
-	"#bar #right": "float:right; direction: rtl;",
+	"#bar #right": "float:right;_direction:rtl;",
+	"#tabs > #right": "float:right;_direction:rtl;",
 	"#presets": "display:inline-block;white-space:nowrap;",
 	"#presets .alphaview-preset": "margin:0 2px;padding:2px 6px;",
 	'#status': "direction: ltr;",
@@ -125,9 +126,11 @@ var css = {
 	"#tabs > .{Tab}.selected": "background-color:rgba(255,255,255,0.65);",
 	"#tabs > .alphaview-tabs-navigation": "display:inline-block;vertical-align:text-bottom;margin:0 4px 0 2px;padding:1px 7px;border:0;border-radius:4px;background:transparent;font:inherit;cursor:pointer;",
 	"#tabs > .alphaview-tabs-back": "margin-left:4px;margin-right:2px;",
-	"#tabs > .alphaview-tabs-navigation:hover:not(:disabled)": "background:rgba(0,0,0,0.06);",
-	"#tabs > .alphaview-tabs-navigation:disabled": "color:silver;cursor:default;",
-	"#tabs > .alphaview-tabs-navigation[hidden]": "display:none;"
+	"#tabs > .alphaview-tabs-navigation:hover:not(.disabled)": "background:rgba(0,0,0,0.06);",
+	"#tabs > .alphaview-tabs-navigation:active": "margin-top:0;margin-bottom:0;padding:1px 7px;border:0;box-shadow:none;",
+	"#tabs > .alphaview-tabs-navigation.disabled": "color:silver;cursor:default;",
+	"#tabs > #close-x ~ #right": "position:absolute;float:none;right:30px;top:50%;transform:translateY(-50%);",
+	"#tabs > #close-x": "position:absolute;float:none;right:4px;top:50%;transform:translateY(-50%);z-index:1;opacity:0.65;margin:0;padding:0 4px;font-size:14pt;line-height:20px;cursor:pointer;"
 	// "#bar #right > .{Button}": "float:right;"
 };
 
@@ -151,8 +154,12 @@ const toggleFilterBar = function(root) {
 const initializeFilterBar = function(root) {
 	var host = root.up("Hover<>:root") || root.up("devtools/Workspace<>:root");
 
-	setFilterBarVisible(root, !!host);
-	if(host) {
+	var compact = root.vars(["presentation.compact"]) === true;
+
+	setFilterBarVisible(root, !!host && !compact);
+	if(host && compact) {
+		getActiveList(root).setFocus();
+	} else if(host) {
 		root.ud("#q").setFocus();
 	}
 };
@@ -469,8 +476,7 @@ const renderStatusContent = function(control) {
 	}, 250);
 };
 const renderAlphaviewStatus = function(root) {
-	var bar = root.ud("#bar");
-	var status = root.ud(bar.isVisible() ? "#status" : "#compact-status");
+	var status = root.ud(root.ud("#compact-status").isVisible() ? "#compact-status" : "#status");
 
 	status && status.render();
 };
@@ -494,42 +500,115 @@ const setTotalTabVisible = function(root, visible) {
 const syncTabsNavigationButtons = function(root) {
 	var tabs = root.qs("#tabs");
 	var node = tabs.nodeNeeded();
-	var back = root.qs("#back");
-	var refresh = root.qs("#refresh");
+	var backButton = root.qs("#tabs-back");
+	var refreshButton = root.qs("#tabs-refresh");
 	var refreshInBar = root.qs("#button-refresh");
-	var backButton = node.querySelector(".alphaview-tabs-back");
-	var refreshButton = node.querySelector(".alphaview-tabs-refresh");
+	var visible = !root.ud("#bar").isVisible();
 
-	if(!backButton) {
-		backButton = document.createElement("button");
-		backButton.type = "button";
-		backButton.className = "alphaview-tabs-navigation alphaview-tabs-back";
-		backButton.innerHTML = "<i class='fa fa-chevron-left' aria-hidden='true'></i>";
-		backButton.addEventListener("click", function() { back.go(); });
+	backButton.setParentNode(node);
+	refreshButton.setParentNode(node);
+	var backNode = backButton.nodeNeeded();
+	var refreshNode = refreshButton.nodeNeeded();
+	if(backNode !== node.firstChild) node.insertBefore(backNode, node.firstChild);
+	if(refreshNode !== backNode.nextSibling) node.insertBefore(refreshNode, backNode.nextSibling);
+	backButton.setVisible(visible);
+	refreshButton.setVisible(visible && refreshInBar.getVisible() !== false);
+};
+const moveRightGroup = function(root, visible) {
+	var right = root.qs("#right");
+	var bar = root.qs("#bar");
+
+	if(visible) {
+		right.setParent(bar);
+		right.setParentNode(null);
+	} else {
+		right.setParent(root);
+		right.setParentNode(root.qs("#tabs").nodeNeeded());
 	}
-	if(!refreshButton) {
-		refreshButton = document.createElement("button");
-		refreshButton.type = "button";
-		refreshButton.className = "alphaview-tabs-navigation alphaview-tabs-refresh";
-		refreshButton.innerHTML = "<i class='fa fa-refresh' aria-hidden='true'></i>";
-		refreshButton.addEventListener("click", function() { refresh.go(); });
+};
+const installCompactHoverCursor = function(root) {
+	var hover = root.up("Hover<>:root");
+	if(!hover) return;
+
+	var resizingTop = false;
+	var compact = () => root.vars(["presentation.compact"]) === true &&
+		!root.ud("#bar").isVisible();
+	var setCursor = cursor => {
+		hover._cssRules._rules[".override-cursor *"].style.cursor = cursor;
+		hover._node.style.cursor = cursor;
+	};
+	var restoreHoverCursor = () => {
+		if(!hover.vars("active-dragstart") && compact() &&
+			/^n(?:w|e)?-resize$/.test(hover._node.style.cursor)) {
+			// Keep Hover's mousedown direction, but let each tab use its own cursor.
+			setCursor("");
+		}
+	};
+
+	hover.override({
+		onmousemove(evt) {
+			var result = this.inherited(arguments);
+			restoreHoverCursor();
+			return result;
+		},
+		onmousedown(evt) {
+			var result = this.inherited(arguments);
+			restoreHoverCursor();
+			return result;
+		},
+		ondragstart(evt) {
+			var cursor = this.vars("mousedown-cursor") || this._node.style.cursor;
+			if(compact() && /^n(?:w|e)?-resize$/.test(cursor)) {
+				resizingTop = true;
+				setCursor(cursor);
+			}
+			var result = this.inherited(arguments);
+			restoreHoverCursor();
+			return result;
+		},
+		ondragend(evt) {
+			var result = this.inherited(arguments);
+			if(resizingTop) {
+				resizingTop = false;
+				setCursor("");
+			}
+			return result;
+		}
+	});
+};
+const syncHoverCloseButton = function(root) {
+	var hover = root.up("Hover<>:root");
+	if(!hover) return;
+
+	var close = hover.qs("#close-x");
+	if(!close) return;
+
+	var tabs = root.qs("#tabs");
+	var inTabs = root.vars(["presentation.compact"]) === true &&
+		!root.ud("#bar").isVisible() && tabs.isVisible();
+	var tabsNode = inTabs ? tabs.nodeNeeded() : null;
+
+	close.setParentNode(tabsNode);
+	var parentNode = close.getParentNode();
+	if(tabsNode) {
+		var rightNode = root.qs("#right").nodeNeeded();
+		tabsNode.insertBefore(close.nodeNeeded(), rightNode.parentNode === tabsNode ? rightNode : null);
+	} else if(close.nodeNeeded().parentNode !== parentNode) {
+		parentNode.insertBefore(close.nodeNeeded(), close.getInsertReference(parentNode));
 	}
-	if(backButton !== node.firstChild) node.insertBefore(backButton, node.firstChild);
-	if(refreshButton !== backButton.nextSibling) node.insertBefore(refreshButton, backButton.nextSibling);
-	backButton.title = locale(".back");
-	backButton.setAttribute("aria-label", backButton.title);
-	refreshButton.title = locale(".refresh");
-	refreshButton.setAttribute("aria-label", refreshButton.title);
-	backButton.disabled = !back.isEnabled();
-	refreshButton.disabled = !refresh.isEnabled();
-	backButton.hidden = root.ud("#bar").isVisible();
-	refreshButton.hidden = backButton.hidden || refreshInBar.getVisible() === false;
+};
+const syncCompactStatus = function(root) {
+	var visible = !root.ud("#bar").isVisible();
+	root.ud("#compact-status")[visible ? "show" : "hide"]();
+	root.ud("#status")[visible ? "hide" : "show"]();
 };
 const setFilterBarVisible = function(root, visible) {
+	moveRightGroup(root, visible);
 	root.ud("#bar")[visible ? "show" : "hide"]();
-	root.ud("#compact-status")[visible ? "hide" : "show"]();
+	syncCompactStatus(root);
 	setTotalTabVisible(root, visible);
 	syncTabsNavigationButtons(root);
+	syncHoverCloseButton(root);
 	renderAlphaviewStatus(root);
 };
 const applyDefaultColumnVisibility = function(list) {
@@ -877,6 +956,7 @@ const renderPresets = function(control) {
 		installListColumnVisibilitySync(this, list);
 		moveNavigationBar(this, list);
 		initializeFilterBar(this);
+		installCompactHoverCursor(this);
 		
 		return this.inherited(arguments);
 	}
@@ -952,6 +1032,8 @@ const renderPresets = function(control) {
 			}
 			const tabs = this.ud("#tabs");
 			tabs.setVisible(tabs.getControlCount() > 0);
+			syncCompactStatus(this._owner);
+			syncHoverCloseButton(this._owner);
 			this.ud("#q").setPlaceholder(keys.length === 1 ? keys.join(", ") : this.vars(["placeholder"]) || "");
 			LOGGING && this.print("logging alphaview.load.resolved", {
 				selectionCount: sel && sel.length,
@@ -1034,6 +1116,9 @@ const renderPresets = function(control) {
 							setTotalTabVisible(root, root.ud("#bar").isVisible());
 							syncTabsNavigationButtons(root);
 								tabs.show();
+								syncCompactStatus(root);
+								syncHoverCloseButton(root);
+								renderAlphaviewStatus(root);
 							});
 						} else {
 							// root.qs("#tabs").hide();
@@ -1416,7 +1501,7 @@ const renderPresets = function(control) {
 			// ["Button", { action: "view-source" }],
 			["Group", ("export"), [
 				["Button.popup", ("button-export"), {
-					content: "<i class='fa fa-download'></i><i class='fa fa-caret-down'></i>",
+					content: "<i class='fa fa-download'></i> <i class='fa fa-caret-down'></i>",
 					popup: "popup-export",
 					origin: "bottom-right",
 					visible: false,
@@ -1602,6 +1687,20 @@ const renderPresets = function(control) {
 		["Element", { classes: "header", content: "<b>" + locale(".exportAs") + "</b>" }]
 	]],
 
+	["Button", ("tabs-back"), {
+		visible: false,
+		action: "back",
+		classes: "alphaview-tabs-navigation alphaview-tabs-back",
+		content: "<i class='fa fa-chevron-left' aria-hidden='true'></i>",
+		attributes: { title: locale(".back"), "aria-label": locale(".back") }
+	}],
+	["Button", ("tabs-refresh"), {
+		visible: false,
+		action: "refresh",
+		classes: "alphaview-tabs-navigation alphaview-tabs-refresh",
+		content: "<i class='fa fa-refresh' aria-hidden='true'></i>",
+		attributes: { title: locale(".refresh"), "aria-label": locale(".refresh") }
+	}],
 	["Tabs", ("tabs"), {
 		visible: false,
 		onChange(newTab, oldTab, opts) {

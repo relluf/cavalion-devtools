@@ -41,9 +41,13 @@ assert.equal(tick._topLevelNavVisual.style.right, "0");
 assert.strictEqual(nav._topLevelNav.elements[0], tick, "visibility only repositions existing ticks");
 
 const calls = [];
+const storage = [];
+let availableWidth = 1400;
 const markdown = {
 	schedulePreviewSync: () => calls.push("sync"),
 	update_shrink: () => calls.push("shrink"),
+	updatePreviewWidth: () => calls.push("width"),
+	previewWideAvailable: () => availableWidth >= 1160,
 	updateTopLevelNavigationVisibility: () => calls.push("position"),
 	updateTopLevelNavigationPosition: () => { throw new Error("toggle rebuilt navigation"); },
 	render: () => { throw new Error("toggle rendered Markdown"); }
@@ -53,17 +57,51 @@ const component = vm.runInNewContext(fs.readFileSync(path.join(repo, "src/vcl-co
 });
 const toggle = component[2].find(item => item[1] === "toggle-source")[2];
 let visible = true;
+const vars = { "md-preview-width": "normal", "md-source-visible": true };
 const ace = { getEditor: () => ({ getCursorPosition: () => ({ row: 20 }) }), setFocus: () => calls.push("focus") };
+const markdownRoot = {
+	vars(key, value) {
+		if(Array.isArray(key)) return vars[key[0]];
+		if(arguments.length > 1) vars[key] = value;
+		calls.push(key);
+		return vars[key];
+	},
+	writeStorage: (key, value) => storage.push([key, value])
+};
 const action = {
 	getState: () => visible,
-	up: () => ({ vars: (_, state) => { visible = state; calls.push("vars"); }, writeStorage: () => calls.push("storage") }),
-	setState: () => calls.push("state"),
+	up: () => markdownRoot,
+	setState: state => { visible = state; calls.push("state"); },
 	ud: () => ace,
 	setTimeout: (_, callback) => callback()
 };
 
 toggle.onExecute.call(action);
-assert.deepEqual(calls, ["vars", "state", "sync", "shrink", "position", "storage"]);
 assert.equal(visible, false);
+assert.equal(vars["md-preview-width"], "normal");
 
-console.log("PASS: source visibility repositions the existing navigation without rebuilding it.");
+toggle.onExecute.call(action);
+assert.equal(visible, false);
+assert.equal(vars["md-preview-width"], "wide");
+
+toggle.onExecute.call(action);
+assert.equal(visible, true);
+assert.equal(vars["md-preview-width"], "normal");
+assert.deepEqual(storage, [
+	["source-visible", false], ["preview-width", "normal"],
+	["source-visible", false], ["preview-width", "wide"],
+	["source-visible", true], ["preview-width", "normal"]
+]);
+assert.equal(calls.filter(call => call === "sync").length, 3);
+assert.equal(calls.filter(call => call === "shrink").length, 3);
+assert.equal(calls.filter(call => call === "position").length, 3);
+assert.equal(calls.filter(call => call === "focus").length, 1);
+
+availableWidth = 900;
+toggle.onExecute.call(action);
+assert.equal(visible, false);
+toggle.onExecute.call(action);
+assert.equal(visible, true, "narrow editors skip the wide preview state");
+assert.equal(vars["md-preview-width"], "normal");
+
+console.log("PASS: source toggle cycles normal, wide and source views only when space permits.");

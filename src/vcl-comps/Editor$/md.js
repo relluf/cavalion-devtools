@@ -97,10 +97,20 @@ const setMarkdownDialect = (control, dialect) => {
 					this.up().vars("md-source-visible", this.getState());
 				}
 			});
+			this.up().readStorage("preview-width", width => {
+				this.up().vars("md-preview-width", width === "wide" ? "wide" : "normal");
+				Md.updatePreviewWidth(this);
+			});
 		},
 		onExecute() {
-			const state = !this.getState();
-			this.up().vars("md-source-visible", state);
+			const root = this.up();
+			const sourceVisible = this.getState();
+			const wideAvailable = Md.previewWideAvailable(root);
+			const wide = root.vars(["md-preview-width"]) === "wide";
+			const state = !sourceVisible && (wide || !wideAvailable);
+			const width = !sourceVisible && !wide && wideAvailable ? "wide" : "normal";
+			root.vars("md-preview-width", width);
+			root.vars("md-source-visible", state);
 			this.setState(state);
 			Md.schedulePreviewSync(this, this.ud("#ace").getEditor().getCursorPosition().row);
 			if(state === true) {
@@ -108,7 +118,8 @@ const setMarkdownDialect = (control, dialect) => {
 			}
 			Md.update_shrink(this, state);
 			this.setTimeout("md-nav-position", () => Md.updateTopLevelNavigationVisibility(this), 0);
-			this.up().writeStorage("source-visible", this.getState());
+			root.writeStorage("source-visible", state);
+			root.writeStorage("preview-width", width);
 		}
 	}],
 	["vcl/Action", "state-clear", {

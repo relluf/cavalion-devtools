@@ -49,7 +49,7 @@ define(function(require) {
 		}).join("");
 	}
 	function escapeMarkdownLinkDescriptions(md) {
-		return (md || "").replace(/(!?)\[((?:\\.|[^\]\\])*)\]\(([^)\n]*)\)/g, (match, bang, description, href) => {
+		return (md || "").replace(/(!?)\[((?:\\.|[^\]\\\r\n])*)\]\(([^)\r\n]*)\)/g, (match, bang, description, href) => {
 			if(bang === "!") {
 				return match;
 			}
@@ -1356,6 +1356,18 @@ define(function(require) {
 			}
 		});
 	};
+	const decorateSectionHeading = heading => {
+		const first = heading.firstChild;
+		const date = first && first.nodeName === "CODE" &&
+			/^\d{4}\/\d{2}\/\d{2}(?:-\d{4})?$/.test(first.textContent.trim()) ? first : null;
+		if(date) heading.classList.add("md-section-dated-heading");
+		const title = document.createElement("SPAN");
+		title.className = "md-section-title";
+		while(date ? date.nextSibling : heading.firstChild) {
+			title.appendChild(date ? date.nextSibling : heading.firstChild);
+		}
+		heading.appendChild(title);
+	};
 	const decorateSections = (node, control) => {
 		const children = Array.from(node.childNodes);
 		if(children.some(child => headingLevel(child) > 0) === false) {
@@ -1396,6 +1408,7 @@ define(function(require) {
 			section.setAttribute("data-section-level", level);
 			body.className = "md-section-body";
 			child.classList.add("md-section-heading");
+			decorateSectionHeading(child);
 
 			section.appendChild(child);
 			section.appendChild(body);
@@ -1659,9 +1672,20 @@ define(function(require) {
 		}
 		return control.udr("#editor-needed");
 	};
+	const WIDE_PREVIEW_WIDTH = 1060;
+	const WIDE_PREVIEW_MARGIN = 50;
+	const previewWideAvailable = root =>
+		parseFloat(root.getComputedStyle().width) >= WIDE_PREVIEW_WIDTH + WIDE_PREVIEW_MARGIN * 2;
+	const updatePreviewWidth = me => {
+		const root = getEditorRoot(me) || (me.up && me.up()) || me;
+		const output = getOutputControl(me);
+		output && output.syncClass("wide", root.vars(["md-preview-width"]) === "wide" &&
+			root.vars(["md-source-visible"]) === false && previewWideAvailable(root));
+	};
 	const update_shrink = (me, value) => {
 		const output = me.ud("#output") || me.ud("#preview");
 		output && output.syncClass("shrink", value);
+		updatePreviewWidth(me);
 	};
 	const isUpperCase = (s) => s.toUpperCase() === s;
 	const renderMarkdown = (control, opts) => {
@@ -2251,12 +2275,15 @@ define(function(require) {
 	const Css_content = {
 		"": "margin-left:auto;margin-right:auto;",
 		":not(.shrink)": "width:795px;",
+		":not(.shrink).wide": `width:${WIDE_PREVIEW_WIDTH}px;`,
 		"background-color": "rgba(240,240,240,1)",
 		"border-left": "1px solid silver",
 		"border-right": "1px solid silver",
 		"font-family": "times,-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif,'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol'",
 		"font-size": "12pt",
-		"table": "width:100%;table-layout:fixed;border-collapse:collapse;border-spacing:0;margin:1.25em 0;",
+
+		"table": "width:100%;table-layout:auto;border-collapse:collapse;border-spacing:0;margin:1.25em 0;font-size:smaller;margin-inline-start: 50px; inline-size: calc(100% - 50px);",
+
 		"thead": "border-bottom:2px solid rgba(0,0,0,.12);",
 		"tbody tr": "border-bottom:1px solid rgba(0,0,0,.08);",
 		"tbody tr:last-child": "border-bottom:0;",
@@ -2275,14 +2302,21 @@ define(function(require) {
 		"a[data-href-hint]:hover::after": "content:attr(data-href-hint);position:absolute;left:0;bottom:calc(100% + 6px);z-index:20;display:block;max-width:36em;padding:4px 7px;border-radius:4px;background:rgba(32,32,32,.92);color:white;font-size:9pt;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.2);",
 		".md-heading-anchor": "display:none;",
 		".md-section > .md-section-heading": "position:relative;cursor:pointer;padding-left:18px;margin-left:-18px;",
+		".md-section > .md-section-heading.md-section-dated-heading": "display:flex;align-items:baseline;gap:.25em;",
+		".md-section > .md-section-heading.md-section-dated-heading > code:first-child": "flex:none;transform:translateY(-.7em);",
+		".md-section > .md-section-heading.md-section-dated-heading > .md-section-title": "min-width:0;",
 		".md-section > .md-section-body": "position:relative;",
 		".md-section.cursor-active > .md-section-heading": "background:linear-gradient(90deg, rgba(56,121,217,.16), rgba(56,121,217,.05));border-radius:4px;color:rgb(19,71,144);",
 		".md-section.cursor-active > .md-section-body": "background:linear-gradient(180deg, rgba(56,121,217,.05), rgba(56,121,217,.015));",
 		".md-section > .md-section-heading::before": "content:'';position:absolute;left:2px;top:50%;width:7px;height:7px;border-right:2px solid rgba(60,60,60,.75);border-bottom:2px solid rgba(60,60,60,.75);transform:translateY(-65%) rotate(-45deg);opacity:0;transition:opacity 120ms ease, transform 120ms ease;",
+		".md-section > .md-section-heading.md-section-dated-heading::before": "top:.6em;top:.5lh;",
 		".md-section > .md-section-heading:hover::before": "opacity:.85;",
 		".md-section:not(.collapsed) > .md-section-heading::before": "transform:translateY(-70%) rotate(45deg);",
 		".md-section.collapsed > .md-section-heading::before": "opacity:.2;",
 		".md-section.collapsed > .md-section-heading": "color:rgba(20,20,20,.78);",
+		".md-section.collapsed:not(:hover) > .md-section-heading": "display:flex;align-items:center;gap:.25em;white-space:nowrap;",
+		".md-section.collapsed:not(:hover) > .md-section-heading.md-section-dated-heading": "align-items:baseline;",
+		".md-section.collapsed:not(:hover) > .md-section-heading > .md-section-title": "min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;",
 		".md-section.collapsed > .md-section-body": "display:none;",
 		"li.md-folder": "position:relative;cursor:default;",
 		"li.md-folder > .md-folder-toggle": "appearance:none;-webkit-appearance:none;position:absolute;left:-17px;top:.25em;width:14px;height:14px;margin:0;padding:0;border:0;background:transparent;cursor:pointer;",
@@ -2309,7 +2343,9 @@ define(function(require) {
 		onResize() {
 			const cs = this.getComputedStyle();
 			const output = this.ud("#output") || this.ud("#preview");
-			output && output.syncClass("shrink", parseInt(cs.width, 10) < 900);
+			output && output.syncClass("shrink", this.vars(["md-source-visible"]) !== false ||
+				parseInt(cs.width, 10) < 900);
+			updatePreviewWidth(this);
 			scheduleTopLevelNavigationResize(this);
 		},
 		"#output onDblClick": function(evt) {
@@ -2376,6 +2412,8 @@ define(function(require) {
 		bindMarkdownEditor,
 		installDocumentClickHandler,
 		update_shrink,
+		previewWideAvailable,
+		updatePreviewWidth,
 		isUpperCase
 	};
 

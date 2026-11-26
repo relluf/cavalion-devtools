@@ -1,3 +1,35 @@
+### `2026/11/25` — Compact Alphaview controls and Markdown preview refinements
+
+Improves compact data views and Markdown document presentation while extending regression coverage for both workflows.
+
+#### Compact Alphaview presentation
+
+* Adds `presentation.compact` startup handling in `src/cavalion-blocks/Alphaview.js`, keeping hosted compact views on the list instead of focusing the hidden filter.
+* Moves `Group#right` between the filter bar and data-tab row as compact presentation is toggled.
+* Keeps compact status feedback in the bottom-right overlay while data tabs are visible and restores the full-bar status when the filter bar opens.
+* Reuses the Hover-owned close control inside compact tab rows and restores its original parent when tabs or compact presentation are hidden.
+* Positions the close control and right-side actions without increasing the compact tab-row height.
+* Replaces generated DOM navigation buttons with action-bound VCL `Button` controls that survive data-tab rebuilds.
+* Refines Back and Refresh hover, active and disabled styling without shifting their size or position.
+* Preserves normal tab cursors over compact Hover top edges and exposes north-edge resize cursors only while resizing is active.
+
+#### Markdown preview and rendering
+
+* Splits leading date markers from Markdown section titles in `src/devtools/cavalion-md.js` so collapsed titles can ellipsize without hiding their dates.
+* Aligns date markers and collapse chevrons with the first line of wrapped headings while retaining multiline hover and expanded states.
+* Restricts link-description preprocessing to a single source line, preventing stray `[` characters from consuming later `<details>` blocks and headings.
+* Adds a persisted 1060-pixel preview width between normal preview and source view when at least 1160 pixels of editor width are available.
+* Keeps narrow editors on the existing two-state source/preview cycle and reapplies the stored preview width after resize.
+* Changes Markdown tables to automatic column layout with smaller, indented presentation inside the preview.
+
+#### Tests and documentation
+
+* Extends `src/devtools/tests/alphaview-filter-bar.test.cjs` for compact startup, action placement, status routing, close-control restoration and VCL navigation buttons.
+* Adds `src/devtools/tests/alphaview-hover-cursor.test.cjs` for top-edge cursor forwarding, resize lifecycle and compact-scope isolation.
+* Adds `src/devtools/tests/markdown-dialect-details.test.cjs` for stray brackets, preserved `<details>` boundaries and subsequent headings.
+* Extends `src/devtools/tests/markdown-source-toggle.test.cjs` for wide, normal and source cycles, persisted state and narrow-editor fallback.
+* Updates `.md` and `PROMPTS.md` with the related issue context, behavioral contracts, visual evidence and recorded verification.
+
 ### `2026/11/15` — Markdown source toggling and Alphaview tab styling
 
 Improves Markdown editor responsiveness when showing or hiding source and keeps compact Alphaview navigation visually stable during focus changes.
